@@ -90,7 +90,7 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 
 ## Commands
 
-`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22; `db:seed` and the API dev server as of OD-21. Copy `.env.example` to `.env` first; `supabase start` prints the local keys.
+`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22; `db:seed` and the API dev server as of OD-21; Google sign-in and the signed-in shell as of OD-20. Copy `.env.example` to `.env` first; `supabase start` prints the local keys. Vite reads `VITE_*` from `.env` itself.
 
 ```
 pnpm install          # once
