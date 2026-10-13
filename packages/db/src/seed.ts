@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createDb } from './client';
+import { createDb, type Db } from './client';
 import { memberRole, members, type MemberRole } from './schema';
 
 const entry = z.object({
@@ -26,18 +26,23 @@ export function parseMembers(
   });
 }
 
-/** Upsert members by email. Returns the number of rows written. */
-export async function seedMembers(databaseUrl: string, spec: string | undefined): Promise<number> {
+/** Upsert members by email on an existing handle (or transaction). Returns rows written. */
+export async function upsertMembers(db: Db, spec: string | undefined): Promise<number> {
   const rows = parseMembers(spec);
+  for (const row of rows) {
+    await db
+      .insert(members)
+      .values(row)
+      .onConflictDoUpdate({ target: members.email, set: { role: row.role } });
+  }
+  return rows.length;
+}
+
+/** `pnpm db:seed`: open a connection, upsert, close. */
+export async function seedMembers(databaseUrl: string, spec: string | undefined): Promise<number> {
   const { db, client } = createDb(databaseUrl, { max: 1 });
   try {
-    for (const row of rows) {
-      await db
-        .insert(members)
-        .values(row)
-        .onConflictDoUpdate({ target: members.email, set: { role: row.role } });
-    }
-    return rows.length;
+    return await upsertMembers(db, spec);
   } finally {
     await client.end();
   }
