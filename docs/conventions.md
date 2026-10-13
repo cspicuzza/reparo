@@ -4,11 +4,11 @@ Rules that keep four people and several agents producing code that looks like on
 
 ## Language and tooling
 
-- Node 22 LTS (`.nvmrc`), pnpm 10 via corepack (`packageManager` in `package.json`).
+- Node 26 (`.nvmrc`, `engines >=26` — Chris's choice, 2026-10-13), pnpm 12 via corepack (`packageManager` in `package.json`). TypeScript 6.0 until typescript-eslint supports 7.
 - TypeScript `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`. Shared `tsconfig.base.json` at the root; each workspace extends it.
 - ESLint (flat config) + Prettier. Prettier owns formatting; ESLint owns correctness. No style rules in ESLint.
-- `pnpm check` = `typecheck && lint && test`. CI runs exactly this plus `build`.
-- Imports: absolute within a workspace via `@/`; cross-workspace via the package name (`@reparo/shared`). No `../../..`.
+- `pnpm check` = `typecheck && lint && format:check && test`. CI runs exactly this plus `build`. Prettier formats code only; Markdown is hand-formatted and ignored (`.prettierignore`).
+- Imports: absolute within a workspace via `@/`; cross-workspace via the package name (`@reparo/shared`). No `../../..`. Packages are consumed as TypeScript source (`exports` → `./src/index.ts`); only `apps/web` has a build step.
 
 ## Naming
 

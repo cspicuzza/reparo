@@ -90,7 +90,7 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 
 ## Commands
 
-Landing in M0 (OD issues under milestone "M0 Setup"). Target shape:
+`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24. `supabase start` and `db:*` land in OD-22.
 
 ```
 pnpm install          # once
