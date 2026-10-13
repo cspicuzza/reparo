@@ -54,18 +54,18 @@ Rules that keep four people and several agents producing code that looks like on
 
 ## Git and Linear
 
-- `main` is deployable at all times. Protected; PRs only.
-- Branch per Linear issue, using the name Linear suggests on the issue (`chris/od-42-room-measurements`). The `od-<n>` segment is what links it.
-- Conventional commits: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, with a scope of `web`, `api`, `db`, `shared`, or `repo`. Example: `feat(db): rooms and measurements tables`.
-- PR body: what and why in two sentences, `OD-<n>`, screenshots for UI, a line for any new dependency, a line for any doc updated.
-- Squash-merge. The squash title becomes the commit on `main`, so make PR titles good.
-- One issue, one PR. If an issue grows, split the issue in Linear rather than growing the PR.
+- `develop` is the working branch; everyone commits to it directly. No feature branches or PRs unless Chris asks. `main` is left alone for now (Chris decides when and what to promote).
+- Conventional commits: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, with a scope of `web`, `api`, `db`, `shared`, or `repo`, and the Linear issue in the message. Example: `feat(db): rooms and measurements tables (OD-30)`.
+- Commit body when it matters: why, any new dependency (with the one-line justification), any doc updated.
+- Small commits, one concern each. If an issue grows, split the issue in Linear rather than growing the commit.
+- Agents commit locally and stop; Chris pushes, unless he says otherwise.
+- Never force-push or rewrite `develop` or `main`.
 
 ## Documentation
 
-- Behavior change → update `docs/` in the same PR.
-- A PR that changes `docs/scope.md` also updates the *Scope* document in the Linear project (summary + "last synced" commit) so the two don't drift.
-- Decisions from the "needs an ADR" list in `CLAUDE.md` → append to `docs/decisions.md` in the same PR.
+- Behavior change → update `docs/` in the same commit series.
+- A change to `docs/scope.md` also updates the *Scope* document in the Linear project (summary + "last synced" commit) so the two don't drift.
+- Decisions from the "needs an ADR" list in `CLAUDE.md` → append to `docs/decisions.md` alongside the change.
 - Comments explain *why*, not *what*. If the what isn't obvious, rename something.
 - No `TODO` without a Linear issue number next to it.
 
