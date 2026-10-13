@@ -11,7 +11,7 @@ Home-renovation management app for a household acting as its own general contrac
 | How we write code | `docs/conventions.md` |
 | Milestones and done-criteria | `docs/roadmap.md` |
 | Entities and relationships | `docs/data-model.md` |
-| Task tracking | Linear project **Reparo**, team **OD** (`https://linear.app/okayishdev`) |
+| Task tracking | Linear project **Reparo** (P-OD-4), team **OD** — https://linear.app/okayishdev/project/reparo-ffa182a4db1c |
 
 Linear issues reference these docs; they don't duplicate them. If code and docs disagree, the docs win until an ADR says otherwise. If a PR changes behavior a doc describes, update the doc in the same PR.
 
@@ -39,7 +39,7 @@ pnpm db:migrate       # apply migrations locally
 
 ## Workflow for agents
 
-1. Start from a Linear issue. Branch from `main` using Linear's suggested name (`od-<n>-<slug>`).
+1. Start from a Linear issue. Branch from `main` using the name Linear suggests on the issue (`chris/od-<n>-<slug>`); the `od-<n>` part is what links the branch to the issue.
 2. Read this file, the relevant `docs/` pages, and the issue before writing code. Don't re-derive decisions that are already in `docs/decisions.md`.
 3. One issue per PR, small PRs. Conventional-commit title (`feat(web): room list`). Put `OD-<n>` in the PR body so Linear links it.
 4. `pnpm check` must pass before a PR is opened. CI runs the same thing.

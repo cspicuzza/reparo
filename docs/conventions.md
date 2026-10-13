@@ -55,7 +55,7 @@ Rules that keep four people and several agents producing code that looks like on
 ## Git and Linear
 
 - `main` is deployable at all times. Protected; PRs only.
-- Branch per Linear issue, named by Linear (`od-42-room-measurements`).
+- Branch per Linear issue, using the name Linear suggests on the issue (`chris/od-42-room-measurements`). The `od-<n>` segment is what links it.
 - Conventional commits: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, with a scope of `web`, `api`, `db`, `shared`, or `repo`. Example: `feat(db): rooms and measurements tables`.
 - PR body: what and why in two sentences, `OD-<n>`, screenshots for UI, a line for any new dependency, a line for any doc updated.
 - Squash-merge. The squash title becomes the commit on `main`, so make PR titles good.
