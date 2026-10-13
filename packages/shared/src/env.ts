@@ -11,14 +11,18 @@ const nonEmpty = (name: string) => z.string().min(1, `${name} is required`);
 /** Variables the browser bundle may see. Vite only exposes `VITE_*`. */
 export const webEnvSchema = z.object({
   VITE_SUPABASE_URL: z.url({ error: 'VITE_SUPABASE_URL must be a URL' }),
-  VITE_SUPABASE_ANON_KEY: nonEmpty('VITE_SUPABASE_ANON_KEY'),
+  /** `sb_publishable_…` — browser-safe. https://supabase.com/docs/guides/api/api-keys */
+  VITE_SUPABASE_PUBLISHABLE_KEY: nonEmpty('VITE_SUPABASE_PUBLISHABLE_KEY'),
 });
 export type WebEnv = z.infer<typeof webEnvSchema>;
 
 /** Server-only variables. Never import this from `apps/web/src`. */
 export const serverEnvSchema = z.object({
   SUPABASE_URL: z.url({ error: 'SUPABASE_URL must be a URL' }),
-  SUPABASE_SERVICE_ROLE_KEY: nonEmpty('SUPABASE_SERVICE_ROLE_KEY'),
+  /** `sb_secret_…` — bypasses RLS; server only. */
+  SUPABASE_SECRET_KEY: nonEmpty('SUPABASE_SECRET_KEY'),
+  /** JWKS for verifying user access tokens. https://supabase.com/docs/guides/auth/signing-keys */
+  SUPABASE_JWKS_URL: z.url({ error: 'SUPABASE_JWKS_URL must be a URL' }),
   DATABASE_URL: z
     .string()
     .min(1, 'DATABASE_URL is required')

@@ -3,11 +3,12 @@ import { EnvError, serverEnv, webEnv } from './env';
 
 const goodWeb = {
   VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
-  VITE_SUPABASE_ANON_KEY: 'anon',
+  VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_test',
 };
 const goodServer = {
   SUPABASE_URL: 'http://127.0.0.1:54321',
-  SUPABASE_SERVICE_ROLE_KEY: 'service',
+  SUPABASE_SECRET_KEY: 'sb_secret_test',
+  SUPABASE_JWKS_URL: 'http://127.0.0.1:54321/auth/v1/.well-known/jwks.json',
   DATABASE_URL: 'postgresql://postgres:postgres@127.0.0.1:54322/postgres',
   APP_ENV: 'local',
 };
@@ -28,7 +29,7 @@ describe('webEnv()', () => {
     const problems = (err as EnvError).problems;
     expect(problems).toHaveLength(2);
     expect(problems.join('\n')).toMatch(/VITE_SUPABASE_URL: .*URL/);
-    expect(problems.join('\n')).toMatch(/VITE_SUPABASE_ANON_KEY/);
+    expect(problems.join('\n')).toMatch(/VITE_SUPABASE_PUBLISHABLE_KEY/);
     expect((err as Error).message).toMatch(/See \.env\.example/);
   });
 });
@@ -39,7 +40,10 @@ describe('serverEnv()', () => {
   });
 
   it('rejects an empty key, a non-postgres URL, and a bad APP_ENV', () => {
-    expect(() => serverEnv({ ...goodServer, SUPABASE_SERVICE_ROLE_KEY: '' })).toThrow(EnvError);
+    expect(() => serverEnv({ ...goodServer, SUPABASE_SECRET_KEY: '' })).toThrow(EnvError);
+    expect(() => serverEnv({ ...goodServer, SUPABASE_JWKS_URL: 'nope' })).toThrow(
+      /SUPABASE_JWKS_URL/,
+    );
     expect(() => serverEnv({ ...goodServer, DATABASE_URL: 'mysql://x' })).toThrow(
       /DATABASE_URL must start with postgres/,
     );

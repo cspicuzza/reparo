@@ -82,7 +82,7 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 ## Stack (ADR-001, ADR-002)
 
 - **Web:** React 19 SPA on Vite, TypeScript strict, Tailwind, TanStack Router + Query, Zustand for the little client state that isn't server state.
-- **API:** Node + tRPC + Zod, deployed as Vercel serverless functions from `apps/web/api/`.
+- **API:** Node + tRPC + Zod. One Vercel function, `apps/web/api/index.ts` (`export default { fetch }`), with `/api/trpc/*` rewritten to it (ADR-012). No `@/` alias inside `api/`.
 - **Data:** Postgres on Supabase, Drizzle ORM + migrations. Supabase Storage for renderings, receipts, quotes.
 - **Auth:** Google SSO via Supabase Auth; API only admits emails present in `members`, with roles admin / editor / viewer (ADR-008).
 - **Repo:** pnpm monorepo. `apps/web`, `packages/api`, `packages/db`, `packages/shared`.
@@ -90,16 +90,20 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 
 ## Commands
 
-`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24. `supabase start` and `db:*` land in OD-22.
+`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22. Copy `.env.example` to `.env` first; `supabase start` prints the local keys.
 
 ```
 pnpm install          # once
 supabase start        # local Postgres + Auth + Storage (Docker)
 pnpm dev              # web + api with HMR
 pnpm check            # typecheck + lint + format + test — run before every commit
-pnpm db:generate      # Drizzle migration from schema change
-pnpm db:migrate       # apply migrations locally
+pnpm db:generate      # Drizzle migration from schema change (packages/db/drizzle)
+pnpm db:migrate       # apply migrations to DATABASE_URL (local Supabase: port 54322)
+pnpm db:seed          # upsert members from MEMBERS in .env (CLI runner pending; seeding runs in tests today)
+pnpm db:studio        # Drizzle Studio over DATABASE_URL
 ```
+
+`@reparo/db` tests are integration tests: they need `DATABASE_URL` pointing at a running Postgres (local Supabase) and they drop/recreate the tables.
 
 ## Workflow for agents
 

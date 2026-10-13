@@ -6,7 +6,7 @@ Architecture Decision Records. Append new ones at the bottom; never edit an acce
 
 ## ADR-001 — Stack: React SPA + tRPC + Supabase, shared with thebeast
 
-**Date:** 2026-10-13 · **Status:** Accepted
+**Date:** 2026-10-13 · **Status:** Accepted · **Amended by:** ADR-012 (Node 24; toolchain verified)
 
 **Context.** Reparo is a CRUD-heavy app with file uploads for a four-person household. Chris already runs the same shape of app (thebeast) on a known stack, and agents working across both repos benefit from identical conventions.
 
@@ -18,7 +18,7 @@ Architecture Decision Records. Append new ones at the bottom; never edit an acce
 
 ## ADR-002 — Hosting: Vercel for web + API, Supabase for everything stateful
 
-**Date:** 2026-10-13 · **Status:** Accepted · **Amended by:** ADR-010 (local only until Chris says deploy)
+**Date:** 2026-10-13 · **Status:** Accepted · **Amended by:** ADR-010 (local only until Chris says deploy); ADR-012 (API entry is `api/index.ts` + rewrite)
 
 **Context.** Options were Vercel, Digital Ocean App Platform, or a DO droplet. Supabase already covers Postgres, auth, and file storage, so the only thing left to host is a static bundle and a thin API.
 
@@ -54,7 +54,7 @@ Architecture Decision Records. Append new ones at the bottom; never edit an acce
 
 ## ADR-005 — Repo layout: pnpm monorepo with four workspaces
 
-**Date:** 2026-10-13 · **Status:** Accepted
+**Date:** 2026-10-13 · **Status:** Accepted · **Risk noted in:** ADR-012 (TS-source packages inside Vercel functions)
 
 **Decision.**
 
@@ -141,3 +141,33 @@ packages/shared   Zod schemas, domain types, unit/money/date helpers
 **Decision.** Lengths are stored as `numeric(10,4)` inches. `@reparo/shared` snaps every parsed or constructed length to the nearest 1/16" (`snapInches`), so stored values are always exact multiples of 0.0625. Display is feet/inches with reduced fractions (`7' 3 1/2"`).
 
 **Consequences.** Max representable length is 999,999.9999" (~15.8 miles) — not a constraint. Any future finer precision (1/32") is a column change plus a new ADR.
+
+---
+
+## ADR-012 — Technology audit against vendor docs (2026-10-13)
+
+**Date:** 2026-10-13 · **Status:** Accepted · **Amends:** ADR-001 (Node), ADR-002 (API entry), ADR-005 (risk noted)
+
+**Context.** Several early choices were made from memory. Chris asked for every technology decision to be re-verified against official documentation. Findings and corrections:
+
+**Corrected**
+- **Node 24 LTS**, not 26. Vercel runs Node 22.x and 24.x only (https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `engines: 24.x`, `.nvmrc` 24, `@types/node` 24.
+- **API entry is `apps/web/api/index.ts`** exporting `{ fetch(request) }`, with a rewrite from `/api/trpc/*`, not `api/trpc/[trpc].ts`. Vercel documents one shared function and the Web-standard handler (https://vercel.com/docs/functions/runtimes/node-js); dynamic `[segment]` files aren't documented. tsconfig path mappings are not supported inside `api/`, so the entry never uses `@/`.
+- **Supabase keys**: publishable (`sb_publishable_…`) and secret (`sb_secret_…`); legacy anon/service_role are deprecated end of 2026 (https://supabase.com/docs/guides/api/api-keys). Tokens are verified against `SUPABASE_JWKS_URL` with ES256 (https://supabase.com/docs/guides/auth/signing-keys, https://supabase.com/docs/guides/auth/jwts).
+- **Google secret env var** is `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET`, matching https://supabase.com/docs/guides/auth/social-login/auth-google. Local redirect URI `http://127.0.0.1:54321/auth/v1/callback` confirmed there.
+- **CI installs pnpm with `pnpm/action-setup@v6`** (reads `packageManager`); `actions/setup-node`'s `cache: pnpm` requires pnpm pre-installed (https://github.com/actions/setup-node, https://github.com/pnpm/action-setup).
+
+**pnpm 12 on Vercel.** Zero-config support is pnpm 6–10 (https://vercel.com/docs/package-managers); pnpm 12 requires `ENABLE_EXPERIMENTAL_COREPACK=1` on the project (https://vercel.com/docs/builds/configure-a-build#corepack). Recorded on the Deploy issue. Package-manager choice itself is open with Chris.
+
+**Conflicts to settle by observation (rule 7)**
+- `skip_nonce_check` for local Google sign-in: the Google guide shows `false`; the CLI-generated `config.toml` comment says it is required (`true`). First local sign-in in OD-20 decides.
+
+**Assumed — verify when first exercised**
+- The local stack serves JWKS at `/auth/v1/.well-known/jwks.json` (OD-21: `curl` it; fallback is the Auth server's `/auth/v1/user`).
+- The hosted project uses asymmetric signing keys (Dashboard → Authentication → JWT Keys); on the legacy shared secret the JWKS endpoint returns no keys (Deploy).
+- Vercel's function bundler compiles workspace packages consumed as TypeScript source through `node_modules` symlinks (ADR-005). Fallback: bundle `api/index.ts` with esbuild, or give packages a build step (Deploy).
+- supabase-js minimum version for publishable keys (OD-20 proposal).
+
+**Verified and unchanged**: RLS on every table; Data API off at deploy; pooler + `prepare: false`; `config.toml` keys; TypeScript 6.0 defaults; typescript-eslint `projectService` and its TS `<6.1` range; Vite 8 / Vitest 5 / ESLint 10 Node floors; Tailwind v4 Vite plugin; TanStack Router Vite plugin with `src/routes`; tRPC v11 fetch adapter; Drizzle `numeric(10,4, mode:'number')`, `bigint(mode:'number')`, `date(mode:'string')`, custom migrations.
+
+**Consequences.** Nothing version-specific is written from memory again: every dependency proposal cites the doc page it was checked against, with its date.

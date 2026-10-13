@@ -16,13 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable corepack (pnpm from packageManager field)
-        run: corepack enable
+      # pnpm/action-setup reads the version from package.json#packageManager and
+      # caches the store itself. actions/setup-node's `cache: pnpm` requires pnpm to
+      # be pre-installed, so this must run first (https://github.com/pnpm/action-setup).
+      - uses: pnpm/action-setup@v6
+        with:
+          cache: true
 
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-          cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 

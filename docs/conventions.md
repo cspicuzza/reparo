@@ -4,7 +4,7 @@ Rules that keep four people and several agents producing code that looks like on
 
 ## Language and tooling
 
-- Node 26 (`.nvmrc`, `engines >=26` — Chris's choice, 2026-10-13), pnpm 12 via corepack (`packageManager` in `package.json`). TypeScript 6.0 until typescript-eslint supports 7.
+- Node 24 LTS (`.nvmrc`, `engines: 24.x` — the newest line Vercel runs; ADR-012), pnpm 12 via corepack (`packageManager` in `package.json`). TypeScript 6.0 until typescript-eslint supports 7.
 - TypeScript `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`. Shared `tsconfig.base.json` at the root; each workspace extends it.
 - ESLint (flat config) + Prettier. Prettier owns formatting; ESLint owns correctness. No style rules in ESLint.
 - `pnpm check` = `typecheck && lint && format:check && test`. CI runs exactly this plus `build`. Prettier formats code only; Markdown is hand-formatted and ignored (`.prettierignore`).
@@ -21,10 +21,11 @@ Rules that keep four people and several agents producing code that looks like on
 ## Data
 
 - See ADR-004 and ADR-011 for units. Use `cents()`, `formatMoney()`, `sumCents()`, `parseLength()`, `inches()`, `formatLength()`, `area()`, and the `IsoDate` helpers from `@reparo/shared`. If you're writing `/ 100`, `* 12`, or `new Date(...)` arithmetic outside that package, stop.
-- Every table: `id uuid default gen_random_uuid()`, `created_at timestamptz`, `updated_at timestamptz` (trigger-maintained), `deleted_at timestamptz null` where soft-delete applies.
+- Every table: `id uuid default gen_random_uuid()`, `created_at timestamptz`, `updated_at timestamptz` (maintained by the `set_updated_at()` trigger — attach it in the table's migration), `deleted_at timestamptz null` where soft-delete applies. Use `id()`, `timestamps()`, `softDelete()` from `packages/db/src/schema/columns.ts`.
+- **Row Level Security is ON for every table, with no policies.** The browser holds the publishable key and Supabase's REST API would otherwise expose `public` tables; the API server connects via `DATABASE_URL` and bypasses RLS. New tables enable RLS in their migration (Supabase production checklist).
 - Foreign keys always, with explicit `on delete` behavior. Default is `restrict`; use `cascade` only for true owned children (a room's measurements, a cost's receipt files).
 - Enums as Postgres enums via Drizzle `pgEnum`, mirrored as a Zod `z.enum` in shared. Add values with a migration; never remove one.
-- Migrations: `pnpm db:generate` produces them; commit the SQL. Never hand-edit a generated migration except to add a data backfill below the schema change. Never squash applied migrations.
+- Migrations: `pnpm db:generate` produces them from the Drizzle schema; commit the SQL. Hand-written SQL (triggers, RLS, backfills) goes in a custom migration (`drizzle-kit generate --custom --name=…`), never inside a generated one. Never squash applied migrations. **Drizzle owns the schema**: `supabase/migrations` and `supabase/seed.sql` are unused and disabled in `supabase/config.toml`; the Supabase CLI only runs the local stack.
 - Files (renderings, receipts, quotes) go to Supabase Storage in a bucket per kind; the DB row stores the storage path, mime type, size, and the entity it belongs to. Never store file bytes in Postgres.
 
 ## API

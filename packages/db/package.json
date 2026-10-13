@@ -9,14 +9,21 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "studio": "drizzle-kit studio"
   },
   "devDependencies": {
-    "@types/node": "26.6.5",
+    "@types/node": "24.19.2",
+    "drizzle-kit": "0.31.11",
     "typescript": "6.0.3",
     "vitest": "5.0.4"
   },
   "dependencies": {
-    "@reparo/shared": "workspace:*"
+    "@reparo/shared": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "postgres": "3.4.9",
+    "zod": "4.6.7"
   }
 }

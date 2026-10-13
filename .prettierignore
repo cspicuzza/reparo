@@ -4,3 +4,4 @@ pnpm-lock.yaml
 raw
 coverage
 *.md
+packages/db/drizzle/meta
