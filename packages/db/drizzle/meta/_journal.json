@@ -15,6 +15,13 @@
       "when": 1791922156446,
       "tag": "0001_updated_at_trigger_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791929715676,
+      "tag": "0002_m1_foundation",
+      "breakpoints": true
     }
   ]
 }

@@ -29,13 +29,15 @@ Remaining balance = `budget.starting_cents` + Σ `budget_adjustments` − Σ `co
 
 ## M1 — Foundation
 
-**phases** — `name` ("Phase 1"), `sort_order`, `status` enum (`planned`, `active`, `complete`), `starts_on`, `ends_on` (nullable dates), `notes`. Soft-delete.
+*Landed in OD-27 (migration `0002_m1_foundation`); ADR-013.*
 
-**rooms** — `name`, `sort_order`, `notes`; measurements `length_in`, `width_in`, `ceiling_height_in` (nullable `numeric(10,4)`) — depth of measurement support is not yet discussed. Soft-delete.
+**phases** — `name` ("Phase 1"; unique among live rows), `sort_order`, `status` enum (`planned`, `active`, `complete`), `starts_on`, `ends_on` (nullable dates), `notes`. Soft-delete. Seeded: Phase 1, `active`.
 
-**items** — the managed catalog. `name` ("Paint", "Flooring", "Trim"…), `default_category_id` (nullable), `sort_order`, `retired_at` (nullable; retired items stay on existing work). Admin-managed. Shipped starter list seeded in the M1 migration from the spreadsheet's Remodel and Furniture rows.
+**rooms** — `name` (unique among live rows), `sort_order`, `notes`; measurements `length_in`, `width_in`, `ceiling_height_in` (nullable `numeric(10,4)` inches, 1/16" snapped). Floor area is derived; openings and wall areas are deferred (ADR-013). Soft-delete. Not seeded — entered through the UI.
 
-**work_items** — item × room, in a phase. `item_id`, `room_id` (nullable = house-wide default), `phase_id`, `status` enum (`unstarted`, `in_progress`, `awaiting_review`, `completed`, `cancelled`), `spec` (markdown), `notes`, `vendor_id` (nullable, M3), `sort_order`. Unique on `(item_id, room_id)` with nulls treated as equal (partial unique index). Soft-delete. Files: `kind` in (`mockup`, `spec_drawing`), `owner_type = work_item`.
+**items** — the managed catalog. `name` (unique; "Paint", "Flooring", "Trim"…), `sort_order`, `retired_at` (nullable; retired items stay on existing work). Never deleted. Admin-managed. Seeded starter list (23): Demo, Trim, Paint, Flooring, Electric, Plumbing, Drywall, Windows & Doors, Stucco, Fireplace, Bathroom Remodel, Project Fee; Furniture, Rugs, Decor, Lighting, Ceiling Fans, Window Treatments, Wallpaper, Wall Paneling, TV & Tech, Network & Security, Appliances. `default_category_id` arrives with `categories` in M2.
+
+**work_items** — item × room, in a phase. `item_id`, `room_id` (nullable = house-wide default), `phase_id`, `status` enum (`unstarted`, `in_progress`, `awaiting_review` = done, awaiting someone's verification, `completed`, `cancelled`), `spec` (markdown), `notes`, `sort_order`. One live row per `(item_id, room_id)` including the NULL room, via two partial unique indexes that ignore soft-deleted rows. Soft-delete. `vendor_id` arrives with `vendors` in M3. Files: `kind` in (`mockup`, `spec_drawing`), `owner_type = work_item`.
 
 Resolution rule for a room: a room's spec for an item is its own work item if one exists, else the item's house-wide default.
 
@@ -63,8 +65,6 @@ No new tables. SQL views: `remaining_balance`, `phase_rollup` (estimate / actual
 
 ## Open questions (resolve by ADR when the milestone starts)
 
-- **Awaiting Review** — a plain status, or a sign-off with who/when? (M1)
-- Room measurements — length/width/height only, or openings and derived areas? (M1; cheap to add later)
 - Does a work item need a category, or is category only on cost lines? (M2)
 - Should a cost line split across work items (one Home Depot receipt, three rooms)? (M2; `cost_allocations` if it bites)
 - Timeline per phase: derived from work-item dates we don't have yet, or from phase `starts_on`/`ends_on` only? (M4)

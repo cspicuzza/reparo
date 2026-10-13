@@ -20,6 +20,9 @@ raw/
 supabase/.temp/
 supabase/.branches/
 
+# files Claude parks for Chris to delete (it can't delete on his machine)
+_to_delete/
+
 # tooling
 coverage/
 .turbo/

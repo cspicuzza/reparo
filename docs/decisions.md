@@ -171,3 +171,18 @@ packages/shared   Zod schemas, domain types, unit/money/date helpers
 **Verified and unchanged**: RLS on every table; Data API off at deploy; pooler + `prepare: false`; `config.toml` keys; TypeScript 6.0 defaults; typescript-eslint `projectService` and its TS `<6.1` range; Vite 8 / Vitest 5 / ESLint 10 Node floors; Tailwind v4 Vite plugin; TanStack Router Vite plugin with `src/routes`; tRPC v11 fetch adapter; Drizzle `numeric(10,4, mode:'number')`, `bigint(mode:'number')`, `date(mode:'string')`, custom migrations.
 
 **Consequences.** Nothing version-specific is written from memory again: every dependency proposal cites the doc page it was checked against, with its date.
+
+---
+
+## ADR-013 — Awaiting Review is a plain status; room measurements are three lengths
+
+**Date:** 2026-10-13 · **Status:** Accepted · **Refines:** ADR-009 (work status), ADR-011 (what a room measures)
+
+**Context.** The M1 milestone held two open questions from `docs/data-model.md`. Chris answered both on 2026-10-13 before OD-27 started.
+
+**Decision.**
+- **Awaiting Review** means *the work is done and someone still has to verify it's good* — e.g. the tile is laid and a person has to confirm it isn't a poor job. It is one of the five statuses (`unstarted`, `in_progress`, `awaiting_review`, `completed`, `cancelled`) and nothing else is recorded: no reviewer, no sign-off timestamp.
+- **Room measurements** are `length_in`, `width_in`, `ceiling_height_in` only, each nullable `numeric(10,4)` inches. Floor area is derived. Openings (doors, windows) and derived wall areas are deferred.
+- Two details settled while writing the migration: uniqueness of `(item_id, room_id)` on work items — including the NULL-room house-wide default — is enforced by two partial unique indexes that ignore soft-deleted rows, so an override can be deleted and recreated; and `items` are never soft-deleted (`retired_at` instead), with `items.name` plainly unique.
+
+**Consequences.** Who verified a piece of work is not knowable from the data; if that matters, it is one migration (`reviewed_by`, `reviewed_at`) and a new ADR. Paint and trim quantities can't be computed from wall area until openings exist; estimates are entered by hand in M2. `items.default_category_id` and `work_items.vendor_id` from the draft data model land with their tables (M2, M3) rather than as FK-less columns now.
