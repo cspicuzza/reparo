@@ -7,7 +7,7 @@ Rules that keep four people and several agents producing code that looks like on
 - Node 24 LTS (`.nvmrc`, `engines: 24.x` — the newest line Vercel runs; ADR-012), pnpm 12 via corepack (`packageManager` in `package.json`). TypeScript 6.0 until typescript-eslint supports 7.
 - TypeScript `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`. Shared `tsconfig.base.json` at the root; each workspace extends it.
 - ESLint (flat config) + Prettier. Prettier owns formatting; ESLint owns correctness. No style rules in ESLint.
-- `pnpm check` = `typecheck && lint && format:check && test`. CI runs exactly this plus `build`. Prettier formats code only; Markdown is hand-formatted and ignored (`.prettierignore`).
+- `pnpm check` = `typecheck && lint && format:check && test`; run it before every commit. There is no CI while the project is local-only (Chris's call, 2026-10-13). Prettier formats code only; Markdown is hand-formatted and ignored (`.prettierignore`).
 - Imports: absolute within a workspace via `@/`; cross-workspace via the package name (`@reparo/shared`). No `../../..`. Packages are consumed as TypeScript source (`exports` → `./src/index.ts`); only `apps/web` has a build step.
 
 ## Naming

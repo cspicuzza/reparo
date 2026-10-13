@@ -110,7 +110,7 @@ pnpm db:studio        # Drizzle Studio over DATABASE_URL
 1. Start from a Linear issue. Work on `develop` — no feature branches or PRs unless Chris asks. Put `OD-<n>` in every commit message so Linear links the commit to the issue.
 2. Read this file, the relevant `docs/` pages, and the issue before writing code. Don't re-derive decisions that are already in `docs/decisions.md`. If you can't reach Linear from your session, say so and ask Chris for the issue text — don't guess the scope.
 3. One issue at a time; small commits, one concern each. Conventional-commit messages (`feat(web): room list (OD-30)`). Commit locally; don't push unless Chris says.
-4. `pnpm check` must pass before a commit. CI runs the same thing when `develop` is pushed.
+4. `pnpm check` must pass before a commit. There is no CI; the local check is the gate.
 5. Behavior change → doc change in the same commit series. Choice from the "needs an ADR" list → ADR alongside it.
 6. When done, move the Linear issue and leave a comment: what changed, what's left, anything surprising.
 
