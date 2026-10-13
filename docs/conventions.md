@@ -64,6 +64,7 @@ Rules that keep four people and several agents producing code that looks like on
 ## Documentation
 
 - Behavior change → update `docs/` in the same PR.
+- A PR that changes `docs/scope.md` also updates the *Scope* document in the Linear project (summary + "last synced" commit) so the two don't drift.
 - Decisions from the "needs an ADR" list in `CLAUDE.md` → append to `docs/decisions.md` in the same PR.
 - Comments explain *why*, not *what*. If the what isn't obvious, rename something.
 - No `TODO` without a Linear issue number next to it.

@@ -104,7 +104,7 @@ pnpm db:migrate       # apply migrations locally
 ## Workflow for agents
 
 1. Start from a Linear issue. Branch from `main` using the name Linear suggests on the issue (`chris/od-<n>-<slug>`); the `od-<n>` part is what links the branch to the issue.
-2. Read this file, the relevant `docs/` pages, and the issue before writing code. Don't re-derive decisions that are already in `docs/decisions.md`.
+2. Read this file, the relevant `docs/` pages, and the issue before writing code. Don't re-derive decisions that are already in `docs/decisions.md`. If you can't reach Linear from your session, say so and ask Chris for the issue text — don't guess the scope.
 3. One issue per PR, small PRs. Conventional-commit title (`feat(web): room list`). Put `OD-<n>` in the PR body so Linear links it.
 4. `pnpm check` must pass before a PR is opened. CI runs the same thing.
 5. Behavior change → doc change in the same PR. Choice from the "needs an ADR" list → ADR in the same PR.
