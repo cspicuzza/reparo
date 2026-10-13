@@ -1,0 +1,20 @@
+{
+  "name": "reparo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Home-renovation management for a household acting as its own general contractor.",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter './apps/*' dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "check": "pnpm typecheck && pnpm lint && pnpm test",
+    "db:generate": "pnpm --filter @reparo/db generate",
+    "db:migrate": "pnpm --filter @reparo/db migrate"
+  }
+}
