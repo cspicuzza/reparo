@@ -77,7 +77,7 @@ Home-renovation management app for a household acting as its own general contrac
 | Entities and relationships | `docs/data-model.md` |
 | Roadmap, milestones, done-criteria, tasks | Linear project **Reparo** (P-OD-4), team **OD** — https://linear.app/okayishdev/project/reparo-ffa182a4db1c. Milestone descriptions hold the done-criteria. |
 
-Linear issues reference these docs; they don't duplicate them. If code and docs disagree, the docs win until an ADR says otherwise. If a PR changes behavior a doc describes, update the doc in the same PR.
+Linear issues reference these docs; they don't duplicate them. If code and docs disagree, the docs win until an ADR says otherwise. If a change alters behavior a doc describes, update the doc in the same commit series.
 
 ## Stack (ADR-001, ADR-002)
 
@@ -96,7 +96,7 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 pnpm install          # once
 supabase start        # local Postgres + Auth + Storage (Docker)
 pnpm dev              # web + api with HMR
-pnpm check            # typecheck + lint + test — run before every PR
+pnpm check            # typecheck + lint + format + test — run before every commit
 pnpm db:generate      # Drizzle migration from schema change
 pnpm db:migrate       # apply migrations locally
 ```
@@ -119,7 +119,7 @@ pnpm db:migrate       # apply migrations locally
 - Schema changes only through Drizzle migrations committed to the repo. Never alter the database by hand, locally or hosted.
 - No anonymous routes. Every tRPC procedure runs behind the member guard.
 - Secrets live only in `.env` (gitignored) and the Vercel/Supabase dashboards. `.env.example` lists every variable with a comment.
-- Don't add a dependency for something the stack already does. A new runtime dependency gets a sentence of justification in the PR body.
+- Don't add a dependency for something the stack already does. A new runtime dependency needs Chris's OK first and a sentence of justification in the commit body.
 - Don't write code that isn't on the roadmap. If an issue needs something out of scope, say so in the issue instead of building it.
 
 ## Needs an ADR before doing
