@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb, withRollback } from './client';
@@ -8,6 +10,10 @@ import { parseMembers, upsertMembers } from './seed';
 // Integration tests against a real Postgres (DATABASE_URL — locally, Supabase on 54322).
 // Non-destructive: migrations are applied only if pending, and every test's writes happen
 // inside a transaction that is rolled back, so development data is never touched.
+// Vitest doesn't read .env; load the repo root one like dev.ts does. A DATABASE_URL already in
+// the shell wins (observed: loadEnvFile never overrides existing variables).
+const envFile = fileURLToPath(new URL('../../../.env', import.meta.url));
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 const url = process.env['DATABASE_URL'];
 if (!url) throw new Error('DATABASE_URL must be set to run @reparo/db tests');
 const databaseUrl: string = url;

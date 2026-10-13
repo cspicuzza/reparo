@@ -7,6 +7,8 @@ import {
   withRollback,
   type Db,
 } from '@reparo/db';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTVerifyGetKey } from 'jose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -20,6 +22,10 @@ import { editorProcedure, router } from './trpc';
 // path as createRemoteJWKSet minus the fetch (https://supabase.com/docs/guides/auth/jwts).
 // Non-destructive: each test seeds its members inside a transaction that is rolled back, so a
 // development database is left exactly as it was.
+// Vitest doesn't read .env; load the repo root one like dev.ts does. A DATABASE_URL already in
+// the shell wins (observed: loadEnvFile never overrides existing variables).
+const envFile = fileURLToPath(new URL('../../../.env', import.meta.url));
+if (existsSync(envFile)) process.loadEnvFile(envFile);
 const url = process.env['DATABASE_URL'];
 if (!url) throw new Error('DATABASE_URL must be set to run @reparo/api tests');
 const databaseUrl: string = url;

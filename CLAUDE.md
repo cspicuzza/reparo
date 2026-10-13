@@ -103,7 +103,7 @@ pnpm db:seed          # upsert members from MEMBERS in .env
 pnpm db:studio        # Drizzle Studio over DATABASE_URL
 ```
 
-`@reparo/db` and `@reparo/api` tests are integration tests: they need `DATABASE_URL` pointing at a running Postgres (local Supabase) and they drop/recreate the tables. Vitest does not read `.env`; pass the variable in the shell.
+`@reparo/db` and `@reparo/api` tests are integration tests: they need a running Postgres (local Supabase) and read `DATABASE_URL` from the root `.env`, so `pnpm check` works once `supabase start` is up. A `DATABASE_URL` set in the shell takes precedence. They are non-destructive: migrations are applied only if pending and every test's writes are rolled back.
 
 ## Workflow for agents
 
