@@ -30,9 +30,10 @@ Rules that keep four people and several agents producing code that looks like on
 
 ## API
 
-- All procedures are `memberProcedure` (authenticated and allowlisted). There is no `publicProcedure` in this codebase.
+- All procedures are `memberProcedure` (authenticated and allowlisted), `editorProcedure`, or `adminProcedure` (ADR-008). There is no `publicProcedure` in this codebase. Tokens are verified locally against `SUPABASE_JWKS_URL` with `jose` (ES256); the API never calls Supabase Auth per request.
 - Input is a Zod schema from `@reparo/shared`. Output types are inferred; don't annotate return types on procedures.
 - Services do the work; routers only parse input, call a service, and return. A service is a plain function taking `(db, ctx, input)` so it can be unit-tested without tRPC.
+- Two entry points share one router: `apps/web/api/index.ts` (Vercel, fetch adapter) and `packages/api/src/dev.ts` (local, standalone adapter on `API_PORT`, default 3001). `apps/web/api/` has its own `tsconfig.api.json` (Node types) and never uses the `@/` alias.
 - Errors: throw `TRPCError` with `NOT_FOUND`, `BAD_REQUEST`, `FORBIDDEN`. No stringly-typed error codes.
 - Derived values (areas, totals, progress) are computed in services or SQL views, not in React.
 

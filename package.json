@@ -8,7 +8,7 @@
     "node": "24.x"
   },
   "scripts": {
-    "dev": "pnpm --filter @reparo/web dev",
+    "dev": "pnpm -r --parallel --filter @reparo/web --filter @reparo/api dev",
     "build": "pnpm --filter @reparo/web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
@@ -18,7 +18,8 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "db:generate": "pnpm --filter @reparo/db generate",
     "db:migrate": "pnpm --filter @reparo/db migrate",
-    "db:studio": "pnpm --filter @reparo/db studio"
+    "db:studio": "pnpm --filter @reparo/db studio",
+    "db:seed": "pnpm --filter @reparo/db seed"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

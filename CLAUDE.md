@@ -90,20 +90,20 @@ Linear issues reference these docs; they don't duplicate them. If code and docs 
 
 ## Commands
 
-`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22. Copy `.env.example` to `.env` first; `supabase start` prints the local keys.
+`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22; `db:seed` and the API dev server as of OD-21. Copy `.env.example` to `.env` first; `supabase start` prints the local keys.
 
 ```
 pnpm install          # once
 supabase start        # local Postgres + Auth + Storage (Docker)
-pnpm dev              # web + api with HMR
+pnpm dev              # Vite on :5173 + API on :3001 (tsx watch); Vite proxies /api
 pnpm check            # typecheck + lint + format + test — run before every commit
 pnpm db:generate      # Drizzle migration from schema change (packages/db/drizzle)
 pnpm db:migrate       # apply migrations to DATABASE_URL (local Supabase: port 54322)
-pnpm db:seed          # upsert members from MEMBERS in .env (CLI runner pending; seeding runs in tests today)
+pnpm db:seed          # upsert members from MEMBERS in .env
 pnpm db:studio        # Drizzle Studio over DATABASE_URL
 ```
 
-`@reparo/db` tests are integration tests: they need `DATABASE_URL` pointing at a running Postgres (local Supabase) and they drop/recreate the tables.
+`@reparo/db` and `@reparo/api` tests are integration tests: they need `DATABASE_URL` pointing at a running Postgres (local Supabase) and they drop/recreate the tables. Vitest does not read `.env`; pass the variable in the shell.
 
 ## Workflow for agents
 

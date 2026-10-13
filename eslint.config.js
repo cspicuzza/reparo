@@ -33,6 +33,17 @@ export default tseslint.config(
     },
   },
   {
+    // The Vercel function lives outside apps/web/src and has its own Node-typed tsconfig.
+    files: ['apps/web/api/**/*.ts'],
+    languageOptions: {
+      parserOptions: {
+        projectService: false,
+        project: 'apps/web/tsconfig.api.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     // Config files aren't part of any tsconfig project; lint them without type info.
     files: ['*.{js,mjs,ts}', '**/*.config.{js,mjs,ts}'],
     ...tseslint.configs.disableTypeChecked,
