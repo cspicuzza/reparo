@@ -1,3 +1,5 @@
-// @reparo/shared — Zod schemas, domain types, unit/money/date helpers.
-// Populated in OD-23. This file exists so the workspace is wired and typechecks.
-export const PACKAGE = '@reparo/shared' as const;
+// @reparo/shared — the only place units, money, dates, and the env contract are implemented.
+export * from './money';
+export * from './length';
+export * from './date';
+export * from './env';

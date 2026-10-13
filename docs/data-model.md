@@ -1,6 +1,6 @@
 # Data model
 
-*Rewritten 2026-10-13 after the scope conversation. Draft — each Linear milestone lands its tables via migrations and may refine this.* Conventions in `docs/conventions.md` (every table has `id`, `created_at`, `updated_at`; soft-delete via `deleted_at` where marked). Units per ADR-004: money in integer cents, lengths in inches.
+*Rewritten 2026-10-13 after the scope conversation. Draft — each Linear milestone lands its tables via migrations and may refine this.* Conventions in `docs/conventions.md` (every table has `id`, `created_at`, `updated_at`; soft-delete via `deleted_at` where marked). Units per ADR-004/011: money in integer cents, lengths in inches as `numeric(10,4)` snapped to 1/16".
 
 ## Overview
 
@@ -31,7 +31,7 @@ Remaining balance = `budget.starting_cents` + Σ `budget_adjustments` − Σ `co
 
 **phases** — `name` ("Phase 1"), `sort_order`, `status` enum (`planned`, `active`, `complete`), `starts_on`, `ends_on` (nullable dates), `notes`. Soft-delete.
 
-**rooms** — `name`, `sort_order`, `notes`; measurements `length_in`, `width_in`, `ceiling_height_in` (nullable `numeric(10,3)`) — depth of measurement support is not yet discussed. Soft-delete.
+**rooms** — `name`, `sort_order`, `notes`; measurements `length_in`, `width_in`, `ceiling_height_in` (nullable `numeric(10,4)`) — depth of measurement support is not yet discussed. Soft-delete.
 
 **items** — the managed catalog. `name` ("Paint", "Flooring", "Trim"…), `default_category_id` (nullable), `sort_order`, `retired_at` (nullable; retired items stay on existing work). Admin-managed. Shipped starter list seeded in the M1 migration from the spreadsheet's Remodel and Furniture rows.
 

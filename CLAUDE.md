@@ -114,7 +114,7 @@ pnpm db:migrate       # apply migrations locally
 
 - TypeScript `strict`. No `any`, no `@ts-ignore`/`@ts-expect-error` without a one-line reason.
 - Validate every boundary with Zod: tRPC inputs, environment variables, file uploads, imported data.
-- **Money is integer cents** (`bigint` in Postgres, `number` in TS, never floats). **Lengths are stored in inches** as `numeric(10,3)` and displayed as ft/in. Helpers live in `packages/shared`; don't reimplement them.
+- **Money is integer cents** (`bigint` in Postgres, `number` in TS, never floats). **Lengths are stored in inches** as `numeric(10,4)`, snapped to 1/16" (ADR-011), and displayed as ft/in. Helpers live in `packages/shared`; don't reimplement them.
 - Every table has `id uuid`, `created_at`, `updated_at`. Soft-delete (`deleted_at`) on anything a person would regret deleting: phases, rooms, work items, cost lines, vendors, files.
 - Schema changes only through Drizzle migrations committed to the repo. Never alter the database by hand, locally or hosted.
 - No anonymous routes. Every tRPC procedure runs behind the member guard.

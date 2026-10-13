@@ -42,7 +42,7 @@ Architecture Decision Records. Append new ones at the bottom; never edit an acce
 
 ## ADR-004 — Units: money in integer cents, lengths in inches, dates as ISO dates
 
-**Date:** 2026-10-13 · **Status:** Accepted
+**Date:** 2026-10-13 · **Status:** Accepted · **Amended by:** ADR-011 (`numeric(10,4)`, 1/16")
 
 **Context.** Renovation math mixes dollars, square footage, linear feet, and fractional inches. Float money is a classic bug; mixed length units are another.
 
@@ -129,3 +129,15 @@ packages/shared   Zod schemas, domain types, unit/money/date helpers
 **Decision.** Order: M0 Setup (local only) → M1 Foundation (phases, rooms, items, work items, status) → M2 Budget → M3 Item detail → M4 Phase views & dashboard. Done-criteria are in the Linear milestone descriptions. Hosting on Vercel + Supabase happens in a separate *Deploy* milestone with no date, when Chris wants to share it. Code stays Vercel-shaped (serverless entry under `apps/web/api/`, env contract in `.env.example`) so deploying is configuration.
 
 **Consequences.** No hosted accounts are needed to start. OD-243 and OD-250 move to Deploy. M0's done-criterion is local sign-in with roles, not a production URL.
+
+---
+
+## ADR-011 — Lengths at 1/16" precision: `numeric(10,4)`
+
+**Date:** 2026-10-13 · **Status:** Accepted · **Amends:** ADR-004 (inches stand; precision changes)
+
+**Context.** ADR-004 chose `numeric(10,3)` for inches. Three decimals cannot hold 1/16" exactly (0.0625 → 0.063), and carpentry commonly works in sixteenths.
+
+**Decision.** Lengths are stored as `numeric(10,4)` inches. `@reparo/shared` snaps every parsed or constructed length to the nearest 1/16" (`snapInches`), so stored values are always exact multiples of 0.0625. Display is feet/inches with reduced fractions (`7' 3 1/2"`).
+
+**Consequences.** Max representable length is 999,999.9999" (~15.8 miles) — not a constraint. Any future finer precision (1/32") is a column change plus a new ADR.

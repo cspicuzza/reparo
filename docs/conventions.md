@@ -20,7 +20,7 @@ Rules that keep four people and several agents producing code that looks like on
 
 ## Data
 
-- See ADR-004 for units. Use `cents()`, `inches()`, `formatMoney()`, `formatLength()` from `@reparo/shared`. If you're writing `/ 100` or `* 12` outside that package, stop.
+- See ADR-004 and ADR-011 for units. Use `cents()`, `formatMoney()`, `sumCents()`, `parseLength()`, `inches()`, `formatLength()`, `area()`, and the `IsoDate` helpers from `@reparo/shared`. If you're writing `/ 100`, `* 12`, or `new Date(...)` arithmetic outside that package, stop.
 - Every table: `id uuid default gen_random_uuid()`, `created_at timestamptz`, `updated_at timestamptz` (trigger-maintained), `deleted_at timestamptz null` where soft-delete applies.
 - Foreign keys always, with explicit `on delete` behavior. Default is `restrict`; use `cascade` only for true owned children (a room's measurements, a cost's receipt files).
 - Enums as Postgres enums via Drizzle `pgEnum`, mirrored as a Zod `z.enum` in shared. Add values with a migration; never remove one.
@@ -75,5 +75,5 @@ Reparo is an internal tool for one house, not a generic project manager. Don't r
 
 ## Environment
 
-- `.env.example` is the contract. Every variable it lists is validated at startup with Zod (`packages/shared/env.ts`); the app refuses to start with a missing one.
+- `.env.example` is the contract. Every variable it lists is validated at startup with Zod (`webEnv()` / `serverEnv()` in `packages/shared/src/env.ts`); the app refuses to start with a missing one and lists every problem at once.
 - Never commit `.env`, `.env.local`, or anything under `supabase/.temp`.
