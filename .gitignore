@@ -8,6 +8,9 @@ build/
 .vercel/
 *.tsbuildinfo
 
+# source material from Chris — never committed, never modified (see CLAUDE.md)
+raw/
+
 # env & secrets
 .env
 .env.*

@@ -1,70 +1,70 @@
 # Data model
 
-First draft (2026-10-13). This is the target shape across M0–M5; each milestone adds its tables via migrations. Conventions in `docs/conventions.md` (every table has `id`, `created_at`, `updated_at`; soft-delete via `deleted_at` where marked). Units per ADR-004: money in integer cents, lengths in inches.
+*Rewritten 2026-10-13 after the scope conversation. Draft — each Linear milestone lands its tables via migrations and may refine this.* Conventions in `docs/conventions.md` (every table has `id`, `created_at`, `updated_at`; soft-delete via `deleted_at` where marked). Units per ADR-004: money in integer cents, lengths in inches.
 
 ## Overview
 
 ```
-members ─┐
-         │ (who did what, via created_by on everything)
-rooms ───┼─< openings
-   │     ├─< specs ───< material_assignments >─── materials >─── vendors
-   │     ├─< files (renderings)                       │              ├─< vendor_documents
-   │     ├─< budget_lines ───< costs ───< files        └─< quotes ────┘
-   │     │        └── category                            (quote → budget_line)
-   │     └─< tasks ───< task_dependencies
-   │             └─< files (permits, inspections)
-   └── "whole house" is room_id NULL on budget_lines and tasks
+members (role)
+
+budget ──< budget_adjustments
+
+phases ──< work_items >── items          work_items.room_id NULL = house-wide default
+   │          │  └──── rooms             (item_id, room_id) unique per item
+   │          ├──< files (mockup, spec_drawing)
+   │          └──< cost_lines ──< payments
+   │                  │   ├──< files (receipt)
+   │                  │   ├── vendors ──< quotes ──< files (quote)
+   │                  │   └── categories
+   └──< cost_lines (work_item_id NULL = phase-level, e.g. moving)
 ```
+
+Remaining balance = `budget.starting_cents` + Σ `budget_adjustments` − Σ `cost_lines.actual_cents` − Σ `cost_lines.estimate_cents` where `actual_cents` is null and the line's work item isn't Cancelled.
 
 ## M0
 
-**members** — who may sign in. `email` (unique, lowercase), `display_name`, `supabase_user_id` (nullable until first sign-in). No role column in v1 (ADR-003).
+**members** — `email` (unique, lowercased), `display_name`, `role` enum (`admin`, `editor`, `viewer`), `supabase_user_id` (nullable until first sign-in). Seeded: Chris as admin.
 
-**files** — one table for every uploaded file. `kind` enum (`rendering`, `receipt`, `quote`, `vendor_document`, `task_document`), `bucket`, `path`, `mime_type`, `size_bytes`, `original_name`, `uploaded_by`, plus a polymorphic owner: `owner_type` enum + `owner_id`. Soft-delete.
+**files** — one table for all uploads. `kind` enum (`mockup`, `spec_drawing`, `receipt`, `quote`, `vendor_document`, `other`), `bucket`, `path`, `mime_type`, `size_bytes`, `original_name`, `uploaded_by`, polymorphic owner (`owner_type` enum + `owner_id`), `sort_order`. Soft-delete.
 
-## M1 — Rooms & specs
+## M1 — Foundation
 
-**rooms** — `name`, `floor` (`basement`/`main`/`upper`/`exterior`), `sort_order`, `notes`. Dimensions: `length_in`, `width_in`, `ceiling_height_in` (`numeric(10,3)`). For non-rectangular rooms, `floor_area_override_sqin` and `perimeter_override_in` win over the derived values. Derived (SQL view `room_metrics`): floor area, perimeter, gross wall area, net wall area (minus openings). Soft-delete.
+**phases** — `name` ("Phase 1"), `sort_order`, `status` enum (`planned`, `active`, `complete`), `starts_on`, `ends_on` (nullable dates), `notes`. Soft-delete.
 
-**openings** — doors, windows, pass-throughs that subtract from wall area. `room_id`, `kind` enum, `width_in`, `height_in`, `count`, `label`. Cascade-delete with room.
+**rooms** — `name`, `sort_order`, `notes`; measurements `length_in`, `width_in`, `ceiling_height_in` (nullable `numeric(10,3)`) — depth of measurement support is not yet discussed. Soft-delete.
 
-**specs** — one row per room per finish category. `room_id`, `category` enum (`flooring`, `walls`, `ceiling`, `trim`, `electrical`, `plumbing`, `fixtures`, `cabinetry`, `countertops`, `appliances`, `doors_windows`, `other`), `description` (markdown), `status` enum (`idea`, `decided`, `ordered`, `installed`). Unique on `(room_id, category)`. Soft-delete.
+**items** — the managed catalog. `name` ("Paint", "Flooring", "Trim"…), `default_category_id` (nullable), `sort_order`, `retired_at` (nullable; retired items stay on existing work). Admin-managed. Shipped starter list seeded in the M1 migration from the spreadsheet's Remodel and Furniture rows.
 
-**files** with `kind = rendering`, `owner_type = room`.
+**work_items** — item × room, in a phase. `item_id`, `room_id` (nullable = house-wide default), `phase_id`, `status` enum (`unstarted`, `in_progress`, `awaiting_review`, `completed`, `cancelled`), `spec` (markdown), `notes`, `vendor_id` (nullable, M3), `sort_order`. Unique on `(item_id, room_id)` with nulls treated as equal (partial unique index). Soft-delete. Files: `kind` in (`mockup`, `spec_drawing`), `owner_type = work_item`.
 
-## M2 — Budget & costs
+Resolution rule for a room: a room's spec for an item is its own work item if one exists, else the item's house-wide default.
 
-**categories** — budget categories, seeded (labor, materials, permits, fees, contingency…). `name`, `sort_order`.
+## M2 — Budget
 
-**budget_lines** — `room_id` (nullable = whole house), `category_id`, `name`, `estimate_cents`, `committed_cents` (set when a quote is accepted or an order placed), `notes`, `spec_id` (nullable link to the spec this pays for). Soft-delete. Derived: `actual_cents` = sum of costs.
+**budget** — one row. `starting_cents` (300,000.00 as of 9/3 in the spreadsheet), `as_of` (date), `notes`.
 
-**costs** — money actually spent. `budget_line_id`, `vendor_id` (nullable), `amount_cents`, `paid_on` (date), `method`, `description`, `receipt` via files (`kind = receipt`, `owner_type = cost`). Soft-delete.
+**budget_adjustments** — ledger of changes to the pool. `amount_cents` (signed), `on` (date), `note` ("401K loan").
 
-## M3 — Vendors & materials
+**categories** — `name`, `sort_order`. Seeded from the spreadsheet: Remodel, Furnishing, Tech, Lighting, Ceiling Fans, Window Treatments, Appliances, Misc, Moving.
 
-**vendors** — `name`, `trade` (free text), `contact_name`, `phone`, `email`, `website`, `license_number`, `insurance_expires_on`, `notes`, `rating` (1–5, nullable). Soft-delete. Documents via files (`kind = vendor_document`).
+**cost_lines** — `phase_id` (required), `work_item_id` (nullable = phase-level), `kind` enum (`labor`, `material`, `permit`, `other`), `category_id`, `vendor_id` (nullable, M3), `description`, `estimate_cents`, `actual_cents` (nullable until known), `quantity` + `unit` (nullable), `model_number` (nullable — appliances), `link`, `ordered_on`, `expected_on`, `delivered_on` (nullable dates — the spreadsheet's Ordered / Delivery Date), `notes`. Soft-delete. Files: `kind = receipt`.
 
-**quotes** — `vendor_id`, `budget_line_id` (nullable until matched), `amount_cents`, `received_on`, `valid_until`, `status` enum (`received`, `accepted`, `declined`), `notes`. Quote PDF via files (`kind = quote`). Accepting a quote sets the budget line's `committed_cents`.
+## M3 — Item detail
 
-**materials** — catalog. `name`, `vendor_id` (nullable), `sku`, `url`, `unit` enum (`each`, `sqft`, `lnft`, `box`, `gallon`, `bag`…), `unit_price_cents`, `coverage_per_unit` (e.g. sqft per box, `numeric`), `lead_time_days`, `notes`. Soft-delete.
+**vendors** — `name`, `trade`, `contact_name`, `phone`, `email`, `website`, `notes`. Soft-delete. Files: `kind = vendor_document`.
 
-**material_assignments** — `material_id`, `spec_id`, `quantity_mode` enum (`manual`, `floor_area`, `wall_area`, `perimeter`), `waste_pct`, `quantity_needed` (derived unless manual), `quantity_ordered`, `quantity_delivered`, `budget_line_id` (nullable; generated on demand).
+**quotes** — `vendor_id`, `work_item_id` (nullable), `cost_line_id` (nullable), `amount_cents`, `received_on`, `valid_until`, `status` enum (`received`, `accepted`, `declined`), `notes`. Files: `kind = quote`. Accepting a quote sets the cost line's `estimate_cents` (or creates the line).
 
-## M4 — Tasks & progress
+**payments** — `cost_line_id`, `amount_cents`, `paid_on`, `method`, `note`. Derived payment status per cost line: `unpaid` (Σ = 0), `partial` (0 < Σ < actual or estimate), `paid` (Σ ≥ actual). "Deposit paid" is `partial` shown with the percentage.
 
-**tasks** — `room_id` (nullable = whole house), `title`, `description` (markdown), `status` enum (`backlog`, `ready`, `in_progress`, `blocked`, `done`), `owner_member_id` (nullable), `owner_vendor_id` (nullable), `planned_start`, `planned_end`, `actual_start`, `actual_end` (dates), `blocker_note`, `sort_order`. Soft-delete. Documents via files (`kind = task_document`).
+## M4 — Phase views & dashboard
 
-**task_dependencies** — `task_id`, `depends_on_task_id`. A task is blocked if any dependency isn't `done`.
-
-Derived: room progress = done tasks / all non-cancelled tasks for the room; "late" = `planned_end < today` and not done.
-
-## M5 — Dashboard
-
-No new tables. SQL views: `budget_rollup` (by room, by category, overall), `schedule_health`, `room_summary`. Exports read from these views.
+No new tables. SQL views: `remaining_balance`, `phase_rollup` (estimate / actual / status counts), `room_rollup`, `category_rollup`, `item_across_rooms`.
 
 ## Open questions (resolve by ADR when the milestone starts)
 
-- Should `openings` carry their own spec (door/window purchase) or is that just a material assignment on the `doors_windows` spec? Leaning: material assignment.
-- Does a cost need to split across budget lines (one Home Depot receipt, three rooms)? Leaning: yes, via `cost_allocations` in M2 if it bites in the first month.
-- Vercel preview deploys: shared dev Supabase project or none? Decide at M1.
+- **Awaiting Review** — a plain status, or a sign-off with who/when? (M1)
+- Room measurements — length/width/height only, or openings and derived areas? (M1; cheap to add later)
+- Does a work item need a category, or is category only on cost lines? (M2)
+- Should a cost line split across work items (one Home Depot receipt, three rooms)? (M2; `cost_allocations` if it bites)
+- Timeline per phase: derived from work-item dates we don't have yet, or from phase `starts_on`/`ends_on` only? (M4)

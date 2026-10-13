@@ -1,37 +1,45 @@
 # Scope
 
+*Rewritten 2026-10-13 from a scope conversation with Chris. Earlier version was a guess from the project description; this one is what he said.*
+
 ## Goal
 
-Run one home renovation as our own general contractor without losing track of money, measurements, people, materials, or progress. Reparo is the one place all of it lives, so any of the four of us can answer "what's this room going to be, what will it cost, who's doing it, and where are we?" from a phone or laptop.
+One house, renovated in phases over years, run by the household as its own general contractor. Reparo replaces a spreadsheet that tracks a money pool and estimates but has no actuals, no per-room detail for house-wide work, and no way to see the same work by room *and* by item. It should unify the process — plan, spec, vendors, money, status, images — in one place that is ours, not a generic project-management tool.
 
-## Who uses it
+Phase 1 is underway. Numbers get backfilled once the app exists.
 
-Up to four household members, all signing in with Google. Everyone can edit everything (ADR-003). Contractors and vendors are *records*, not users — if we later want them to see their own tasks or upload quotes, that's a roles milestone we haven't committed to.
+## People
 
-## In scope (v1)
+Up to four household members, Google sign-in. Three roles:
 
-Each module is one roadmap milestone; order is in `docs/roadmap.md`.
+- **Admin** (Chris): everything, plus members and roles, item list, phases, hard deletes.
+- **Editor**: edits everything else.
+- **Viewer**: sees everything. Scoping what a viewer sees, and hiding areas, is deferred until the app is built out.
 
-1. **Rooms & specs** — every space in the house with dimensions (floor, walls, ceiling height, openings), a written spec per finish category (flooring, walls, ceiling, trim, electrical, plumbing, fixtures, cabinetry, appliances), and one or more renderings showing the intended final design. Derived areas (floor sq ft, wall sq ft net of openings) computed, not typed.
-2. **Budget & costs** — budget lines by room and category with estimate → committed (quote accepted) → actual (paid). Receipts and invoices attached. Contingency tracked as its own line. Totals roll up by room, by category, and overall.
-3. **Vendors & materials** — vendor directory (trade, contact, license/insurance docs, notes, quotes received). Material catalog: SKU, vendor, unit, unit price, lead time, link, which rooms/specs it's assigned to, quantity needed (computed from room areas where possible) vs ordered vs delivered.
-4. **Tasks & progress** — work breakdown by room, status, dependencies, planned vs actual dates, who's responsible (member or vendor), blockers. Progress per room and overall derived from task completion and cost committed.
-5. **Dashboard** — budget health, schedule health, per-room status at a glance, and exports (CSV/Excel) for anything tabular.
+Vendors and contractors are records, not users.
 
-## Out of scope (v1)
+## Core concepts
 
-- Multi-project or multi-household SaaS. One renovation. If we want a second one, that's a decision later, not a hidden feature now.
-- Contractor/vendor logins and role-based permissions.
-- Accounting integration (QuickBooks, bank sync). We type or import actuals.
-- Native mobile app. The web app must be usable on a phone; that's enough.
-- Permit tracking and inspections as a module. They're tasks with documents attached.
-- Design tools. Renderings are uploaded images/PDFs from whatever produced them.
-- AI assistant. Not until the data model has proven itself (same sequencing lesson as thebeast).
+- **Phase.** A unit of the renovation with its own timeline and spend. Phase 1 = the spreadsheet's "Required" + "Phase 1" tiers plus the cross-country move. The spreadsheet's "Not Included" tier is future phases. Phases are added over time; this is not one-and-done.
+- **Room.** A space in the house. Twelve today, from the spreadsheet: Living Room, Kitchen, Kitchen Nook, Powder/Pool Bath, Dining Room, Foyer, Primary Bedroom, Guest Den, Main Guest Room, Secondary Guest Room, Nikki's Office, Chris' Office. Measurements are kept on the room; how detailed is not yet discussed.
+- **Item.** A kind of work or purchase — Paint, Flooring, Trim, Lighting, Ceiling Fans, Window Treatments, Appliances… A shipped starter list that the admin manages.
+- **Work item** (item × room). Where the spec lives. Each item has a **house-wide default** (room = none) and any room can **override** it: flooring is one product house-wide with tile in the bathrooms; paint is a different color per room. A work item belongs to a phase, so the same room can appear in several phases (kitchen paint in Phase 1, kitchen floor in a later phase). Carries: status, spec/notes, vendor, materials with costs and links, and uploaded mockups and spec drawings (drag-and-drop).
+- **Work status:** Unstarted, In Progress, Awaiting Review, Completed, Cancelled. (What *Awaiting Review* means operationally is still open — see data model.)
+- **Cost line.** Money, typed labor / material / permit / other, with its own vendor, estimate, actual, and link. Belongs to a phase; optionally to a work item (and so to a room or to the house-wide default). Moving costs are Phase 1 lines with no work item. A vendor may or may not supply materials; typed lines handle both.
+- **Budget pool.** A starting balance ($300,000 as of 9/3 in the spreadsheet) with a ledger of adjustments. **Remaining balance** is always current: pool − actuals − outstanding estimates. Everything in a phase draws from it, including non-room lines like moving. Realistic forecasting means lines for labor, permits, dumpster, contingency, not just materials.
+- **Category.** A second axis across rooms (Remodel, Furnishing, Tech, Lighting, Window Treatments, Appliances, Misc…) so totals can be seen by category as the spreadsheet does today.
+- **Payment status** is derived, not set: payments recorded against a cost line (date, amount) give Unpaid / Deposit paid / Paid in full. Work status and payment status move independently (deposit paid on Unstarted work; balance due on Completed work).
+- **Vendor.** Name, trade, contact, notes, quotes received, documents. Referenced from work items and cost lines.
+- **Views.** By room, by item across rooms, by phase (spend, status counts, timeline), and the remaining-balance headline.
 
-## Principles
+## What it is not
 
-- **Derive, don't duplicate.** Areas come from dimensions; progress comes from tasks; totals come from lines. If a number can be computed, it is.
-- **Every dollar has a line, every line has a room or is explicitly "whole house".**
-- **Documents stay attached to the thing they're about** — a receipt to a cost, a quote to a vendor and a budget line, a rendering to a room.
-- **Phone-first for lookup, laptop-first for data entry.** Reading must work standing in the room; bulk entry can assume a keyboard.
-- **Boring, consistent stack** shared with thebeast so agents and habits carry over.
+An internal tool that grows. There is no fixed out-of-scope list; new needs become Linear issues. Two things are explicitly parked, not rejected: scenario comparison (the spreadsheet's copy-the-file what-ifs — scope is locked now) and viewer scoping / hiding areas.
+
+## Identity
+
+Not Notion, not a generic project manager. Reparo is the mending charm; the name and tone can nod to it, lightly. It should look and feel like a tool built for this house.
+
+## Delivery
+
+Everything runs locally (Supabase CLI + Vite) until Chris says deploy. The code stays Vercel-shaped so deploying is configuration. Milestones, order, and done-criteria live in the Linear project *Reparo*; the order is recorded in ADR-010.

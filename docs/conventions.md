@@ -68,6 +68,10 @@ Rules that keep four people and several agents producing code that looks like on
 - Comments explain *why*, not *what*. If the what isn't obvious, rename something.
 - No `TODO` without a Linear issue number next to it.
 
+## Identity
+
+Reparo is an internal tool for one house, not a generic project manager. Don't reach for Notion/Linear/Asana patterns (boards of cards, sidebar-of-everything) by default; design each screen for what it is — a room, an item across rooms, a phase, the money. The name is the mending charm; the nod is in naming and tone, kept light. Chris reviews UI before it merges.
+
 ## Environment
 
 - `.env.example` is the contract. Every variable it lists is validated at startup with Zod (`packages/shared/env.ts`); the app refuses to start with a missing one.
