@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import { buttonVariants } from '@/components/ui/button';
 import { useTRPC } from '@/lib/trpc';
 
 export function Home() {
@@ -21,6 +23,19 @@ export function Home() {
       <p className="mt-2 text-muted-foreground">
         Role: {me.data.member.role}. Start with Rooms, then add jobs from each Item&apos;s page.
       </p>
+      {/* Phones reach Phases from Home (no bottom-bar entry). The dashboard (OD-41) replaces this. */}
+      <ul className="mt-6 flex flex-wrap gap-2">
+        <li>
+          <Link to="/rooms" className={buttonVariants({ variant: 'outline' })}>
+            Rooms
+          </Link>
+        </li>
+        <li>
+          <Link to="/phases" className={buttonVariants({ variant: 'outline' })}>
+            Phases
+          </Link>
+        </li>
+      </ul>
     </section>
   );
 }
