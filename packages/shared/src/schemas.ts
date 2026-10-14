@@ -96,6 +96,8 @@ export const roomCreateSchema = z.object({
 export const roomUpdateSchema = z.object(roomFields).partial().extend({ id: idSchema });
 export type RoomCreate = z.infer<typeof roomCreateSchema>;
 export type RoomUpdate = z.infer<typeof roomUpdateSchema>;
+/** What a room form holds before parsing: lengths as typed text. */
+export type RoomCreateInput = z.input<typeof roomCreateSchema>;
 
 // --- items ----------------------------------------------------------------------------------
 

@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@hookform/resolvers": "5.9.1",
     "@reparo/api": "workspace:*",
     "@reparo/shared": "workspace:*",
     "@supabase/supabase-js": "2.117.3",
@@ -20,7 +21,8 @@
     "@trpc/client": "11.19.0",
     "@trpc/tanstack-react-query": "11.19.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-hook-form": "7.90.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.3.3",

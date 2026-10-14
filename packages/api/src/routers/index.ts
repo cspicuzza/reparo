@@ -1,3 +1,4 @@
+import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { router } from '../trpc';
 import { healthRouter } from './health';
 import { itemsRouter } from './items';
@@ -14,3 +15,6 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+/** Row shapes as the web receives them (dates are strings over the wire). */
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
+export type RouterInputs = inferRouterInputs<AppRouter>;

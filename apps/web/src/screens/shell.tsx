@@ -3,7 +3,13 @@ import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { signOut } from '@/lib/supabase';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 
-const sections = ['Phases', 'Rooms', 'Items', 'Budget'] as const;
+/** Nav entries light up as their milestone lands (OD-29 Rooms; Items, Phases, Budget follow). */
+const sections: { name: string; to?: '/rooms' }[] = [
+  { name: 'Phases' },
+  { name: 'Rooms', to: '/rooms' },
+  { name: 'Items' },
+  { name: 'Budget' },
+];
 
 export function Shell() {
   const trpc = useTRPC();
@@ -45,15 +51,25 @@ export function Shell() {
         </div>
         <nav aria-label="Sections" className="mx-auto max-w-5xl">
           <ul className="flex gap-5 overflow-x-auto pb-3 text-sm">
-            {sections.map((name) => (
+            {sections.map(({ name, to }) => (
               <li key={name}>
-                <span
-                  className="text-pencil"
-                  title="Coming with its milestone"
-                  aria-disabled="true"
-                >
-                  {name}
-                </span>
+                {to ? (
+                  <Link
+                    to={to}
+                    className="text-ink underline-offset-4 hover:underline"
+                    activeProps={{ className: 'font-semibold text-ink' }}
+                  >
+                    {name}
+                  </Link>
+                ) : (
+                  <span
+                    className="text-pencil"
+                    title="Coming with its milestone"
+                    aria-disabled="true"
+                  >
+                    {name}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
