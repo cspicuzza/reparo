@@ -7,6 +7,12 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
     },
+    "linear": {
+      "source": "openai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/linear/SKILL.md",
+      "computedHash": "702e1b8bb122bb981d276fbdcaa2fde1435b8c548910e1b365f088735b7a5365"
+    },
     "premium-frontend-ui": {
       "source": "github/awesome-copilot",
       "sourceType": "github",
