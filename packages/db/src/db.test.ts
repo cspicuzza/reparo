@@ -1,22 +1,23 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { createDb, withRollback, type Db } from './client';
-import { runMigrations } from './migrate';
+import { prepareTestDatabase } from './testing';
 import { files, items, members, phases, rooms, workItems } from './schema';
 import { parseMembers, upsertMembers } from './seed';
 
-// Integration tests against a real Postgres (DATABASE_URL — locally, Supabase on 54322).
-// Non-destructive: migrations are applied only if pending, and every test's writes happen
-// inside a transaction that is rolled back, so development data is never touched.
+// Integration tests against a real Postgres: their own database, `reparo_test_db`, on the same
+// local server as DATABASE_URL (Supabase on 54322), rebuilt and migrated from zero on every run
+// (OD-37). Development data is never read or written. Every test's writes still happen inside a
+// transaction that is rolled back, so tests don't see each other's rows.
 // Vitest doesn't read .env; load the repo root one like dev.ts does. A DATABASE_URL already in
 // the shell wins (observed: loadEnvFile never overrides existing variables).
 const envFile = fileURLToPath(new URL('../../../.env', import.meta.url));
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const url = process.env['DATABASE_URL'];
 if (!url) throw new Error('DATABASE_URL must be set to run @reparo/db tests');
-const databaseUrl: string = url;
+const databaseUrl = await prepareTestDatabase(url, 'db');
 
 /** Drizzle wraps driver errors as "Failed query: …" and keeps the Postgres error in `cause`. */
 async function expectDbError(p: Promise<unknown>, pattern: RegExp): Promise<void> {
@@ -49,10 +50,6 @@ const MEMBERS = 'chris@example.com:admin,Editor@Example.com:editor,viewer@exampl
 describe('@reparo/db', () => {
   const { db, client } = createDb(databaseUrl, { max: 2 });
 
-  beforeAll(async () => {
-    await runMigrations(databaseUrl); // idempotent: applies only what's pending
-  });
-
   afterAll(async () => {
     await client.end();
   });
@@ -61,6 +58,14 @@ describe('@reparo/db', () => {
     const rows = await client<{ n: number }[]>`
       SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
     expect(rows[0]?.n).toBeGreaterThanOrEqual(3);
+  });
+
+  it('test databases: refuses a non-local host before touching it', async () => {
+    await expect(
+      prepareTestDatabase('postgresql://postgres:x@db.example.supabase.co:5432/postgres', 'db'),
+    ).rejects.toThrow(/Refusing to run tests against db\.example\.supabase\.co/);
+    await expect(prepareTestDatabase(databaseUrl, 'Bad-Name')).rejects.toThrow(/Bad test suite/);
+    expect(new URL(databaseUrl).pathname).toBe('/reparo_test_db');
   });
 
   it('parseMembers validates and lowercases', () => {

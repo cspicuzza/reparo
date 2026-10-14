@@ -1,13 +1,5 @@
-import {
-  createDb,
-  eq,
-  members,
-  Rollback,
-  runMigrations,
-  upsertMembers,
-  withRollback,
-  type Db,
-} from '@reparo/db';
+import { createDb, eq, members, Rollback, upsertMembers, withRollback, type Db } from '@reparo/db';
+import { prepareTestDatabase } from '@reparo/db/testing';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
@@ -21,15 +13,16 @@ import { editorProcedure, router } from './trpc';
 // Integration tests: real Postgres (DATABASE_URL), fake Supabase Auth. Tokens are minted with
 // a local ES256 key and verified through jose's local JWKS resolver — the same verification
 // path as createRemoteJWKSet minus the fetch (https://supabase.com/docs/guides/auth/jwts).
-// Non-destructive: each test seeds its members inside a transaction that is rolled back, so a
-// development database is left exactly as it was.
+// The tests use their own database, `reparo_test_api`, on the same local server as
+// DATABASE_URL, rebuilt and migrated from zero on every run (OD-37); development data is never
+// touched. Each test seeds its members inside a transaction that is rolled back.
 // Vitest doesn't read .env; load the repo root one like dev.ts does. A DATABASE_URL already in
 // the shell wins (observed: loadEnvFile never overrides existing variables).
 const envFile = fileURLToPath(new URL('../../../.env', import.meta.url));
 if (existsSync(envFile)) process.loadEnvFile(envFile);
 const url = process.env['DATABASE_URL'];
 if (!url) throw new Error('DATABASE_URL must be set to run @reparo/api tests');
-const databaseUrl: string = url;
+const databaseUrl = await prepareTestDatabase(url, 'api');
 
 const SUPABASE_URL = 'http://127.0.0.1:54321';
 const ISSUER = supabaseIssuer(SUPABASE_URL);
@@ -52,8 +45,6 @@ describe('@reparo/api', () => {
   let sign: (claims: Record<string, unknown>, opts?: SignOpts) => Promise<string>;
 
   beforeAll(async () => {
-    await runMigrations(databaseUrl); // idempotent: applies only what's pending
-
     const { publicKey, privateKey } = await generateKeyPair('ES256');
     const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'ES256', use: 'sig' };
     getKey = createLocalJWKSet({ keys: [jwk] });

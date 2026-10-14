@@ -98,7 +98,7 @@ pnpm db:seed          # upsert members from MEMBERS in .env
 pnpm db:studio        # Drizzle Studio
 ```
 
-`@reparo/db` and `@reparo/api` tests need local Supabase running. They apply pending migrations and roll back every test's writes.
+`@reparo/db` and `@reparo/api` tests need local Supabase running. Each package uses its own database on that server (`reparo_test_db`, `reparo_test_api`), dropped and rebuilt from every migration on each run; your dev database is never touched. Tests refuse to run unless `DATABASE_URL` is local. Every test still rolls back its own writes.
 
 ## Naming
 
