@@ -33,7 +33,7 @@ Home-renovation app for Chris's household, acting as its own general contractor 
 - Decisions are his. Lay out options and stop; don't pick a "recommended default" and build on it.
 - One Linear issue at a time. Chris names the next one; don't pick or suggest it unprompted.
 - Work on `develop`. No feature branches or PRs unless Chris asks. Leave `main` alone.
-- **Chris commits and pushes.** Leave changes in the working tree and give him a commit title and message: conventional commit with scope and issue (`feat(web): room list (OD-30)`), a body with the why and any new dependency. No `Co-Authored-By` or session trailer.
+- **Chris commits and pushes.** Leave changes in the working tree and give him a commit title and message: conventional commit with scope and issue (`feat(web): room list (OD-30)`), title under 50 characters, a body with the why and any new dependency. No `Co-Authored-By` or session trailer.
 - Never add a dependency, install a package, or run `brew` or another system installer without asking. Run commands only inside the project folder.
 - `pnpm check` must pass before you call work done. There is no CI.
 - Small changes, one concern each. If an issue grows, propose splitting it in Linear.
