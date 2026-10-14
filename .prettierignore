@@ -6,3 +6,4 @@ coverage
 *.md
 packages/db/drizzle/meta
 apps/web/src/routeTree.gen.ts
+.agents
