@@ -201,7 +201,7 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
               >
                 <PlanGrid className="h-24 sm:h-32">No picture yet</PlanGrid>
                 <div className="p-3 sm:p-4">
-                  <p className="text-lg font-semibold">{r.name}</p>
+                  <p className="text-xl font-semibold">{r.name}</p>
                   {r.awaitingReview ? (
                     <span className="mt-1 inline-block">
                       <StatusBadge status="awaiting_review" />

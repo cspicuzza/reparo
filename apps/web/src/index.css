@@ -41,6 +41,7 @@
   --bar: #f1f0ec; /* top bar and phone bottom bar */
   --inset: #efeeea; /* recessed areas, picture placeholders */
   --grid: rgb(30 29 26 / 0.07); /* drafting grid lines in placeholders */
+  --float-shadow: rgb(30 29 26 / 0.1); /* shadow under things that float (phone bottom bar) */
   --tape: #e8b520; /* yellow: needs someone, the tape, current page. A fill, never text on light. */
   --tape-ink: #1e1d1a; /* text, ticks and dark fill on the tape, in both modes */
   --tape-edge: #1e1d1a; /* light mode: yellow alone is 1.7:1 on panels, so the tape is outlined */
@@ -80,6 +81,7 @@
     --bar: #21201d;
     --inset: #2e2d29;
     --grid: rgb(237 235 230 / 0.06);
+    --float-shadow: rgb(0 0 0 / 0.4);
     --tape: #f2c23a;
     --tape-ink: #1e1d1a;
     --tape-edge: var(--tape); /* dark mode: a yellow outline keeps the dark fill visible */
@@ -115,6 +117,7 @@
   --color-bar: var(--bar);
   --color-inset: var(--inset);
   --color-grid: var(--grid);
+  --color-float-shadow: var(--float-shadow);
   --color-tape: var(--tape);
   --color-tape-ink: var(--tape-ink);
   --color-tape-edge: var(--tape-edge);

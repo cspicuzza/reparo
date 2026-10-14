@@ -20,20 +20,31 @@ export const WORK_STATUSES = [
 export type WorkStatusInput = (typeof WORK_STATUSES)[number];
 
 export const idSchema = z.uuid({ error: 'id must be a UUID' });
-export const nameSchema = z.string().trim().min(1, 'Name is required').max(120, 'Name is too long');
-export const notesSchema = z.string().max(10_000, 'Too long');
-export const sortOrderSchema = z.number().int().min(0);
+// Messages are shown to the household as they are, so they say what to do (Design system → Writing).
+export const nameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Give it a name')
+  .max(120, 'Keep the name under 120 characters');
+export const notesSchema = z.string().max(10_000, 'Keep this under 10,000 characters');
+const WHOLE_NUMBER = 'Enter a whole number, 0 or more';
+export const sortOrderSchema = z
+  .number({ error: WHOLE_NUMBER })
+  .int(WHOLE_NUMBER)
+  .min(0, WHOLE_NUMBER);
 
 /** `YYYY-MM-DD` or null. Rejects impossible dates (ADR-004). */
 export const isoDateSchema = z
   .string()
   .trim()
-  .refine(isIsoDate, { error: 'Date must be YYYY-MM-DD' });
+  .refine(isIsoDate, { error: 'Enter a date like 2026-10-14' });
 
 /**
  * A length as a person types it (`7' 3 1/2"`, `87.5`, `3/4"`) or already in inches; empty
  * means not measured. Output is inches snapped to 1/16" (ADR-011) or null.
  */
+export const LENGTH_HELP = `Write it in feet and inches, like 14' 6 1/2", or inches, like 174.5`;
+
 export const lengthSchema = z
   .union([z.string(), z.number(), z.null()])
   .transform((v, ctx): number | null => {
@@ -42,8 +53,8 @@ export const lengthSchema = z
       if (typeof v === 'number') return snapInches(v, 'length');
       if (v.trim() === '') return null;
       return parseLength(v);
-    } catch (e) {
-      ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : 'Bad length' });
+    } catch {
+      ctx.addIssue({ code: 'custom', message: LENGTH_HELP });
       return z.NEVER;
     }
   });
@@ -152,7 +163,7 @@ const jobFields = {
 export const jobCreateSchema = z.object({
   ...jobFields,
   /** Blank → the API names the job "‹Item› — ‹Phase›". */
-  name: z.string().trim().max(120, 'Name is too long').default(''),
+  name: z.string().trim().max(120, 'Keep the name under 120 characters').default(''),
   /** Rooms the job covers from the start; more can be added or removed later. */
   roomIds: z
     .array(idSchema)

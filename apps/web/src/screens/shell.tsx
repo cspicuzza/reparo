@@ -110,7 +110,7 @@ export function Shell() {
 
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_rgb(0_0_0/0.08)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_var(--float-shadow)] sm:hidden"
       >
         <ul className="flex">
           {sections
@@ -145,7 +145,11 @@ export function NotAMember({ onSignOut }: { onSignOut: () => Promise<void> }) {
       <p className="mt-4 max-w-prose text-muted-foreground">
         Ask the admin to add it, or sign out and use a different account.
       </p>
-      <Button type="button" onClick={() => void onSignOut()} className="mt-10 w-full sm:w-auto">
+      <Button
+        type="button"
+        onClick={() => void onSignOut()}
+        className="mt-10 w-full sm:w-auto sm:self-start"
+      >
         Sign out
       </Button>
     </main>

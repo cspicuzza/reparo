@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { jobCreateSchema, type JobCreate, type JobCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
-import { Field, Input, inputClass, Textarea } from '@/components/form';
+import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ export function JobEditor({ idPrefix, item, job, onDone }: Props) {
     return <p role="alert">Couldn&apos;t load: {(phases.error ?? rooms.error)?.message}</p>;
   }
   if (phases.data.length === 0) {
-    return <p role="alert">Add a phase first — every job belongs to one.</p>;
+    return <p role="alert">Add a phase first. Every job belongs to one.</p>;
   }
 
   const active = phases.data.find((p) => p.status === 'active') ?? phases.data[0];
@@ -156,13 +156,13 @@ function JobForm({
           />
         </Field>
         <Field label="Phase" htmlFor={id('phase')} error={errors.phaseId?.message}>
-          <select id={id('phase')} className={inputClass} {...register('phaseId')}>
+          <Select id={id('phase')} {...register('phaseId')}>
             {phases.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} · {PHASE_STATUS_LABEL[p.status]}
+                {p.name} ({PHASE_STATUS_LABEL[p.status].toLowerCase()})
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
 
@@ -179,7 +179,7 @@ function JobForm({
       </Field>
 
       <fieldset>
-        <legend className="text-sm font-medium">Rooms this job covers</legend>
+        <legend className="text-sm font-semibold">Rooms this job covers</legend>
         {rooms.length === 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
             No rooms yet. A job with no rooms (a fee, say) has its own status.
@@ -228,18 +228,10 @@ function JobForm({
             </p>
           </>
         )}
-        {errors.roomIds?.message ? (
-          <p role="alert" className="mt-1 text-sm">
-            {errors.roomIds.message}
-          </p>
-        ) : null}
+        {errors.roomIds?.message ? <FormError>{errors.roomIds.message}</FormError> : null}
       </fieldset>
 
-      {serverError ? (
-        <p role="alert" className="text-sm">
-          {serverError}
-        </p>
-      ) : null}
+      {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}

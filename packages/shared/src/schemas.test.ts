@@ -6,6 +6,7 @@ import {
   jobRoomCreateSchema,
   jobRoomUpdateSchema,
   jobUpdateSchema,
+  LENGTH_HELP,
   lengthSchema,
   phaseCreateSchema,
   phaseUpdateSchema,
@@ -29,7 +30,7 @@ describe('lengthSchema', () => {
   it('reports unparseable or negative lengths as issues', () => {
     const bad = lengthSchema.safeParse('seven feet');
     expect(bad.success).toBe(false);
-    if (!bad.success) expect(bad.error.issues[0]?.message).toMatch(/cannot parse/);
+    if (!bad.success) expect(bad.error.issues[0]?.message).toBe(LENGTH_HELP);
     expect(lengthSchema.safeParse(-1).success).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Field, Input, inputClass, Textarea } from '@/components/form';
+import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, phaseDates, phaseProgressText, type Phase } from '@/lib/work';
@@ -95,7 +95,7 @@ export function Phases() {
                 <PhaseForm
                   idPrefix={`phase-${phase.id}`}
                   phase={phase}
-                  submitLabel="Save"
+                  submitLabel="Save phase"
                   serverError={update.error?.message}
                   onCancel={() => {
                     update.reset();
@@ -191,13 +191,13 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
         <Field label="Status" htmlFor={id('status')} error={errors.status?.message}>
-          <select id={id('status')} className={inputClass} {...register('status')}>
+          <Select id={id('status')} {...register('status')}>
             {PHASE_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {PHASE_STATUS_LABEL[s]}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
       </div>
       <div className="grid gap-5 sm:grid-cols-3">
@@ -220,11 +220,7 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
         <Textarea id={id('notes')} rows={3} {...register('notes')} />
       </Field>
-      {serverError ? (
-        <p role="alert" className="text-sm">
-          {serverError}
-        </p>
-      ) : null}
+      {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}

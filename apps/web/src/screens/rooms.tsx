@@ -93,7 +93,7 @@ export function Rooms() {
                   className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block text-lg font-semibold">{room.name}</span>
+                    <span className="block text-xl font-semibold">{room.name}</span>
                     <span className="block text-sm text-muted-foreground tabular-nums">{size}</span>
                   </span>
                   <span className="hidden w-40 shrink-0 sm:block">

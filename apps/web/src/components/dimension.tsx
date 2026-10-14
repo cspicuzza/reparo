@@ -25,7 +25,7 @@ export function DimensionLine({
           <>
             <Tick />
             <Line />
-            <span className="text-lg font-semibold tabular-nums">
+            <span className="text-xl font-semibold tabular-nums">
               <LengthText text={formatLength(inches)} />
             </span>
             <Line />

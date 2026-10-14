@@ -8,7 +8,12 @@ import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
+import { Panel } from '@/components/panel';
+import { TapeStrip } from '@/components/tape';
 import { celebrateMended } from '@/lib/mended';
+import { FormError } from '@/components/form';
 
 /**
  * One item across the house: its jobs in every phase, each with the rooms it covers. Jobs are
@@ -33,9 +38,10 @@ export function ItemDetail() {
         </p>
         <Link
           to="/items"
-          className="mt-4 inline-block text-sm text-muted-foreground hover:underline"
+          className="mt-4 inline-flex min-h-11 items-center gap-1 text-muted-foreground hover:text-foreground"
         >
-          ← All items
+          <ChevronLeft aria-hidden className="size-5" />
+          All items
         </Link>
       </section>
     );
@@ -47,54 +53,64 @@ export function ItemDetail() {
   const category = categories.data?.find((c) => c.id === it.categoryId)?.name;
 
   return (
-    <section>
-      <Link
-        to="/items"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-      >
-        ← All items
-      </Link>
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {it.name}
-            {retired ? (
-              <span className="ml-3 text-base font-normal text-muted-foreground">retired</span>
-            ) : null}
-          </h1>
-          {category ? <p className="mt-1 text-sm text-muted-foreground">{category}</p> : null}
+    <section className="flex flex-col gap-8">
+      <div>
+        <Link
+          to="/items"
+          className="-ml-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft aria-hidden className="size-5" />
+          All items
+        </Link>
+        <div className="mt-2">
+          <PageHeader
+            title={it.name}
+            description={
+              [category, retired ? 'Retired: kept on its jobs, not offered for new ones' : null]
+                .filter(Boolean)
+                .join('. ') || undefined
+            }
+            action={
+              canEdit && !retired && !adding ? (
+                <Button type="button" onClick={() => setAdding(true)}>
+                  Add a job
+                </Button>
+              ) : null
+            }
+          />
         </div>
-        {canEdit && !retired && !adding ? (
-          <Button type="button" onClick={() => setAdding(true)}>
-            New job
-          </Button>
-        ) : null}
       </div>
 
       {adding ? (
-        <div className="mt-6 rounded-lg border border-border p-5">
-          <h2 className="text-lg font-medium">New {it.name} job</h2>
+        <Panel aria-labelledby="new-job">
+          <h2 id="new-job" className="text-2xl">
+            New {it.name} job
+          </h2>
           <div className="mt-4">
             <JobEditor idPrefix="new-job" item={it} onDone={() => setAdding(false)} />
           </div>
-        </div>
+        </Panel>
       ) : null}
 
-      <h2 className="mt-10 text-lg font-medium">Jobs</h2>
-      {jobs.data.length === 0 ? (
-        <p className="mt-2 text-muted-foreground">
-          No {it.name} jobs yet.
-          {canEdit && !retired ? ' Add one to say what is being done and in which rooms.' : ''}
-        </p>
-      ) : (
-        <ul className="mt-3 grid gap-6">
-          {jobs.data.map((job) => (
-            <li key={job.id} className="rounded-lg border border-border p-4 sm:p-5">
-              <JobCard job={job} item={it} canEdit={canEdit} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <section aria-labelledby="item-jobs">
+        <h2 id="item-jobs" className="text-2xl">
+          Jobs
+        </h2>
+        {jobs.data.length === 0 ? (
+          <p className="mt-2 text-muted-foreground">
+            No {it.name} jobs yet.
+            {canEdit && !retired ? ' Add one to say what is being done and in which rooms.' : ''}
+          </p>
+        ) : (
+          <ul className="mt-4 grid gap-6">
+            {jobs.data.map((job) => (
+              <li key={job.id} className="rounded-xl border border-border bg-card p-5 sm:p-6">
+                <JobCard job={job} item={it} canEdit={canEdit} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </section>
   );
 }
@@ -139,7 +155,7 @@ function JobCard({
   if (editing) {
     return (
       <div>
-        <h3 className="font-medium">Edit {job.name}</h3>
+        <h3 className="text-xl">Edit {job.name}</h3>
         <div className="mt-4">
           <JobEditor
             idPrefix={`job-${job.id}`}
@@ -158,11 +174,8 @@ function JobCard({
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-medium">{job.name}</h3>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {job.phase.name}
-            {progress ? ` · ${progress}` : ''}
-          </p>
+          <h3 className="text-2xl">{job.name}</h3>
+          <p className="mt-1 text-muted-foreground">{job.phase.name}</p>
         </div>
         {job.rooms.length === 0 && canEdit ? (
           <StatusSelect
@@ -177,29 +190,50 @@ function JobCard({
         )}
       </div>
 
-      {job.spec ? (
-        <p className="mt-3 max-w-prose text-sm whitespace-pre-wrap">{job.spec}</p>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground">No spec yet.</p>
-      )}
-      {job.notes ? (
-        <p className="mt-1 max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
-          {job.notes}
-        </p>
+      {job.rooms.length > 0 ? (
+        <div className="mt-4 grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
+          <TapeStrip
+            mode="progress"
+            size="sm"
+            done={job.progress.done}
+            total={job.progress.total}
+            label={`${job.name}: ${progress}`}
+          />
+          <span className="text-sm text-muted-foreground tabular-nums">{progress}</span>
+        </div>
       ) : null}
 
+      <div className="mt-4">
+        <p className="text-sm text-muted-foreground">Spec</p>
+        {job.spec ? (
+          <p className="mt-0.5 max-w-prose whitespace-pre-wrap">{job.spec}</p>
+        ) : (
+          <p className="mt-0.5 text-muted-foreground">No spec yet.</p>
+        )}
+        {job.notes ? (
+          <p className="mt-2 max-w-prose text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
+        ) : null}
+      </div>
+
       {job.rooms.length > 0 ? (
-        <ul className="mt-4 divide-y divide-border border-t border-border">
+        <ul className="mt-5 divide-y divide-border border-t border-border">
           {job.rooms.map((r) => (
             <li key={r.id} className="py-3">
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <Link
-                  to="/rooms/$roomId"
-                  params={{ roomId: r.room.id }}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {r.room.name}
-                </Link>
+                <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                  <Link
+                    to="/rooms/$roomId"
+                    params={{ roomId: r.room.id }}
+                    className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+                  >
+                    {r.room.name}
+                  </Link>
+                  {r.specSource === 'room' ? (
+                    <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
+                      Different here
+                    </span>
+                  ) : null}
+                </div>
                 {canEdit ? (
                   <StatusSelect
                     id={`room-status-${r.id}`}
@@ -213,7 +247,7 @@ function JobCard({
                 )}
               </div>
               {editingRoom === r.id ? (
-                <div className="mt-3 rounded-lg border border-border p-4">
+                <div className="mt-3 rounded-xl border border-border bg-background p-4">
                   <JobRoomEditor
                     idPrefix={`jr-${r.id}`}
                     jobRoom={r}
@@ -224,11 +258,12 @@ function JobCard({
                 </div>
               ) : (
                 <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
-                  <p className="min-w-0 text-sm">
-                    <span className="text-muted-foreground">{SPEC_SOURCE_LABEL[r.specSource]}</span>
+                  <p className="min-w-0">
                     {r.specSource === 'room' ? (
                       <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
-                    ) : null}
+                    ) : (
+                      <span className="text-sm text-muted-foreground">{SPEC_SOURCE_LABEL.job}</span>
+                    )}
                     {r.notes ? (
                       <span className="block text-muted-foreground whitespace-pre-wrap">
                         {r.notes}
@@ -253,18 +288,14 @@ function JobCard({
         </ul>
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">
-          Covers no rooms — its status is set above.
+          Covers no rooms, so its status is set above.
         </p>
       )}
 
-      {error ? (
-        <p role="alert" className="mt-2 text-sm">
-          {error.message}
-        </p>
-      ) : null}
+      {error ? <FormError>{error.message}</FormError> : null}
 
       {canEdit ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-3">
           {confirmingRemove ? (
             <>
               <span>Remove {job.name}?</span>

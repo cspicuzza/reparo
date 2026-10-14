@@ -10,6 +10,7 @@ import { PlanGrid } from '@/components/plan-grid';
 import { RoomForm } from './room-form';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { FormError } from '@/components/form';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -71,7 +72,7 @@ export function RoomDetail() {
             <RoomForm
               idPrefix="edit-room"
               room={r}
-              submitLabel="Save"
+              submitLabel="Save room"
               serverError={update.error?.message}
               onCancel={() => {
                 update.reset();
@@ -112,7 +113,7 @@ export function RoomDetail() {
               <DimensionLine label="Ceiling" inches={r.ceilingHeightIn} className="flex-1" />
               <div className="min-w-36">
                 <dt className="text-sm text-muted-foreground">Floor area</dt>
-                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                <dd className="mt-1 text-xl font-semibold tabular-nums">
                   {sqft != null ? (
                     `${sqft} sq ft`
                   ) : (
@@ -163,9 +164,7 @@ export function RoomDetail() {
                     Keep it
                   </Button>
                   {remove.error ? (
-                    <p role="alert" className="w-full text-sm">
-                      {remove.error.message}
-                    </p>
+                    <FormError className="w-full">{remove.error.message}</FormError>
                   ) : null}
                 </div>
               ) : (

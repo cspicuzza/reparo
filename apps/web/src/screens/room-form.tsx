@@ -6,7 +6,7 @@ import {
   type RoomCreateInput,
 } from '@reparo/shared';
 import { useForm } from 'react-hook-form';
-import { Field, Input, Textarea } from '@/components/form';
+import { Field, FormError, Input, Textarea } from '@/components/form';
 
 import type { Room } from '@/lib/rooms';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 type Input_ = RoomCreateInput;
 type RoomValues = RoomCreate;
 
-const lengthHint = `Feet and inches, like 14' 6 1/2" — or plain inches like 174.5`;
+const lengthHint = `Feet and inches, like 14' 6 1/2", or plain inches, like 174.5.`;
 
 /** Turn a stored room into what the inputs show: lengths as feet-inches text, empty if unmeasured. */
 function toDefaults(room?: Room): Input_ {
@@ -83,7 +83,10 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
           />
         </Field>
       </div>
-      <p className="-mt-3 text-sm text-muted-foreground">{lengthHint}</p>
+      {/* Hidden while a length has a problem: its message already says how to write it. */}
+      {errors.lengthIn || errors.widthIn || errors.ceilingHeightIn ? null : (
+        <p className="-mt-3 text-sm text-muted-foreground">{lengthHint}</p>
+      )}
 
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
         <Textarea id={id('notes')} rows={3} {...register('notes')} />
@@ -105,11 +108,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
         />
       </Field>
 
-      {serverError ? (
-        <p id={id('server-error')} role="alert" className="text-sm text-foreground">
-          {serverError}
-        </p>
-      ) : null}
+      {serverError ? <FormError id={id('server-error')}>{serverError}</FormError> : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>

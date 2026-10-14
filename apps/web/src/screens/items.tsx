@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Field, Input, inputClass } from '@/components/form';
+import { Field, FormError, Input, Select } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -117,7 +117,7 @@ export function Items() {
                         idPrefix={`item-${item.id}`}
                         item={item}
                         categories={cats}
-                        submitLabel="Save"
+                        submitLabel="Save item"
                         serverError={update.error?.message}
                         onCancel={() => {
                           update.reset();
@@ -137,7 +137,7 @@ export function Items() {
                         params={{ itemId: item.id }}
                         className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 hover:bg-accent sm:px-5"
                       >
-                        <span className="min-w-0 flex-1 py-2 text-lg font-semibold break-words">
+                        <span className="min-w-0 flex-1 py-2 text-xl font-semibold break-words">
                           {item.name}
                         </span>
                         <ChevronRight
@@ -175,11 +175,7 @@ export function Items() {
             </section>
           ))
         : null}
-      {update.error && editingId === null ? (
-        <p role="alert" className="text-sm">
-          {update.error.message}
-        </p>
-      ) : null}
+      {update.error && editingId === null ? <FormError>{update.error.message}</FormError> : null}
 
       {retired.length > 0 ? (
         <div>
@@ -267,13 +263,13 @@ function ItemForm({
         />
       </Field>
       <Field label="Category" htmlFor={id('category')} error={formState.errors.categoryId?.message}>
-        <select id={id('category')} className={inputClass} {...register('categoryId')}>
+        <Select id={id('category')} {...register('categoryId')}>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>
           ))}
-        </select>
+        </Select>
       </Field>
       <Field label="Order" htmlFor={id('order')} error={formState.errors.sortOrder?.message}>
         <Input
@@ -292,11 +288,7 @@ function ItemForm({
           Cancel
         </Button>
       </div>
-      {serverError ? (
-        <p role="alert" className="text-sm sm:col-span-4">
-          {serverError}
-        </p>
-      ) : null}
+      {serverError ? <FormError className="sm:col-span-4">{serverError}</FormError> : null}
     </form>
   );
 }

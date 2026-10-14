@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { jobRoomFormSchema, type JobRoomForm, type JobRoomFormInput } from '@reparo/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Field, Textarea } from '@/components/form';
+import { Field, FormError, Textarea } from '@/components/form';
 import { useTRPC } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 
@@ -63,14 +63,10 @@ export function JobRoomEditor({
       <Field label="Notes" htmlFor={id('notes')} error={formState.errors.notes?.message}>
         <Textarea id={id('notes')} rows={2} {...register('notes')} />
       </Field>
-      {update.error ? (
-        <p role="alert" className="text-sm">
-          {update.error.message}
-        </p>
-      ) : null}
+      {update.error ? <FormError>{update.error.message}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>
-          Save
+          Save spec &amp; notes
         </Button>
         <Button type="button" onClick={onDone} variant="ghost">
           Cancel

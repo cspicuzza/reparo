@@ -8,6 +8,7 @@ import { SPEC_SOURCE_LABEL, type RoomJob } from '@/lib/work';
 import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
+import { FormError } from '@/components/form';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -61,11 +62,7 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
           </li>
         ))}
       </ul>
-      {setStatus.error ? (
-        <p role="alert" className="mt-2 text-sm">
-          {setStatus.error.message}
-        </p>
-      ) : null}
+      {setStatus.error ? <FormError>{setStatus.error.message}</FormError> : null}
     </div>
   );
 }
@@ -96,7 +93,7 @@ function JobRow({
           <Link
             to="/items/$itemId"
             params={{ itemId: j.item.id }}
-            className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
           >
             {j.job.name}
           </Link>
