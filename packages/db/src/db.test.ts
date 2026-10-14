@@ -3,8 +3,22 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDb, withRollback, type Db } from './client';
+import { FILE_KINDS, FILE_OWNER_TYPES, WORK_STATUSES } from '@reparo/shared';
+import {
+  categories,
+  fileKind,
+  fileOwnerType,
+  files,
+  items,
+  jobRooms,
+  jobs,
+  members,
+  phases,
+  rooms,
+  workItems,
+  workStatus,
+} from './schema';
 import { prepareTestDatabase } from './testing';
-import { files, items, members, phases, rooms, workItems } from './schema';
 import { parseMembers, upsertMembers } from './seed';
 
 // Integration tests against a real Postgres: their own database, `reparo_test_db`, on the same
@@ -57,7 +71,7 @@ describe('@reparo/db', () => {
   it('has both migrations applied', async () => {
     const rows = await client<{ n: number }[]>`
       SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
-    expect(rows[0]?.n).toBeGreaterThanOrEqual(3);
+    expect(rows[0]?.n).toBeGreaterThanOrEqual(5);
   });
 
   it('test databases: refuses a non-local host before touching it', async () => {
@@ -156,7 +170,7 @@ describe('@reparo/db', () => {
           mimeType: 'image/png',
           sizeBytes: 12345,
           originalName: '1.png',
-          ownerType: 'work_item',
+          ownerType: 'job',
           ownerId: m.id, // any uuid; owner tables arrive in M1
           uploadedBy: m.id,
         })
@@ -173,7 +187,7 @@ describe('@reparo/db', () => {
           mimeType: 'image/png',
           sizeBytes: 1,
           originalName: 'x',
-          ownerType: 'cost_line',
+          ownerType: 'cost',
           ownerId: '00000000-0000-0000-0000-000000000000',
           uploadedBy: '00000000-0000-0000-0000-000000000000',
         }),
@@ -308,13 +322,121 @@ describe('@reparo/db', () => {
       expect(p2?.startsOn).toBeNull();
     }));
 
+  // --- Model fix (OD-33) ---
+
+  it('seeds six categories and puts every item under one, Other under Misc', async () => {
+    const cats = await db.select().from(categories).orderBy(categories.sortOrder);
+    expect(cats.map((c) => c.name)).toEqual([
+      'Remodel',
+      'Furnishing',
+      'Tech',
+      'Appliances',
+      'Moving',
+      'Misc',
+    ]);
+    const byId = new Map(cats.map((c) => [c.id, c.name]));
+    const catalog = await db.select().from(items);
+    const categoryOf = (name: string) =>
+      byId.get(catalog.find((i) => i.name === name)?.categoryId ?? '');
+    expect(catalog.every((i) => i.categoryId !== null)).toBe(true);
+    expect(categoryOf('Paint')).toBe('Remodel');
+    expect(categoryOf('Project Fee')).toBe('Remodel');
+    expect(categoryOf('Ceiling Fans')).toBe('Furnishing');
+    expect(categoryOf('Window Treatments')).toBe('Furnishing');
+    expect(categoryOf('Network & Security')).toBe('Tech');
+    expect(categoryOf('Appliances')).toBe('Appliances');
+    expect(categoryOf('Other')).toBe('Misc');
+  });
+
+  it('Postgres enums match the Zod lists in @reparo/shared', () => {
+    expect(workStatus.enumValues).toEqual([...WORK_STATUSES]);
+    expect(fileKind.enumValues).toEqual([...FILE_KINDS]);
+    expect(fileOwnerType.enumValues).toEqual([...FILE_OWNER_TYPES]);
+  });
+
+  it('a job covers each room once; a removed room can be added back', () =>
+    withRollback(db, async (tx) => {
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
+      const [kitchen] = await tx.insert(rooms).values({ name: 'Test Kitchen' }).returning();
+      if (!phase || !paint || !kitchen) throw new Error('fixture missing');
+
+      const [job] = await tx
+        .insert(jobs)
+        .values({
+          phaseId: phase.id,
+          itemId: paint.id,
+          name: 'Paint — Phase 1',
+          spec: 'SW Alabaster',
+        })
+        .returning();
+      if (!job) throw new Error('insert failed');
+      expect(job.status).toBe('unstarted');
+
+      const [jr] = await tx
+        .insert(jobRooms)
+        .values({ jobId: job.id, roomId: kitchen.id })
+        .returning();
+      if (!jr) throw new Error('insert failed');
+      expect(jr.spec).toBeNull(); // same as the job
+      expect(jr.status).toBe('unstarted');
+
+      await expectDbErrorIn(tx, /job_rooms_job_room_live_uidx/, (sp) =>
+        sp.insert(jobRooms).values({ jobId: job.id, roomId: kitchen.id }),
+      );
+      await tx.update(jobRooms).set({ deletedAt: new Date() }).where(eq(jobRooms.id, jr.id));
+      const [again] = await tx
+        .insert(jobRooms)
+        .values({ jobId: job.id, roomId: kitchen.id, spec: 'Accent wall: SW Naval' })
+        .returning();
+      expect(again?.spec).toBe('Accent wall: SW Naval');
+
+      // The same item can have another job in another phase, covering the same room.
+      const [p2] = await tx.insert(phases).values({ name: 'Test Phase 2' }).returning();
+      if (!p2) throw new Error('insert failed');
+      const [job2] = await tx
+        .insert(jobs)
+        .values({ phaseId: p2.id, itemId: paint.id, name: 'Paint — Phase 2' })
+        .returning();
+      if (!job2) throw new Error('insert failed');
+      await tx.insert(jobRooms).values({ jobId: job2.id, roomId: kitchen.id });
+    }));
+
+  it('jobs need a real phase and item; job rooms need a real job and room', () =>
+    withRollback(db, async (tx) => {
+      const none = '00000000-0000-0000-0000-000000000000';
+      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      if (!paint || !phase) throw new Error('fixture missing');
+      await expectDbErrorIn(tx, /jobs_phase_id_phases_id_fk/, (sp) =>
+        sp.insert(jobs).values({ phaseId: none, itemId: paint.id, name: 'x' }),
+      );
+      await expectDbErrorIn(tx, /jobs_item_id_items_id_fk/, (sp) =>
+        sp.insert(jobs).values({ phaseId: phase.id, itemId: none, name: 'x' }),
+      );
+      const [job] = await tx
+        .insert(jobs)
+        .values({ phaseId: phase.id, itemId: paint.id, name: 'x' })
+        .returning();
+      if (!job) throw new Error('insert failed');
+      await expectDbErrorIn(tx, /job_rooms_room_id_rooms_id_fk/, (sp) =>
+        sp.insert(jobRooms).values({ jobId: job.id, roomId: none }),
+      );
+      await expectDbErrorIn(tx, /job_rooms_job_id_jobs_id_fk/, (sp) =>
+        sp.insert(jobRooms).values({ jobId: none, roomId: none }),
+      );
+    }));
+
   it('has row level security enabled on every table, with no policies', async () => {
     const rows = await client<{ relname: string; relrowsecurity: boolean }[]>`
       SELECT relname, relrowsecurity FROM pg_class
       WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' ORDER BY relname`;
     expect(rows.map((r) => [r.relname, r.relrowsecurity])).toEqual([
+      ['categories', true],
       ['files', true],
       ['items', true],
+      ['job_rooms', true],
+      ['jobs', true],
       ['members', true],
       ['phases', true],
       ['rooms', true],

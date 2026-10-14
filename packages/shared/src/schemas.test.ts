@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   itemUpdateSchema,
+  jobCreateSchema,
+  jobRoomCreateSchema,
+  jobRoomUpdateSchema,
+  jobUpdateSchema,
   lengthSchema,
   phaseCreateSchema,
   phaseUpdateSchema,
@@ -100,5 +104,51 @@ describe('items and work items', () => {
   it('list filters are all optional; roomId null means house-wide only', () => {
     expect(workItemListSchema.parse({})).toEqual({});
     expect(workItemListSchema.parse({ roomId: null })).toEqual({ roomId: null });
+  });
+});
+
+describe('jobs', () => {
+  it('create applies defaults and requires phase, item, name', () => {
+    expect(jobCreateSchema.parse({ phaseId: ID, itemId: ID, name: ' Paint — Phase 1 ' })).toEqual({
+      phaseId: ID,
+      itemId: ID,
+      name: 'Paint — Phase 1',
+      spec: '',
+      notes: '',
+      status: 'unstarted',
+      sortOrder: 0,
+    });
+    expect(jobCreateSchema.safeParse({ phaseId: ID, name: 'x' }).success).toBe(false);
+    expect(jobCreateSchema.safeParse({ phaseId: ID, itemId: ID, name: '' }).success).toBe(false);
+  });
+
+  it('update is partial and cannot change the item', () => {
+    expect(jobUpdateSchema.parse({ id: ID, spec: 'SW Alabaster, eggshell' })).toEqual({
+      id: ID,
+      spec: 'SW Alabaster, eggshell',
+    });
+    expect(jobUpdateSchema.parse({ id: ID, itemId: ID })).toEqual({ id: ID });
+  });
+});
+
+describe('job rooms', () => {
+  it('a blank or missing spec means "same as the job" (null)', () => {
+    const base = { jobId: ID, roomId: ID };
+    expect(jobRoomCreateSchema.parse(base)).toEqual({
+      ...base,
+      status: 'unstarted',
+      spec: null,
+      notes: '',
+      sortOrder: 0,
+    });
+    expect(jobRoomCreateSchema.parse({ ...base, spec: '   ' }).spec).toBeNull();
+    expect(jobRoomCreateSchema.parse({ ...base, spec: 'Tile, 12x24' }).spec).toBe('Tile, 12x24');
+    expect(jobRoomUpdateSchema.parse({ id: ID, spec: '' })).toEqual({ id: ID, spec: null });
+  });
+
+  it('rejects an unknown status', () => {
+    expect(jobRoomCreateSchema.safeParse({ jobId: ID, roomId: ID, status: 'done' }).success).toBe(
+      false,
+    );
   });
 });

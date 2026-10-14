@@ -152,6 +152,77 @@ export const workItemFormSchema = z.object({
 export type WorkItemForm = z.infer<typeof workItemFormSchema>;
 export type WorkItemFormInput = z.input<typeof workItemFormSchema>;
 
+// --- jobs (Model fix) ------------------------------------------------------------------------
+
+/** Mirrors `file_kind` / `file_owner_type` in `@reparo/db`. Uploads arrive in M3. */
+export const FILE_KINDS = [
+  'mockup',
+  'spec_drawing',
+  'receipt',
+  'quote',
+  'vendor_document',
+  'other',
+  'rendering',
+  'inspiration',
+  'progress_photo',
+  'product_image',
+] as const;
+export const FILE_OWNER_TYPES = ['job', 'cost', 'vendor', 'quote', 'room', 'purchase'] as const;
+
+const jobFields = {
+  phaseId: idSchema,
+  itemId: idSchema,
+  name: nameSchema,
+  /** Markdown: the house-wide spec, used by every covered room that has none of its own. */
+  spec: notesSchema,
+  notes: notesSchema,
+  /** Used only when the job covers no rooms; a job with rooms takes its status from them. */
+  status: z.enum(WORK_STATUSES),
+  sortOrder: sortOrderSchema,
+};
+
+export const jobCreateSchema = z.object({
+  ...jobFields,
+  spec: jobFields.spec.default(''),
+  notes: jobFields.notes.default(''),
+  status: jobFields.status.default('unstarted'),
+  sortOrder: jobFields.sortOrder.default(0),
+});
+/** Item is fixed after creation; phase, name, spec, notes, status, order can change. */
+export const jobUpdateSchema = z
+  .object(jobFields)
+  .omit({ itemId: true })
+  .partial()
+  .extend({ id: idSchema });
+export type JobCreate = z.infer<typeof jobCreateSchema>;
+export type JobCreateInput = z.input<typeof jobCreateSchema>;
+export type JobUpdate = z.infer<typeof jobUpdateSchema>;
+
+/** A room's spec: null = same as the job; text = this room differs. Blank text counts as null. */
+const roomSpecSchema = notesSchema
+  .nullable()
+  .transform((v) => (v === null || v.trim() === '' ? null : v));
+
+const jobRoomFields = {
+  status: z.enum(WORK_STATUSES),
+  spec: roomSpecSchema,
+  notes: notesSchema,
+  sortOrder: sortOrderSchema,
+};
+
+export const jobRoomCreateSchema = z.object({
+  jobId: idSchema,
+  roomId: idSchema,
+  status: jobRoomFields.status.default('unstarted'),
+  spec: jobRoomFields.spec.default(null),
+  notes: jobRoomFields.notes.default(''),
+  sortOrder: jobRoomFields.sortOrder.default(0),
+});
+/** Job and room are fixed; remove the row and add another to move it. */
+export const jobRoomUpdateSchema = z.object(jobRoomFields).partial().extend({ id: idSchema });
+export type JobRoomCreate = z.infer<typeof jobRoomCreateSchema>;
+export type JobRoomUpdate = z.infer<typeof jobRoomUpdateSchema>;
+
 /** Phase form: the create schema's input shape, reused for edits. */
 export type PhaseCreateInput = z.input<typeof phaseCreateSchema>;
 

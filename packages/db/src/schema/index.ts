@@ -3,5 +3,8 @@ export * from './members';
 export * from './files';
 export * from './phases';
 export * from './rooms';
+export * from './categories';
 export * from './items';
+export * from './work-status';
 export * from './work-items';
+export * from './jobs';

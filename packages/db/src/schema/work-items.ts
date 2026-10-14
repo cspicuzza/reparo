@@ -1,22 +1,12 @@
 import { sql } from 'drizzle-orm';
-import { index, integer, pgEnum, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './columns';
 import { items } from './items';
 import { phases } from './phases';
 import { rooms } from './rooms';
+import { workStatus } from './work-status';
 
-/**
- * ADR-013: `awaiting_review` means the work is done and someone still has to verify it's good.
- * No reviewer or timestamp is recorded. `cancelled` work is excluded from budget math (M2).
- */
-export const workStatus = pgEnum('work_status', [
-  'unstarted',
-  'in_progress',
-  'awaiting_review',
-  'completed',
-  'cancelled',
-]);
-export type WorkStatus = (typeof workStatus.enumValues)[number];
+// Replaced by jobs + job_rooms (Model fix); dropped in OD-35 once nothing uses it.
 
 /**
  * Item × room, in a phase (ADR-009). `room_id` NULL is the item's house-wide default; a row

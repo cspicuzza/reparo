@@ -10,15 +10,22 @@ export const fileKind = pgEnum('file_kind', [
   'quote',
   'vendor_document',
   'other',
+  // Model fix: room pictures and product images.
+  'rendering',
+  'inspiration',
+  'progress_photo',
+  'product_image',
 ]);
 export type FileKind = (typeof fileKind.enumValues)[number];
 
 /** Which record an upload belongs to. Extended as milestones add tables. */
 export const fileOwnerType = pgEnum('file_owner_type', [
-  'work_item',
-  'cost_line',
+  'job',
+  'cost',
   'vendor',
   'quote',
+  'room',
+  'purchase',
 ]);
 export type FileOwnerType = (typeof fileOwnerType.enumValues)[number];
 

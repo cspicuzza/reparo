@@ -22,6 +22,20 @@
       "when": 1791929715676,
       "tag": "0002_m1_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791996052413,
+      "tag": "0003_model_fix_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791996069578,
+      "tag": "0004_model_fix_seed_and_rls",
+      "breakpoints": true
     }
   ]
 }
