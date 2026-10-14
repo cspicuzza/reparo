@@ -9,6 +9,9 @@ import { Field, Input, inputClass } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
+import { ChevronRight } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
+import { Panel, PanelList } from '@/components/panel';
 
 type Item = RouterOutputs['items']['list'][number];
 type Category = RouterOutputs['categories']['list'][number];
@@ -54,24 +57,24 @@ export function Items() {
     .filter((g) => g.items.length > 0);
 
   return (
-    <section>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Items</h1>
-          <p className="mt-1 max-w-prose text-muted-foreground">
-            The kinds of work and purchases, by category. Open one to see and add its jobs.
-          </p>
-        </div>
-        {isAdmin && !adding ? (
-          <Button type="button" onClick={() => setAdding(true)}>
-            Add an item
-          </Button>
-        ) : null}
-      </div>
+    <section className="flex flex-col gap-8">
+      <PageHeader
+        title="Items"
+        description="The kinds of work and purchases, by category. Open one to see and add its jobs."
+        action={
+          isAdmin && !adding ? (
+            <Button type="button" onClick={() => setAdding(true)}>
+              Add an item
+            </Button>
+          ) : null
+        }
+      />
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-border p-5">
-          <h2 className="text-lg font-medium">New item</h2>
+        <Panel aria-labelledby="new-item">
+          <h2 id="new-item" className="text-2xl">
+            New item
+          </h2>
           <div className="mt-4">
             <ItemForm
               idPrefix="new-item"
@@ -87,93 +90,99 @@ export function Items() {
               }}
             />
           </div>
-        </div>
+        </Panel>
       ) : null}
 
-      <div className="mt-8">
-        {items.isPending ? <p className="text-muted-foreground">Loading items…</p> : null}
-        {items.error ? <p role="alert">Couldn&apos;t load items: {items.error.message}</p> : null}
-        {items.data && categories.data
-          ? groups.map(({ category, items: inCategory }) => (
-              <div key={category.id} className="mt-8 first:mt-0">
-                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
-                  {category.name}
-                </h2>
-                <ul className="mt-2 divide-y divide-border border-t border-b border-border">
-                  {inCategory.map((item) =>
-                    editingId === item.id ? (
-                      <li key={item.id} className="py-4 sm:px-2">
-                        <ItemForm
-                          idPrefix={`item-${item.id}`}
-                          item={item}
-                          categories={cats}
-                          submitLabel="Save"
-                          serverError={update.error?.message}
-                          onCancel={() => {
-                            update.reset();
-                            setEditingId(null);
-                          }}
-                          onSubmit={async (values) => {
-                            await update
-                              .mutateAsync({ id: item.id, ...values })
-                              .catch(() => undefined);
-                          }}
-                        />
-                      </li>
-                    ) : (
-                      <li
-                        key={item.id}
-                        className="flex items-baseline justify-between gap-4 py-3 sm:px-2"
+      {items.isPending ? <p className="text-muted-foreground">Loading items…</p> : null}
+      {items.error ? <p role="alert">Couldn&apos;t load items: {items.error.message}</p> : null}
+      {categories.error ? (
+        <p role="alert">Couldn&apos;t load categories: {categories.error.message}</p>
+      ) : null}
+      {items.data && categories.data && groups.length === 0 && !adding ? (
+        <p className="text-muted-foreground">
+          No items yet.{isAdmin ? ' Add the first one above.' : ''}
+        </p>
+      ) : null}
+      {items.data && categories.data
+        ? groups.map(({ category, items: inCategory }) => (
+            <section key={category.id} aria-labelledby={`cat-${category.id}`}>
+              <h2 id={`cat-${category.id}`} className="text-2xl">
+                {category.name}
+              </h2>
+              <PanelList className="mt-3">
+                {inCategory.map((item) =>
+                  editingId === item.id ? (
+                    <li key={item.id} className="p-4 sm:p-5">
+                      <ItemForm
+                        idPrefix={`item-${item.id}`}
+                        item={item}
+                        categories={cats}
+                        submitLabel="Save"
+                        serverError={update.error?.message}
+                        onCancel={() => {
+                          update.reset();
+                          setEditingId(null);
+                        }}
+                        onSubmit={async (values) => {
+                          await update
+                            .mutateAsync({ id: item.id, ...values })
+                            .catch(() => undefined);
+                        }}
+                      />
+                    </li>
+                  ) : (
+                    <li key={item.id} className="flex items-center gap-2 pr-2 sm:pr-3">
+                      <Link
+                        to="/items/$itemId"
+                        params={{ itemId: item.id }}
+                        className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-4 hover:bg-accent sm:px-5"
                       >
-                        <Link
-                          to="/items/$itemId"
-                          params={{ itemId: item.id }}
-                          className="text-base font-medium underline-offset-4 hover:underline"
-                        >
+                        <span className="min-w-0 flex-1 py-2 text-lg font-semibold break-words">
                           {item.name}
-                        </Link>
-                        {isAdmin ? (
-                          <span className="flex shrink-0 gap-1 text-sm">
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                update.reset();
-                                setEditingId(item.id);
-                              }}
-                              variant="ghost"
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              type="button"
-                              disabled={update.isPending}
-                              onClick={() => update.mutate({ id: item.id, retired: true })}
-                              variant="ghost"
-                              className="text-muted-foreground"
-                            >
-                              Retire
-                            </Button>
-                          </span>
-                        ) : null}
-                      </li>
-                    ),
-                  )}
-                </ul>
-              </div>
-            ))
-          : null}
-        {categories.error ? (
-          <p role="alert">Couldn&apos;t load categories: {categories.error.message}</p>
-        ) : null}
-        {update.error && editingId === null ? (
-          <p role="alert" className="mt-3 text-sm">
-            {update.error.message}
-          </p>
-        ) : null}
-      </div>
+                        </span>
+                        <ChevronRight
+                          aria-hidden
+                          className="size-5 shrink-0 text-muted-foreground"
+                        />
+                      </Link>
+                      {isAdmin ? (
+                        <span className="flex shrink-0 gap-1">
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              update.reset();
+                              setEditingId(item.id);
+                            }}
+                            variant="ghost"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            disabled={update.isPending}
+                            onClick={() => update.mutate({ id: item.id, retired: true })}
+                            variant="ghost"
+                            className="text-muted-foreground"
+                          >
+                            Retire
+                          </Button>
+                        </span>
+                      ) : null}
+                    </li>
+                  ),
+                )}
+              </PanelList>
+            </section>
+          ))
+        : null}
+      {update.error && editingId === null ? (
+        <p role="alert" className="text-sm">
+          {update.error.message}
+        </p>
+      ) : null}
 
       {retired.length > 0 ? (
-        <div className="mt-10">
+        <div>
           <Button
             type="button"
             variant="link"
@@ -185,13 +194,16 @@ export function Items() {
             {retired.length === 1 ? 'item' : 'items'}
           </Button>
           {showRetired ? (
-            <ul className="mt-3 divide-y divide-border border-t border-b border-border">
+            <PanelList className="mt-3">
               {retired.map((item) => (
                 <li
                   key={item.id}
-                  className="flex items-baseline justify-between gap-4 py-3 text-muted-foreground sm:px-2"
+                  className="flex min-h-14 items-center justify-between gap-4 px-4 py-2 text-muted-foreground sm:px-5"
                 >
-                  <span className="line-through decoration-muted-foreground">{item.name}</span>
+                  <span>
+                    {item.name}
+                    <span className="ml-2 text-sm">Retired</span>
+                  </span>
                   {isAdmin ? (
                     <Button
                       type="button"
@@ -204,7 +216,7 @@ export function Items() {
                   ) : null}
                 </li>
               ))}
-            </ul>
+            </PanelList>
           ) : null}
         </div>
       ) : null}

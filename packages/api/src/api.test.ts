@@ -627,6 +627,17 @@ describe('@reparo/api', () => {
         { done: 0, total: 0 },
         false,
       ]);
+
+      // The lists carry the same counts: rooms by job, phases by rolled-up job status.
+      type WithProgress = Row & { progress: Row };
+      const listed = rows(await query(h, 'viewer', 'rooms.list')) as WithProgress[];
+      expect(listed.find((r) => r.name === 'Home Hall')?.progress).toEqual({ done: 1, total: 1 });
+      const phaseRows = rows(await query(h, 'viewer', 'phases.list')) as WithProgress[];
+      // Paint awaits review in the den; the fee awaits review: none done, both counted.
+      expect(phaseRows.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 0, total: 2 });
+      await mutate(h, 'editor', 'jobs.update', { id: feeJob.id, status: 'completed' });
+      const after = rows(await query(h, 'viewer', 'phases.list')) as WithProgress[];
+      expect(after.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 1, total: 2 });
     }));
 
   it('jobs: guards — viewers read only, retired items and unknown rooms are refused', () =>

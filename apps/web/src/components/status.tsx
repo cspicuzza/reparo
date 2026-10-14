@@ -1,7 +1,7 @@
-import { WORK_STATUSES, type WorkStatusInput } from '@reparo/shared';
+import { WORK_STATUSES, type PhaseStatusInput, type WorkStatusInput } from '@reparo/shared';
 import { Circle, CircleAlert, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { WORK_STATUS_LABEL } from '@/lib/work';
+import { PHASE_STATUS_LABEL, WORK_STATUS_LABEL } from '@/lib/work';
 import { cn } from '@/lib/utils';
 
 /**
@@ -79,6 +79,29 @@ export function StatusSelect({
           </option>
         ))}
       </select>
+    </span>
+  );
+}
+
+/** A phase's own status, styled like the job statuses it summarises (no yellow: nothing waits). */
+const PHASE: Record<PhaseStatusInput, keyof typeof STATUS> = {
+  planned: 'unstarted',
+  active: 'in_progress',
+  complete: 'completed',
+};
+
+export function PhaseStatusBadge({ status }: { status: PhaseStatusInput }) {
+  const { icon: Icon, bg, fg } = STATUS[PHASE[status]];
+  return (
+    <span
+      className={cn(
+        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap',
+        bg,
+        fg,
+      )}
+    >
+      <Icon aria-hidden className="size-4 shrink-0" />
+      {PHASE_STATUS_LABEL[status]}
     </span>
   );
 }

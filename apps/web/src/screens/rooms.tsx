@@ -3,7 +3,12 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
-import { describeRoom } from '@/lib/rooms';
+import { describeRoom, roomProgressText } from '@/lib/rooms';
+import { ChevronRight } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
+import { Panel, PanelList } from '@/components/panel';
+import { PlanGrid } from '@/components/plan-grid';
+import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
 import { Button } from '@/components/ui/button';
 
@@ -23,24 +28,28 @@ export function Rooms() {
   );
 
   return (
-    <section>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rooms</h1>
-          <p className="mt-1 text-muted-foreground">
-            {rooms.data ? `${rooms.data.length} in the house` : 'The spaces being worked on.'}
-          </p>
-        </div>
-        {canEdit && !adding ? (
-          <Button type="button" onClick={() => setAdding(true)}>
-            Add a room
-          </Button>
-        ) : null}
-      </div>
+    <section className="flex flex-col gap-8">
+      <PageHeader
+        title="Rooms"
+        description={
+          rooms.data && rooms.data.length > 0
+            ? `${rooms.data.length} in the house`
+            : 'The spaces being worked on.'
+        }
+        action={
+          canEdit && !adding ? (
+            <Button type="button" onClick={() => setAdding(true)}>
+              Add a room
+            </Button>
+          ) : null
+        }
+      />
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-border p-5">
-          <h2 className="text-lg font-medium">New room</h2>
+        <Panel aria-labelledby="new-room">
+          <h2 id="new-room" className="text-2xl">
+            New room
+          </h2>
           <div className="mt-4">
             <RoomForm
               idPrefix="new-room"
@@ -55,44 +64,59 @@ export function Rooms() {
               }}
             />
           </div>
-        </div>
+        </Panel>
       ) : null}
 
-      <div className="mt-8">
-        {rooms.isPending ? <p className="text-muted-foreground">Loading rooms…</p> : null}
-        {rooms.error ? <p role="alert">Couldn&apos;t load rooms: {rooms.error.message}</p> : null}
-        {rooms.data && rooms.data.length === 0 ? (
-          <p className="text-muted-foreground">
-            No rooms yet.{canEdit ? ' Add the first one above.' : ''}
-          </p>
-        ) : null}
-        {rooms.data && rooms.data.length > 0 ? (
-          <ul className="divide-y divide-border border-t border-b border-border">
-            {rooms.data.map((room) => {
-              const { dims, sqft } = describeRoom(room);
-              return (
-                <li key={room.id}>
-                  <Link
-                    to="/rooms/$roomId"
-                    params={{ roomId: room.id }}
-                    className="flex items-baseline justify-between gap-4 py-3 hover:bg-accent sm:px-2"
-                  >
-                    <span className="text-base font-medium">{room.name}</span>
-                    <span className="shrink-0 text-right text-sm text-muted-foreground tabular-nums">
-                      {dims ?? 'Not measured'}
-                      {sqft != null ? (
-                        <span className="block sm:inline sm:before:content-['_·_']">
-                          {sqft} sq ft
-                        </span>
-                      ) : null}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-      </div>
+      {rooms.isPending ? <p className="text-muted-foreground">Loading rooms…</p> : null}
+      {rooms.error ? <p role="alert">Couldn&apos;t load rooms: {rooms.error.message}</p> : null}
+      {rooms.data && rooms.data.length === 0 && !adding ? (
+        <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
+          <span>No rooms yet.</span>
+          {canEdit ? (
+            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+              Add the first room
+            </Button>
+          ) : null}
+        </PlanGrid>
+      ) : null}
+      {rooms.data && rooms.data.length > 0 ? (
+        <PanelList>
+          {rooms.data.map((room) => {
+            const { dims, sqft } = describeRoom(room);
+            const size = dims ? (sqft != null ? `${dims}, ${sqft} sq ft` : dims) : 'Not measured';
+            const progress = roomProgressText(room.progress);
+            return (
+              <li key={room.id}>
+                <Link
+                  to="/rooms/$roomId"
+                  params={{ roomId: room.id }}
+                  className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-lg font-semibold">{room.name}</span>
+                    <span className="block text-sm text-muted-foreground tabular-nums">{size}</span>
+                  </span>
+                  <span className="hidden w-40 shrink-0 sm:block">
+                    {room.progress.total > 0 ? (
+                      <TapeStrip
+                        mode="progress"
+                        size="sm"
+                        done={room.progress.done}
+                        total={room.progress.total}
+                        label={`${room.name}: ${progress}`}
+                      />
+                    ) : null}
+                  </span>
+                  <span className="shrink-0 text-right text-sm text-muted-foreground tabular-nums sm:w-36 sm:text-left">
+                    {progress}
+                  </span>
+                  <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                </Link>
+              </li>
+            );
+          })}
+        </PanelList>
+      ) : null}
     </section>
   );
 }

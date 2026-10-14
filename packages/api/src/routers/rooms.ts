@@ -4,13 +4,13 @@ import { editorProcedure, memberProcedure, router } from '../trpc';
 import {
   createRoom,
   getRoomWithProgress,
-  listRooms,
+  listRoomsWithProgress,
   removeRoom,
   updateRoom,
 } from '../services/rooms';
 
 export const roomsRouter = router({
-  list: memberProcedure.query(({ ctx }) => listRooms(ctx.db)),
+  list: memberProcedure.query(({ ctx }) => listRoomsWithProgress(ctx.db)),
   get: memberProcedure
     .input(z.object({ id: idSchema }))
     .query(({ ctx, input }) => getRoomWithProgress(ctx.db, input.id)),

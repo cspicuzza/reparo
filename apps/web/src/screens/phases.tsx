@@ -11,8 +11,12 @@ import { useForm } from 'react-hook-form';
 import { Field, Input, inputClass, Textarea } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
-import { PHASE_STATUS_LABEL, type Phase } from '@/lib/work';
+import { PHASE_STATUS_LABEL, phaseDates, phaseProgressText, type Phase } from '@/lib/work';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/page-header';
+import { Panel, PanelList } from '@/components/panel';
+import { PhaseStatusBadge } from '@/components/status';
+import { TapeStrip } from '@/components/tape';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
 export function Phases() {
@@ -41,24 +45,24 @@ export function Phases() {
   );
 
   return (
-    <section>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Phases</h1>
-          <p className="mt-1 max-w-prose text-muted-foreground">
-            The renovation in stages. Work and money belong to a phase.
-          </p>
-        </div>
-        {isAdmin && !adding ? (
-          <Button type="button" onClick={() => setAdding(true)}>
-            Add a phase
-          </Button>
-        ) : null}
-      </div>
+    <section className="flex flex-col gap-8">
+      <PageHeader
+        title="Phases"
+        description="The renovation in stages. Work and money belong to a phase."
+        action={
+          isAdmin && !adding ? (
+            <Button type="button" onClick={() => setAdding(true)}>
+              Add a phase
+            </Button>
+          ) : null
+        }
+      />
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-border p-5">
-          <h2 className="text-lg font-medium">New phase</h2>
+        <Panel aria-labelledby="new-phase">
+          <h2 id="new-phase" className="text-2xl">
+            New phase
+          </h2>
           <div className="mt-4">
             <PhaseForm
               idPrefix="new-phase"
@@ -73,51 +77,41 @@ export function Phases() {
               }}
             />
           </div>
-        </div>
+        </Panel>
       ) : null}
 
-      <div className="mt-8">
-        {phases.isPending ? <p className="text-muted-foreground">Loading phases…</p> : null}
-        {phases.error ? (
-          <p role="alert">Couldn&apos;t load phases: {phases.error.message}</p>
-        ) : null}
-        {phases.data ? (
-          <ul className="divide-y divide-border border-t border-b border-border">
-            {phases.data.map((phase) =>
-              editingId === phase.id ? (
-                <li key={phase.id} className="py-4 sm:px-2">
-                  <PhaseForm
-                    idPrefix={`phase-${phase.id}`}
-                    phase={phase}
-                    submitLabel="Save"
-                    serverError={update.error?.message}
-                    onCancel={() => {
-                      update.reset();
-                      setEditingId(null);
-                    }}
-                    onSubmit={async (values) => {
-                      await update.mutateAsync({ id: phase.id, ...values }).catch(() => undefined);
-                    }}
-                  />
-                </li>
-              ) : (
-                <li
-                  key={phase.id}
-                  className="flex items-baseline justify-between gap-4 py-3 sm:px-2"
-                >
-                  <div>
-                    <span className="text-base font-medium">{phase.name}</span>
-                    <span className="ml-3 text-sm text-muted-foreground">
-                      {PHASE_STATUS_LABEL[phase.status]}
-                      {phase.startsOn || phase.endsOn
-                        ? ` · ${phase.startsOn ?? '…'} → ${phase.endsOn ?? '…'}`
-                        : ''}
-                    </span>
-                    {phase.notes ? (
-                      <p className="mt-1 max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
-                        {phase.notes}
-                      </p>
-                    ) : null}
+      {phases.isPending ? <p className="text-muted-foreground">Loading phases…</p> : null}
+      {phases.error ? <p role="alert">Couldn&apos;t load phases: {phases.error.message}</p> : null}
+      {phases.data && phases.data.length === 0 && !adding ? (
+        <p className="text-muted-foreground">
+          No phases yet.{isAdmin ? ' Add the first one above.' : ''}
+        </p>
+      ) : null}
+      {phases.data && phases.data.length > 0 ? (
+        <PanelList>
+          {phases.data.map((phase) =>
+            editingId === phase.id ? (
+              <li key={phase.id} className="p-4 sm:p-5">
+                <PhaseForm
+                  idPrefix={`phase-${phase.id}`}
+                  phase={phase}
+                  submitLabel="Save"
+                  serverError={update.error?.message}
+                  onCancel={() => {
+                    update.reset();
+                    setEditingId(null);
+                  }}
+                  onSubmit={async (values) => {
+                    await update.mutateAsync({ id: phase.id, ...values }).catch(() => undefined);
+                  }}
+                />
+              </li>
+            ) : (
+              <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <h2 className="text-2xl">{phase.name}</h2>
+                    <PhaseStatusBadge status={phase.status} />
                   </div>
                   {isAdmin ? (
                     <Button
@@ -131,12 +125,34 @@ export function Phases() {
                       Edit
                     </Button>
                   ) : null}
-                </li>
-              ),
-            )}
-          </ul>
-        ) : null}
-      </div>
+                </div>
+                {phase.startsOn || phase.endsOn ? (
+                  <p className="text-sm text-muted-foreground">{phaseDates(phase)}</p>
+                ) : null}
+                <div className="grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                  {phase.progress.total > 0 ? (
+                    <TapeStrip
+                      mode="progress"
+                      size="sm"
+                      done={phase.progress.done}
+                      total={phase.progress.total}
+                      label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
+                    />
+                  ) : null}
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {phaseProgressText(phase.progress)}
+                  </span>
+                </div>
+                {phase.notes ? (
+                  <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
+                    {phase.notes}
+                  </p>
+                ) : null}
+              </li>
+            ),
+          )}
+        </PanelList>
+      ) : null}
     </section>
   );
 }

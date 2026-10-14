@@ -1,4 +1,5 @@
 import type { RouterOutputs } from '@reparo/api';
+import { formatIsoDate, isIsoDate } from '@reparo/shared';
 import type { PhaseStatusInput, WorkStatusInput } from '@reparo/shared';
 
 /** A job as the API returns it: item, phase, the rooms it covers, and progress. */
@@ -45,4 +46,22 @@ export function specSummary(spec: string, max = 90): string {
       .find((l) => l.trim() !== '')
       ?.trim() ?? '';
   return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/** "3 of 8 jobs done" for a phase, from the API's count; "No jobs yet" when it has none. */
+export function phaseProgressText(p: { done: number; total: number }): string {
+  if (p.total === 0) return 'No jobs yet';
+  if (p.done >= p.total) return p.total === 1 ? 'Its one job is done' : `All ${p.total} jobs done`;
+  return `${p.done} of ${p.total} ${p.total === 1 ? 'job' : 'jobs'} done`;
+}
+
+/** "Oct 1, 2026 to Dec 15, 2026", or just the start or end; '' when neither is set. */
+export function phaseDates(p: { startsOn: string | null; endsOn: string | null }): string {
+  const fmt = (d: string | null) => (d && isIsoDate(d) ? formatIsoDate(d) : null);
+  const start = fmt(p.startsOn);
+  const end = fmt(p.endsOn);
+  if (start && end) return `${start} to ${end}`;
+  if (start) return `Starts ${start}`;
+  if (end) return `Ends ${end}`;
+  return '';
 }

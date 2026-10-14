@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { progressText, specSummary, WORK_STATUS_LABEL } from './work';
+import {
+  WORK_STATUS_LABEL,
+  phaseDates,
+  phaseProgressText,
+  progressText,
+  specSummary,
+} from './work';
 
 describe('work helpers', () => {
   it('labels every status', () => {
@@ -21,5 +27,24 @@ describe('work helpers', () => {
     expect(progressText({ done: 0, total: 1 }, 2)).toBe('0 of 1 room done');
     expect(progressText({ done: 0, total: 0 }, 2)).toBe('All rooms cancelled');
     expect(progressText({ done: 0, total: 0 }, 0)).toBe('');
+  });
+});
+
+describe('phaseProgressText', () => {
+  it('counts jobs done', () => {
+    expect(phaseProgressText({ done: 3, total: 8 })).toBe('3 of 8 jobs done');
+    expect(phaseProgressText({ done: 8, total: 8 })).toBe('All 8 jobs done');
+    expect(phaseProgressText({ done: 0, total: 0 })).toBe('No jobs yet');
+  });
+});
+
+describe('phaseDates', () => {
+  it('shows the range, or whichever end is set', () => {
+    expect(phaseDates({ startsOn: '2026-10-01', endsOn: '2026-12-15' })).toBe(
+      'Oct 1, 2026 to Dec 15, 2026',
+    );
+    expect(phaseDates({ startsOn: '2026-10-01', endsOn: null })).toBe('Starts Oct 1, 2026');
+    expect(phaseDates({ startsOn: null, endsOn: '2026-12-15' })).toBe('Ends Dec 15, 2026');
+    expect(phaseDates({ startsOn: null, endsOn: null })).toBe('');
   });
 });

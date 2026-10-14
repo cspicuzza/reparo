@@ -1,11 +1,12 @@
 import { idSchema, phaseCreateSchema, phaseUpdateSchema } from '@reparo/shared';
 import { z } from 'zod';
 import { adminProcedure, memberProcedure, router } from '../trpc';
-import { createPhase, getPhase, listPhases, removePhase, updatePhase } from '../services/phases';
+import { listPhasesWithProgress } from '../services/phase-progress';
+import { createPhase, getPhase, removePhase, updatePhase } from '../services/phases';
 
 /** Phases are admin-managed (ADR-008). */
 export const phasesRouter = router({
-  list: memberProcedure.query(({ ctx }) => listPhases(ctx.db)),
+  list: memberProcedure.query(({ ctx }) => listPhasesWithProgress(ctx.db)),
   get: memberProcedure
     .input(z.object({ id: idSchema }))
     .query(({ ctx, input }) => getPhase(ctx.db, input.id)),
