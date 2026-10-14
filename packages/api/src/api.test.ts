@@ -454,6 +454,12 @@ describe('@reparo/api', () => {
         })
       ).data as JobRow;
       expect(afterBath.progress).toEqual({ status: 'awaiting_review', done: 2, total: 3 });
+      // The room page's count: jobs done in that room out of those that count there.
+      const roomProgress = async (id: unknown) =>
+        (row(await query(h, 'viewer', 'rooms.get', { id })) as Row & { progress: Row }).progress;
+      expect(await roomProgress(kitchen.id)).toEqual({ done: 1, total: 1 });
+      expect(await roomProgress(bath.id)).toEqual({ done: 0, total: 1 });
+      expect(await roomProgress(office.id)).toEqual({ done: 0, total: 0 });
       expect([
         jr(afterBath, 'Test Kitchen').resolvedSpec,
         jr(afterBath, 'Test Kitchen').specSource,
@@ -535,8 +541,21 @@ describe('@reparo/api', () => {
         ((await query(h, 'viewer', 'jobs.forRoom', { roomId: kitchen.id })).data as ForRoom[])
           .length,
       ).toBe(1);
+      const kitchenWhileRemoved = await roomProgress(kitchen.id);
       const restored = (await mutate(h, 'editor', 'jobs.restore', { id: job.id })).data as JobRow;
       expect(restored.rooms.length).toBe(2);
+      // A removed job doesn't count in a room's progress; a Cancelled room doesn't either.
+      // (The kitchen is Completed on this job and also covered by one other job.)
+      const kitchenBack = await roomProgress(kitchen.id);
+      expect(kitchenBack).toEqual({
+        done: Number(kitchenWhileRemoved.done) + 1,
+        total: Number(kitchenWhileRemoved.total) + 1,
+      });
+      await mutate(h, 'editor', 'jobRooms.update', {
+        id: jr(restored, 'Test Kitchen').id,
+        status: 'cancelled',
+      });
+      expect(await roomProgress(kitchen.id)).toEqual(kitchenWhileRemoved);
     }));
 
   it('jobs: guards — viewers read only, retired items and unknown rooms are refused', () =>

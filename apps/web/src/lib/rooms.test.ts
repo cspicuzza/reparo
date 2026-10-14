@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeRoom } from './rooms';
+import { describeRoom, roomProgressText } from './rooms';
 
 describe('describeRoom', () => {
   it('formats both sides and the floor area', () => {
@@ -16,5 +16,18 @@ describe('describeRoom', () => {
   });
   it('is empty when unmeasured', () => {
     expect(describeRoom({ lengthIn: null, widthIn: null })).toEqual({ dims: null, sqft: null });
+  });
+});
+
+describe('roomProgressText', () => {
+  it('counts jobs done out of those that count', () => {
+    expect(roomProgressText({ done: 2, total: 4 })).toBe('2 of 4 jobs done');
+    expect(roomProgressText({ done: 0, total: 1 })).toBe('0 of 1 job done');
+  });
+
+  it('says when everything is done or nothing is planned', () => {
+    expect(roomProgressText({ done: 4, total: 4 })).toBe('All 4 jobs done.');
+    expect(roomProgressText({ done: 1, total: 1 })).toBe('Its one job is done.');
+    expect(roomProgressText({ done: 0, total: 0 })).toBe('No jobs here yet.');
   });
 });

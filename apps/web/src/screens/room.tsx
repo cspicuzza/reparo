@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { formatLength } from '@reparo/shared';
+import { ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
-import { describeRoom } from '@/lib/rooms';
+import { describeRoom, roomProgressText } from '@/lib/rooms';
+import { DimensionLine } from '@/components/dimension';
+import { PlanGrid } from '@/components/plan-grid';
 import { RoomForm } from './room-form';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -44,7 +46,7 @@ export function RoomDetail() {
       <section>
         <p role="alert">{gone ? 'That room is no longer here.' : room.error.message}</p>
         <Link to="/rooms" className={buttonVariants({ variant: 'ghost', className: 'mt-4 px-0' })}>
-          ← All rooms
+          All rooms
         </Link>
       </section>
     );
@@ -56,14 +58,15 @@ export function RoomDetail() {
     <section>
       <Link
         to="/rooms"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+        className="-ml-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-muted-foreground hover:text-foreground"
       >
-        ← All rooms
+        <ChevronLeft aria-hidden className="size-5" />
+        All rooms
       </Link>
 
       {editing ? (
         <div className="mt-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Edit {r.name}</h1>
+          <h1 className="text-3xl">Edit {r.name}</h1>
           <div className="mt-6">
             <RoomForm
               idPrefix="edit-room"
@@ -81,50 +84,73 @@ export function RoomDetail() {
           </div>
         </div>
       ) : (
-        <div className="mt-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <h1 className="text-2xl font-semibold tracking-tight">{r.name}</h1>
+        <>
+          {/* Renderings arrive with uploads (M3); until then a placeholder, and no picture buttons. */}
+          <PlanGrid className="mt-2 h-48 rounded-xl sm:h-80">
+            No picture of the {r.name} yet
+          </PlanGrid>
+
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="text-4xl">{r.name}</h1>
+              <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
+            </div>
             {canEdit ? (
-              <Button type="button" onClick={() => setEditing(true)}>
-                Edit
+              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                Edit room
               </Button>
             ) : null}
           </div>
 
-          <dl className="mt-6 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-            <Measurement label="Length" value={r.lengthIn} />
-            <Measurement label="Width" value={r.widthIn} />
-            <Measurement label="Ceiling height" value={r.ceilingHeightIn} />
-            <div>
-              <dt className="text-sm text-muted-foreground">Floor area</dt>
-              <dd className="mt-0.5 text-lg tabular-nums">
-                {sqft != null ? `${sqft} sq ft` : dims ? 'Needs both sides' : '—'}
-              </dd>
-            </div>
-          </dl>
+          <section
+            aria-label="Size"
+            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+          >
+            <dl className="flex flex-wrap gap-x-8 gap-y-5">
+              <DimensionLine label="Length" inches={r.lengthIn} className="flex-1" />
+              <DimensionLine label="Width" inches={r.widthIn} className="flex-1" />
+              <DimensionLine label="Ceiling" inches={r.ceilingHeightIn} className="flex-1" />
+              <div className="min-w-36">
+                <dt className="text-sm text-muted-foreground">Floor area</dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                  {sqft != null ? (
+                    `${sqft} sq ft`
+                  ) : (
+                    <span className="text-base font-normal text-muted-foreground">
+                      {dims ? 'Needs both sides' : 'Not measured'}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            </dl>
+            {r.notes ? (
+              <div className="mt-5 border-t border-border pt-4">
+                <p className="text-sm text-muted-foreground">Notes</p>
+                <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
+              </div>
+            ) : null}
+          </section>
 
-          {r.notes ? (
-            <div className="mt-6">
-              <h2 className="text-sm text-muted-foreground">Notes</h2>
-              <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
-            </div>
-          ) : null}
-
-          <div className="mt-10">
-            <h2 className="text-lg font-medium">Jobs in this room</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Each job&apos;s status here, and its spec — the job&apos;s, or one just for this room.
+          <section
+            aria-labelledby="room-jobs"
+            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+          >
+            <h2 id="room-jobs" className="text-2xl">
+              Jobs in this room
+            </h2>
+            <p className="mt-1 text-muted-foreground">
+              Set each job&apos;s status here. Jobs are planned on each item&apos;s page.
             </p>
             <div className="mt-4">
               <RoomWork roomId={r.id} roomName={r.name} />
             </div>
-          </div>
+          </section>
 
           {canEdit ? (
             <div className="mt-12 border-t border-border pt-6">
               {confirmingDelete ? (
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className="text-sm">Remove {r.name} from the house?</span>
+                  <span>Remove {r.name} from the house?</span>
                   <Button
                     type="button"
                     disabled={remove.isPending}
@@ -154,17 +180,8 @@ export function RoomDetail() {
               )}
             </div>
           ) : null}
-        </div>
+        </>
       )}
     </section>
-  );
-}
-
-function Measurement({ label, value }: { label: string; value: number | null }) {
-  return (
-    <div>
-      <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-lg tabular-nums">{value == null ? '—' : formatLength(value)}</dd>
-    </div>
   );
 }

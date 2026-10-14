@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, rooms, type Db } from '@reparo/db';
+import { and, asc, eq, isNull, jobRooms, jobs, ne, phases, rooms, sql, type Db } from '@reparo/db';
 import type { RoomCreate, RoomUpdate } from '@reparo/shared';
 import { conflict, isUniqueViolation, notFound } from './errors';
 
@@ -15,6 +15,44 @@ export async function getRoom(db: Db, id: string) {
     .where(and(eq(rooms.id, id), live()));
   if (!row) throw notFound('Room');
   return row;
+}
+
+export type RoomProgress = {
+  /** Jobs done in this room (its status there is Completed). */
+  done: number;
+  /** Jobs counted: every live job covering the room, except where it's Cancelled here. */
+  total: number;
+};
+
+/**
+ * How far along a room is, for the room page ("2 of 4 jobs done"). Same counting rule as the
+ * jobs roll-up: Cancelled doesn't count; jobs in deleted phases and removed jobs don't either.
+ */
+export async function roomProgress(db: Db, roomId: string): Promise<RoomProgress> {
+  const [row] = await db
+    .select({
+      done: sql<number>`count(*) filter (where ${jobRooms.status} = 'completed')`.mapWith(Number),
+      total: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(jobRooms)
+    .innerJoin(jobs, eq(jobs.id, jobRooms.jobId))
+    .innerJoin(phases, eq(phases.id, jobs.phaseId))
+    .where(
+      and(
+        eq(jobRooms.roomId, roomId),
+        isNull(jobRooms.deletedAt),
+        isNull(jobs.deletedAt),
+        isNull(phases.deletedAt),
+        ne(jobRooms.status, 'cancelled'),
+      ),
+    );
+  return { done: row?.done ?? 0, total: row?.total ?? 0 };
+}
+
+/** A room with its progress, for the room page. */
+export async function getRoomWithProgress(db: Db, id: string) {
+  const room = await getRoom(db, id);
+  return { ...room, progress: await roomProgress(db, id) };
 }
 
 export async function createRoom(db: Db, input: RoomCreate) {

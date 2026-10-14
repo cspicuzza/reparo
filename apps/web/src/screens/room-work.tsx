@@ -45,9 +45,9 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
 
   return (
     <div>
-      <ul className="divide-y divide-border border-t border-b border-border">
+      <ul className="divide-y divide-border">
         {jobs.data.map((j) => (
-          <li key={j.id} className="py-4 sm:px-2">
+          <li key={j.id} className="py-4 first:pt-0 last:pb-0">
             <JobRow
               j={j}
               roomName={roomName}
@@ -92,15 +92,20 @@ function JobRow({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <Link
             to="/items/$itemId"
             params={{ itemId: j.item.id }}
-            className="font-medium underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
           >
             {j.job.name}
           </Link>
-          <span className="ml-2 text-xs text-muted-foreground">{j.phase.name}</span>
+          <span className="text-sm text-muted-foreground">{j.phase.name}</span>
+          {j.specSource === 'room' ? (
+            <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
+              Different here
+            </span>
+          ) : null}
         </div>
         {canEdit ? (
           <StatusSelect
@@ -116,7 +121,7 @@ function JobRow({
       </div>
 
       {editing ? (
-        <div className="mt-3 rounded-lg border border-border p-4">
+        <div className="mt-3 rounded-xl border border-border bg-background p-4">
           <JobRoomEditor
             idPrefix={`jr-${j.id}`}
             jobRoom={j}
@@ -128,11 +133,14 @@ function JobRow({
       ) : (
         <div className="mt-2 grid gap-1 sm:grid-cols-[1fr_auto] sm:gap-6">
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">{SPEC_SOURCE_LABEL[j.specSource]}</p>
+            {/* A room's own spec is flagged by the "Different here" badge above. */}
+            {j.specSource === 'job' ? (
+              <p className="text-sm text-muted-foreground">{SPEC_SOURCE_LABEL.job}</p>
+            ) : null}
             {j.resolvedSpec ? (
-              <p className="mt-0.5 max-w-prose text-sm whitespace-pre-wrap">{j.resolvedSpec}</p>
+              <p className="mt-0.5 max-w-prose whitespace-pre-wrap">{j.resolvedSpec}</p>
             ) : (
-              <p className="mt-0.5 text-sm text-muted-foreground">No spec yet.</p>
+              <p className="mt-0.5 text-muted-foreground">No spec yet.</p>
             )}
             {j.notes ? (
               <p className="mt-1 max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
@@ -141,7 +149,7 @@ function JobRow({
             ) : null}
           </div>
           {canEdit ? (
-            <div className="text-sm sm:text-right">
+            <div className="sm:text-right">
               <Button type="button" onClick={onEdit} variant="ghost" className="px-0 sm:px-3">
                 Edit spec &amp; notes
               </Button>

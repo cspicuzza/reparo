@@ -14,3 +14,10 @@ export function describeRoom(room: Pick<Room, 'lengthIn' | 'widthIn'>): {
   const sqft = l != null && w != null ? sqInToSqFt(area(l, w)) : null;
   return { dims, sqft };
 }
+
+/** The room page's summary line, from the API's count of jobs done there. */
+export function roomProgressText({ done, total }: { done: number; total: number }): string {
+  if (total === 0) return 'No jobs here yet.';
+  if (done >= total) return total === 1 ? 'Its one job is done.' : `All ${total} jobs done.`;
+  return `${done} of ${total} ${total === 1 ? 'job' : 'jobs'} done`;
+}
