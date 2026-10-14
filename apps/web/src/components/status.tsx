@@ -1,36 +1,37 @@
 import { WORK_STATUSES, type WorkStatusInput } from '@reparo/shared';
+import { Circle, CircleAlert, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { WORK_STATUS_LABEL } from '@/lib/work';
+import { cn } from '@/lib/utils';
 
 /**
- * Plaster and tape status colours (Linear → Design system → Job status styles). Awaiting review
- * is the tape yellow: it's the "someone needs to look" state. Icons and the new chip shape come
- * with the screen restyle; this keeps the current shapes.
+ * Job status styles (Linear → Design system → Job status styles): an icon, the word and a tint,
+ * so colour never carries the meaning alone. Awaiting review is the tape yellow — the "someone
+ * needs to look" state. Cancelled is muted, never struck through, so it stays readable.
  */
-const tone: Record<WorkStatusInput, string> = {
-  unstarted: 'border-transparent bg-status-idle-tint text-status-idle',
-  in_progress: 'border-transparent bg-status-progress-tint text-status-progress',
-  awaiting_review: 'border-transparent bg-tape text-tape-ink',
-  completed: 'border-transparent bg-status-done-tint text-status-done',
-  cancelled:
-    'border-transparent bg-status-idle-tint text-status-idle line-through decoration-status-idle',
+const STATUS: Record<
+  WorkStatusInput,
+  { icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>; bg: string; fg: string }
+> = {
+  unstarted: { icon: Circle, bg: 'bg-status-idle-tint', fg: 'text-status-idle' },
+  in_progress: { icon: Contrast, bg: 'bg-status-progress-tint', fg: 'text-status-progress' },
+  awaiting_review: { icon: CircleAlert, bg: 'bg-tape', fg: 'text-tape-ink' },
+  completed: { icon: CircleCheck, bg: 'bg-status-done-tint', fg: 'text-status-done' },
+  cancelled: { icon: CircleSlash, bg: 'bg-status-idle-tint', fg: 'text-status-idle' },
 };
 
-/** The dropdown adds the field border so its edge stays visible (≥ 3:1) on any fill. */
-const selectTone: Record<WorkStatusInput, string> = {
-  unstarted: 'border-input bg-status-idle-tint text-status-idle',
-  in_progress: 'border-input bg-status-progress-tint text-status-progress',
-  awaiting_review: 'border-input bg-tape text-tape-ink',
-  completed: 'border-input bg-status-done-tint text-status-done',
-  cancelled:
-    'border-input bg-status-idle-tint text-status-idle line-through decoration-status-idle',
-};
-
-/** A small outlined status word. Colour never carries the meaning alone — the word does. */
+/** The status as a chip: icon, word, tint. */
 export function StatusBadge({ status }: { status: WorkStatusInput }) {
+  const { icon: Icon, bg, fg } = STATUS[status];
   return (
     <span
-      className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tone[status]}`}
+      className={cn(
+        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap',
+        bg,
+        fg,
+      )}
     >
+      <Icon aria-hidden className="size-4 shrink-0" />
       {WORK_STATUS_LABEL[status]}
     </span>
   );
@@ -39,6 +40,7 @@ export function StatusBadge({ status }: { status: WorkStatusInput }) {
 /**
  * Status as a dropdown that saves the moment a new one is picked (Chris, 2026-10-14: no
  * Edit → Save just to mark a room done). `label` names what it's for, for screen readers.
+ * A native select, so it works the same with touch, mouse, keyboard and screen readers.
  */
 export function StatusSelect({
   id,
@@ -53,17 +55,23 @@ export function StatusSelect({
   disabled?: boolean;
   onChange: (status: WorkStatusInput) => void;
 }) {
+  const { icon: Icon, bg, fg } = STATUS[value];
   return (
-    <span className="inline-flex items-center">
+    <span className="relative inline-flex items-center">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
+      <Icon aria-hidden className={cn('pointer-events-none absolute left-3 size-5', fg)} />
       <select
         id={id}
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as WorkStatusInput)}
-        className={`min-h-11 rounded-full border px-3 text-sm font-medium focus:outline-none disabled:opacity-50 ${selectTone[value]}`}
+        className={cn(
+          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold disabled:opacity-50',
+          bg,
+          fg,
+        )}
       >
         {WORK_STATUSES.map((s) => (
           <option key={s} value={s}>

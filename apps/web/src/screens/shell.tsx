@@ -56,7 +56,7 @@ export function Shell() {
             to="/"
             className="-ml-1 inline-flex min-h-11 items-center gap-2.5 rounded-lg px-1 text-2xl font-[640] tracking-tight [font-stretch:74%]"
           >
-            <LogoMark />
+            <LogoMark mends />
             Reparo
           </Link>
           <nav aria-label="Sections" className="hidden sm:block">

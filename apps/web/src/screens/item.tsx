@@ -8,6 +8,7 @@ import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
+import { celebrateMended } from '@/lib/mended';
 
 /**
  * One item across the house: its jobs in every phase, each with the rooms it covers. Jobs are
@@ -113,8 +114,25 @@ function JobCard({
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const invalidate = () => queryClient.invalidateQueries(trpc.jobs.pathFilter());
-  const roomStatus = useMutation(trpc.jobRooms.update.mutationOptions({ onSuccess: invalidate }));
-  const jobStatus = useMutation(trpc.jobs.update.mutationOptions({ onSuccess: invalidate }));
+  const mendIfCompleted = (vars: { status?: string | undefined }) => {
+    if (vars.status === 'completed') celebrateMended();
+  };
+  const roomStatus = useMutation(
+    trpc.jobRooms.update.mutationOptions({
+      onSuccess: (_d, vars) => {
+        mendIfCompleted(vars);
+        return invalidate();
+      },
+    }),
+  );
+  const jobStatus = useMutation(
+    trpc.jobs.update.mutationOptions({
+      onSuccess: (_d, vars) => {
+        mendIfCompleted(vars);
+        return invalidate();
+      },
+    }),
+  );
   const remove = useMutation(trpc.jobs.remove.mutationOptions({ onSuccess: invalidate }));
   const error = roomStatus.error ?? jobStatus.error ?? remove.error;
 

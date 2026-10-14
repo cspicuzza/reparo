@@ -7,6 +7,7 @@ import { useTRPC } from '@/lib/trpc';
 import { SPEC_SOURCE_LABEL, type RoomJob } from '@/lib/work';
 import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
+import { celebrateMended } from '@/lib/mended';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -20,7 +21,10 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
   const [editing, setEditing] = useState<string | null>(null);
   const setStatus = useMutation(
     trpc.jobRooms.update.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+      onSuccess: (_data, vars) => {
+        if (vars.status === 'completed') celebrateMended();
+        return queryClient.invalidateQueries(trpc.jobs.pathFilter());
+      },
     }),
   );
 

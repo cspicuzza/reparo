@@ -143,6 +143,19 @@
   --text-3xl--line-height: 1.15;
   --text-4xl: 2.75rem;
   --text-4xl--line-height: 1.08;
+
+  /* The one fun moment: the logo's stitch closes when a job is completed (lib/mended.ts). */
+  --animate-mend: mend 900ms ease-in-out;
+  @keyframes mend {
+    0%,
+    100% {
+      stroke-dasharray: 3.5 3;
+    }
+    45%,
+    65% {
+      stroke-dasharray: 6.5 0;
+    }
+  }
 }
 
 @layer base {
