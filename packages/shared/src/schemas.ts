@@ -103,13 +103,16 @@ export type RoomCreateInput = z.input<typeof roomCreateSchema>;
 
 const itemFields = {
   name: nameSchema,
+  categoryId: idSchema,
   sortOrder: sortOrderSchema,
   /** true retires the item (hidden from new work, kept on existing work); false restores it. */
   retired: z.boolean(),
 };
 
+/** Without a category the API files the item under Misc; the admin can change it later. */
 export const itemCreateSchema = z.object({
   name: itemFields.name,
+  categoryId: itemFields.categoryId.optional(),
   sortOrder: itemFields.sortOrder.default(0),
 });
 export const itemUpdateSchema = z.object(itemFields).partial().extend({ id: idSchema });
@@ -183,6 +186,13 @@ const jobFields = {
 
 export const jobCreateSchema = z.object({
   ...jobFields,
+  /** Blank → the API names the job "‹Item› — ‹Phase›". */
+  name: z.string().trim().max(120, 'Name is too long').default(''),
+  /** Rooms the job covers from the start; more can be added or removed later. */
+  roomIds: z
+    .array(idSchema)
+    .default([])
+    .refine((ids) => new Set(ids).size === ids.length, { error: 'A room is listed twice' }),
   spec: jobFields.spec.default(''),
   notes: jobFields.notes.default(''),
   status: jobFields.status.default('unstarted'),
@@ -197,6 +207,9 @@ export const jobUpdateSchema = z
 export type JobCreate = z.infer<typeof jobCreateSchema>;
 export type JobCreateInput = z.input<typeof jobCreateSchema>;
 export type JobUpdate = z.infer<typeof jobUpdateSchema>;
+
+export const jobListSchema = z.object({ phaseId: idSchema, itemId: idSchema }).partial();
+export type JobList = z.infer<typeof jobListSchema>;
 
 /** A room's spec: null = same as the job; text = this room differs. Blank text counts as null. */
 const roomSpecSchema = notesSchema

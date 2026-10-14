@@ -1,5 +1,6 @@
 import { asc, eq, isNull, items, type Db } from '@reparo/db';
 import type { ItemCreate, ItemUpdate } from '@reparo/shared';
+import { getCategory, miscCategory } from './categories';
 import { conflict, isUniqueViolation, notFound } from './errors';
 
 /** The catalog. Retired items are included only when asked, so pickers can hide them. */
@@ -14,9 +15,17 @@ export async function getItem(db: Db, id: string) {
   return row;
 }
 
+/** Without a category the item goes under Misc. */
 export async function createItem(db: Db, input: ItemCreate) {
+  const categoryId =
+    input.categoryId === undefined
+      ? (await miscCategory(db)).id
+      : (await getCategory(db, input.categoryId)).id;
   try {
-    const [row] = await db.insert(items).values(input).returning();
+    const [row] = await db
+      .insert(items)
+      .values({ ...input, categoryId })
+      .returning();
     if (!row) throw new Error('insert returned no row');
     return row;
   } catch (e) {
@@ -27,9 +36,10 @@ export async function createItem(db: Db, input: ItemCreate) {
   }
 }
 
-/** Rename, reorder, retire (`retired: true`) or restore (`retired: false`). */
+/** Rename, recategorize, reorder, retire (`retired: true`) or restore (`retired: false`). */
 export async function updateItem(db: Db, { id, retired, ...patch }: ItemUpdate) {
   const current = await getItem(db, id);
+  if (patch.categoryId !== undefined) await getCategory(db, patch.categoryId);
   const set = {
     ...patch,
     ...(retired === undefined

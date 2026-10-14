@@ -218,9 +218,20 @@ describe('@reparo/db', () => {
     expect(catalog.every((i) => i.retiredAt === null)).toBe(true);
   });
 
-  it('rejects a duplicate item name and an unknown work status', async () => {
+  it('rejects a duplicate item name, an item without a category, and an unknown work status', async () => {
+    await withRollback(db, async (tx) => {
+      const [misc] = await tx.select().from(categories).where(eq(categories.name, 'Misc'));
+      if (!misc) throw new Error('seed missing');
+      await expectDbError(
+        tx.insert(items).values({ name: 'Paint', categoryId: misc.id }),
+        /items_name_unique/,
+      );
+    });
     await withRollback(db, (tx) =>
-      expectDbError(tx.insert(items).values({ name: 'Paint' }), /items_name_unique/),
+      expectDbError(
+        tx.execute(`INSERT INTO items (name) VALUES ('No Category')`),
+        /null value in column "category_id"/,
+      ),
     );
     await withRollback(db, async (tx) => {
       const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));

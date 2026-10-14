@@ -108,18 +108,22 @@ describe('items and work items', () => {
 });
 
 describe('jobs', () => {
-  it('create applies defaults and requires phase, item, name', () => {
+  it('create applies defaults, requires phase and item, and rejects a repeated room', () => {
     expect(jobCreateSchema.parse({ phaseId: ID, itemId: ID, name: ' Paint — Phase 1 ' })).toEqual({
       phaseId: ID,
       itemId: ID,
       name: 'Paint — Phase 1',
+      roomIds: [],
       spec: '',
       notes: '',
       status: 'unstarted',
       sortOrder: 0,
     });
     expect(jobCreateSchema.safeParse({ phaseId: ID, name: 'x' }).success).toBe(false);
-    expect(jobCreateSchema.safeParse({ phaseId: ID, itemId: ID, name: '' }).success).toBe(false);
+    // A blank name is allowed; the API fills in "‹Item› — ‹Phase›".
+    expect(jobCreateSchema.parse({ phaseId: ID, itemId: ID }).name).toBe('');
+    const twice = jobCreateSchema.safeParse({ phaseId: ID, itemId: ID, roomIds: [ID, ID] });
+    expect(twice.success).toBe(false);
   });
 
   it('update is partial and cannot change the item', () => {

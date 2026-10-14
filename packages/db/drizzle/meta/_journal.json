@@ -36,6 +36,20 @@
       "when": 1791996069578,
       "tag": "0004_model_fix_seed_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791999898720,
+      "tag": "0005_items_category_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791999899428,
+      "tag": "0006_items_category_required",
+      "breakpoints": true
     }
   ]
 }
