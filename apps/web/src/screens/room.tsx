@@ -2,12 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { formatLength } from '@reparo/shared';
 import { useState } from 'react';
-import { dangerButtonClass, primaryButtonClass, quietButtonClass } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { describeRoom } from '@/lib/rooms';
 import { RoomForm } from './room-form';
 import { RoomWork } from './room-work';
+import { Button, buttonVariants } from '@/components/ui/button';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -43,7 +43,7 @@ export function RoomDetail() {
     return (
       <section>
         <p role="alert">{gone ? 'That room is no longer here.' : room.error.message}</p>
-        <Link to="/rooms" className={`mt-4 inline-block ${quietButtonClass} px-0`}>
+        <Link to="/rooms" className={buttonVariants({ variant: 'ghost', className: 'mt-4 px-0' })}>
           ← All rooms
         </Link>
       </section>
@@ -85,9 +85,9 @@ export function RoomDetail() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <h1 className="text-2xl font-semibold tracking-tight">{r.name}</h1>
             {canEdit ? (
-              <button type="button" onClick={() => setEditing(true)} className={primaryButtonClass}>
+              <Button type="button" onClick={() => setEditing(true)}>
                 Edit
-              </button>
+              </Button>
             ) : null}
           </div>
 
@@ -125,21 +125,17 @@ export function RoomDetail() {
               {confirmingDelete ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-sm">Remove {r.name} from the house?</span>
-                  <button
+                  <Button
                     type="button"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate({ id: r.id })}
-                    className={dangerButtonClass}
+                    variant="destructive"
                   >
                     Yes, remove it
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingDelete(false)}
-                    className={quietButtonClass}
-                  >
+                  </Button>
+                  <Button type="button" onClick={() => setConfirmingDelete(false)} variant="ghost">
                     Keep it
-                  </button>
+                  </Button>
                   {remove.error ? (
                     <p role="alert" className="w-full text-sm">
                       {remove.error.message}
@@ -147,13 +143,14 @@ export function RoomDetail() {
                   ) : null}
                 </div>
               ) : (
-                <button
+                <Button
                   type="button"
                   onClick={() => setConfirmingDelete(true)}
-                  className={quietButtonClass + ' px-0 text-muted-foreground'}
+                  variant="ghost"
+                  className="px-0 text-muted-foreground"
                 >
                   Remove this room
-                </button>
+                </Button>
               )}
             </div>
           ) : null}

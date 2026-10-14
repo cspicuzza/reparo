@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { primaryButtonClass } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { describeRoom } from '@/lib/rooms';
 import { RoomForm } from './room-form';
+import { Button } from '@/components/ui/button';
 
 export function Rooms() {
   const trpc = useTRPC();
@@ -32,9 +32,9 @@ export function Rooms() {
           </p>
         </div>
         {canEdit && !adding ? (
-          <button type="button" onClick={() => setAdding(true)} className={primaryButtonClass}>
+          <Button type="button" onClick={() => setAdding(true)}>
             Add a room
-          </button>
+          </Button>
         ) : null}
       </div>
 

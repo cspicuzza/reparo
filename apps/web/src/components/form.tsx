@@ -3,13 +3,6 @@ import type { ComponentProps, ReactNode } from 'react';
 /** Shared form styling so every screen's inputs and buttons look like one app. */
 export const inputClass =
   'w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none';
-export const primaryButtonClass =
-  'rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50';
-export const quietButtonClass =
-  'rounded-md px-3 py-2 text-sm text-foreground underline-offset-4 hover:underline disabled:opacity-50';
-export const dangerButtonClass =
-  'rounded-md border border-input px-3 py-2 text-sm text-foreground hover:border-foreground disabled:opacity-50';
-
 type FieldProps = {
   label: string;
   hint?: string;

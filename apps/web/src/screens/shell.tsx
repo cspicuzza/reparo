@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { signOut } from '@/lib/supabase';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
+import { Button } from '@/components/ui/button';
 
 /** Nav entries light up as their milestone lands (M1: Phases, Rooms, Items; Budget is M2). */
 const sections: { name: string; to?: '/phases' | '/rooms' | '/items' }[] = [
@@ -40,13 +41,9 @@ export function Shell() {
                 {me.data.member.role}
               </span>
             ) : null}
-            <button
-              type="button"
-              onClick={() => void onSignOut()}
-              className="rounded-md px-2 py-1 text-foreground underline-offset-4 hover:underline"
-            >
+            <Button type="button" variant="ghost" onClick={() => void onSignOut()}>
               Sign out
-            </button>
+            </Button>
           </div>
         </div>
         <nav aria-label="Sections" className="mx-auto max-w-5xl">
@@ -92,13 +89,9 @@ export function NotAMember({ onSignOut }: { onSignOut: () => Promise<void> }) {
       <p className="mt-4 max-w-prose text-muted-foreground">
         Ask the admin to add it, or sign out and use a different account.
       </p>
-      <button
-        type="button"
-        onClick={() => void onSignOut()}
-        className="mt-10 w-full rounded-md bg-primary px-5 py-3 text-left text-base font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
-      >
+      <Button type="button" onClick={() => void onSignOut()} className="mt-10 w-full sm:w-auto">
         Sign out
-      </button>
+      </Button>
     </main>
   );
 }

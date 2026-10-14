@@ -2,8 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { jobRoomFormSchema, type JobRoomForm, type JobRoomFormInput } from '@reparo/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Field, primaryButtonClass, quietButtonClass, Textarea } from '@/components/form';
+import { Field, Textarea } from '@/components/form';
 import { useTRPC } from '@/lib/trpc';
+import { Button } from '@/components/ui/button';
 
 /**
  * One room's own spec and notes on a job. A blank spec means "same as the job" — the room
@@ -68,12 +69,12 @@ export function JobRoomEditor({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={formState.isSubmitting} className={primaryButtonClass}>
+        <Button type="submit" disabled={formState.isSubmitting}>
           Save
-        </button>
-        <button type="button" onClick={onDone} className={quietButtonClass}>
+        </Button>
+        <Button type="button" onClick={onDone} variant="ghost">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

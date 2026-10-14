@@ -5,9 +5,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Field, Input, inputClass, primaryButtonClass, quietButtonClass } from '@/components/form';
+import { Field, Input, inputClass } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
+import { Button } from '@/components/ui/button';
 
 type Item = RouterOutputs['items']['list'][number];
 type Category = RouterOutputs['categories']['list'][number];
@@ -62,9 +63,9 @@ export function Items() {
           </p>
         </div>
         {isAdmin && !adding ? (
-          <button type="button" onClick={() => setAdding(true)} className={primaryButtonClass}>
+          <Button type="button" onClick={() => setAdding(true)}>
             Add an item
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -133,24 +134,25 @@ export function Items() {
                         </Link>
                         {isAdmin ? (
                           <span className="flex shrink-0 gap-1 text-sm">
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 update.reset();
                                 setEditingId(item.id);
                               }}
-                              className={quietButtonClass}
+                              variant="ghost"
                             >
                               Edit
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               disabled={update.isPending}
                               onClick={() => update.mutate({ id: item.id, retired: true })}
-                              className={quietButtonClass + ' text-muted-foreground'}
+                              variant="ghost"
+                              className="text-muted-foreground"
                             >
                               Retire
-                            </button>
+                            </Button>
                           </span>
                         ) : null}
                       </li>
@@ -172,15 +174,16 @@ export function Items() {
 
       {retired.length > 0 ? (
         <div className="mt-10">
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => setShowRetired((v) => !v)}
             aria-expanded={showRetired}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+            className="px-0 text-muted-foreground"
           >
             {showRetired ? 'Hide' : 'Show'} {retired.length} retired{' '}
             {retired.length === 1 ? 'item' : 'items'}
-          </button>
+          </Button>
           {showRetired ? (
             <ul className="mt-3 divide-y divide-border border-t border-b border-border">
               {retired.map((item) => (
@@ -190,14 +193,14 @@ export function Items() {
                 >
                   <span className="line-through decoration-muted-foreground">{item.name}</span>
                   {isAdmin ? (
-                    <button
+                    <Button
                       type="button"
                       disabled={update.isPending}
                       onClick={() => update.mutate({ id: item.id, retired: false })}
-                      className={quietButtonClass}
+                      variant="ghost"
                     >
                       Restore
-                    </button>
+                    </Button>
                   ) : null}
                 </li>
               ))}
@@ -270,12 +273,12 @@ function ItemForm({
         />
       </Field>
       <div className="flex gap-2">
-        <button type="submit" disabled={formState.isSubmitting} className={primaryButtonClass}>
+        <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className={quietButtonClass}>
+        </Button>
+        <Button type="button" onClick={onCancel} variant="ghost">
           Cancel
-        </button>
+        </Button>
       </div>
       {serverError ? (
         <p role="alert" className="text-sm sm:col-span-4">

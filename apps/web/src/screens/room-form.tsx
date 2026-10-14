@@ -6,9 +6,10 @@ import {
   type RoomCreateInput,
 } from '@reparo/shared';
 import { useForm } from 'react-hook-form';
-import { Field, Input, primaryButtonClass, quietButtonClass, Textarea } from '@/components/form';
+import { Field, Input, Textarea } from '@/components/form';
 
 import type { Room } from '@/lib/rooms';
+import { Button } from '@/components/ui/button';
 
 type Input_ = RoomCreateInput;
 type RoomValues = RoomCreate;
@@ -111,13 +112,13 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={formState.isSubmitting} className={primaryButtonClass}>
+        <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}
-        </button>
+        </Button>
         {onCancel ? (
-          <button type="button" onClick={onCancel} className={quietButtonClass}>
+          <Button type="button" onClick={onCancel} variant="ghost">
             Cancel
-          </button>
+          </Button>
         ) : null}
       </div>
     </form>

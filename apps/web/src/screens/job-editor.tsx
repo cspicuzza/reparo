@@ -2,16 +2,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { jobCreateSchema, type JobCreate, type JobCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm, useWatch } from 'react-hook-form';
-import {
-  Field,
-  Input,
-  inputClass,
-  primaryButtonClass,
-  quietButtonClass,
-  Textarea,
-} from '@/components/form';
+import { Field, Input, inputClass, Textarea } from '@/components/form';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
+import { Button } from '@/components/ui/button';
 
 type Props = {
   idPrefix: string;
@@ -193,7 +187,7 @@ function JobForm({
         ) : (
           <>
             <div className="mt-2 flex gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() =>
                   setValue(
@@ -202,17 +196,17 @@ function JobForm({
                     { shouldDirty: true },
                   )
                 }
-                className={quietButtonClass + ' border border-input'}
+                variant="outline"
               >
                 All rooms
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setValue('roomIds', [], { shouldDirty: true })}
-                className={quietButtonClass + ' border border-input'}
+                variant="outline"
               >
                 None
-              </button>
+              </Button>
             </div>
             <ul className="mt-3 grid gap-x-6 sm:grid-cols-2">
               {rooms.map((r) => (
@@ -247,12 +241,12 @@ function JobForm({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={formState.isSubmitting} className={primaryButtonClass}>
+        <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className={quietButtonClass}>
+        </Button>
+        <Button type="button" onClick={onCancel} variant="ghost">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

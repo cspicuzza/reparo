@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
-import { dangerButtonClass, primaryButtonClass, quietButtonClass } from '@/components/form';
 import { StatusBadge, StatusSelect } from '@/components/status';
 import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { JobRoomEditor } from './job-room-editor';
+import { Button } from '@/components/ui/button';
 
 /**
  * One item across the house: its jobs in every phase, each with the rooms it covers. Jobs are
@@ -64,9 +64,9 @@ export function ItemDetail() {
           {category ? <p className="mt-1 text-sm text-muted-foreground">{category}</p> : null}
         </div>
         {canEdit && !retired && !adding ? (
-          <button type="button" onClick={() => setAdding(true)} className={primaryButtonClass}>
+          <Button type="button" onClick={() => setAdding(true)}>
             New job
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -218,14 +218,15 @@ function JobCard({
                     ) : null}
                   </p>
                   {canEdit ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setEditingRoom(r.id)}
                       aria-label={`Edit spec and notes for ${r.room.name}`}
-                      className={quietButtonClass + ' px-0 sm:px-3'}
+                      variant="ghost"
+                      className="px-0 sm:px-3"
                     >
                       Edit spec &amp; notes
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               )}
@@ -249,34 +250,31 @@ function JobCard({
           {confirmingRemove ? (
             <>
               <span>Remove {job.name}?</span>
-              <button
+              <Button
                 type="button"
                 disabled={remove.isPending}
                 onClick={() => remove.mutate({ id: job.id })}
-                className={dangerButtonClass}
+                variant="destructive"
               >
                 Yes, remove it
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmingRemove(false)}
-                className={quietButtonClass}
-              >
+              </Button>
+              <Button type="button" onClick={() => setConfirmingRemove(false)} variant="ghost">
                 Keep it
-              </button>
+              </Button>
             </>
           ) : (
             <>
-              <button type="button" onClick={() => setEditing(true)} className={quietButtonClass}>
+              <Button type="button" onClick={() => setEditing(true)} variant="ghost">
                 Edit job &amp; rooms
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setConfirmingRemove(true)}
-                className={quietButtonClass + ' text-muted-foreground'}
+                variant="ghost"
+                className="text-muted-foreground"
               >
                 Remove job
-              </button>
+              </Button>
             </>
           )}
         </div>

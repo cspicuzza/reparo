@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { quietButtonClass } from '@/components/form';
 import { StatusBadge, StatusSelect } from '@/components/status';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { SPEC_SOURCE_LABEL, type RoomJob } from '@/lib/work';
 import { JobRoomEditor } from './job-room-editor';
+import { Button } from '@/components/ui/button';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -138,9 +138,9 @@ function JobRow({
           </div>
           {canEdit ? (
             <div className="text-sm sm:text-right">
-              <button type="button" onClick={onEdit} className={quietButtonClass + ' px-0 sm:px-3'}>
+              <Button type="button" onClick={onEdit} variant="ghost" className="px-0 sm:px-3">
                 Edit spec &amp; notes
-              </button>
+              </Button>
             </div>
           ) : null}
         </div>

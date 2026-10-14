@@ -8,17 +8,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  Field,
-  Input,
-  inputClass,
-  primaryButtonClass,
-  quietButtonClass,
-  Textarea,
-} from '@/components/form';
+import { Field, Input, inputClass, Textarea } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, type Phase } from '@/lib/work';
+import { Button } from '@/components/ui/button';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
 export function Phases() {
@@ -56,9 +50,9 @@ export function Phases() {
           </p>
         </div>
         {isAdmin && !adding ? (
-          <button type="button" onClick={() => setAdding(true)} className={primaryButtonClass}>
+          <Button type="button" onClick={() => setAdding(true)}>
             Add a phase
-          </button>
+          </Button>
         ) : null}
       </div>
 
@@ -126,16 +120,16 @@ export function Phases() {
                     ) : null}
                   </div>
                   {isAdmin ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         update.reset();
                         setEditingId(phase.id);
                       }}
-                      className={quietButtonClass}
+                      variant="ghost"
                     >
                       Edit
-                    </button>
+                    </Button>
                   ) : null}
                 </li>
               ),
@@ -216,12 +210,12 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={formState.isSubmitting} className={primaryButtonClass}>
+        <Button type="submit" disabled={formState.isSubmitting}>
           {submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className={quietButtonClass}>
+        </Button>
+        <Button type="button" onClick={onCancel} variant="ghost">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
