@@ -114,6 +114,7 @@ export const itemCreateSchema = z.object({
 });
 export const itemUpdateSchema = z.object(itemFields).partial().extend({ id: idSchema });
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
+export type ItemCreateInput = z.input<typeof itemCreateSchema>;
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 
 // --- work items -----------------------------------------------------------------------------
