@@ -51,7 +51,7 @@ export function Phases() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Phases</h1>
-          <p className="mt-1 max-w-prose text-pencil">
+          <p className="mt-1 max-w-prose text-muted-foreground">
             The renovation in stages. Work and money belong to a phase.
           </p>
         </div>
@@ -63,7 +63,7 @@ export function Phases() {
       </div>
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-chalk p-5">
+        <div className="mt-8 rounded-lg border border-border p-5">
           <h2 className="text-lg font-medium">New phase</h2>
           <div className="mt-4">
             <PhaseForm
@@ -83,12 +83,12 @@ export function Phases() {
       ) : null}
 
       <div className="mt-8">
-        {phases.isPending ? <p className="text-pencil">Loading phases…</p> : null}
+        {phases.isPending ? <p className="text-muted-foreground">Loading phases…</p> : null}
         {phases.error ? (
           <p role="alert">Couldn&apos;t load phases: {phases.error.message}</p>
         ) : null}
         {phases.data ? (
-          <ul className="divide-y divide-chalk border-t border-b border-chalk">
+          <ul className="divide-y divide-border border-t border-b border-border">
             {phases.data.map((phase) =>
               editingId === phase.id ? (
                 <li key={phase.id} className="py-4 sm:px-2">
@@ -113,14 +113,14 @@ export function Phases() {
                 >
                   <div>
                     <span className="text-base font-medium">{phase.name}</span>
-                    <span className="ml-3 text-sm text-pencil">
+                    <span className="ml-3 text-sm text-muted-foreground">
                       {PHASE_STATUS_LABEL[phase.status]}
                       {phase.startsOn || phase.endsOn
                         ? ` · ${phase.startsOn ?? '…'} → ${phase.endsOn ?? '…'}`
                         : ''}
                     </span>
                     {phase.notes ? (
-                      <p className="mt-1 max-w-prose text-sm text-pencil whitespace-pre-wrap">
+                      <p className="mt-1 max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
                         {phase.notes}
                       </p>
                     ) : null}

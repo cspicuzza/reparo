@@ -1,21 +1,28 @@
 import { WORK_STATUSES, type WorkStatusInput } from '@reparo/shared';
 import { WORK_STATUS_LABEL } from '@/lib/work';
 
+/**
+ * Plaster and tape status colours (Linear → Design system → Job status styles). Awaiting review
+ * is the tape yellow: it's the "someone needs to look" state. Icons and the new chip shape come
+ * with the screen restyle; this keeps the current shapes.
+ */
 const tone: Record<WorkStatusInput, string> = {
-  unstarted: 'border-chalk text-pencil',
-  in_progress: 'border-moss text-moss-deep',
-  awaiting_review: 'border-ink text-ink',
-  completed: 'border-moss bg-moss text-paper',
-  cancelled: 'border-chalk text-pencil line-through decoration-chalk',
+  unstarted: 'border-transparent bg-status-idle-tint text-status-idle',
+  in_progress: 'border-transparent bg-status-progress-tint text-status-progress',
+  awaiting_review: 'border-transparent bg-tape text-tape-ink',
+  completed: 'border-transparent bg-status-done-tint text-status-done',
+  cancelled:
+    'border-transparent bg-status-idle-tint text-status-idle line-through decoration-status-idle',
 };
 
-/** The dropdown's own fill: `bg-paper` except Completed, which is solid (no class conflict). */
+/** The dropdown adds the field border so its edge stays visible (≥ 3:1) on any fill. */
 const selectTone: Record<WorkStatusInput, string> = {
-  unstarted: 'border-chalk bg-paper text-pencil',
-  in_progress: 'border-moss bg-paper text-moss-deep',
-  awaiting_review: 'border-ink bg-paper text-ink',
-  completed: 'border-moss bg-moss text-paper',
-  cancelled: 'border-chalk bg-paper text-pencil line-through decoration-chalk',
+  unstarted: 'border-input bg-status-idle-tint text-status-idle',
+  in_progress: 'border-input bg-status-progress-tint text-status-progress',
+  awaiting_review: 'border-input bg-tape text-tape-ink',
+  completed: 'border-input bg-status-done-tint text-status-done',
+  cancelled:
+    'border-input bg-status-idle-tint text-status-idle line-through decoration-status-idle',
 };
 
 /** A small outlined status word. Colour never carries the meaning alone — the word does. */

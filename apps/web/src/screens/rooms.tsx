@@ -27,7 +27,7 @@ export function Rooms() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Rooms</h1>
-          <p className="mt-1 text-pencil">
+          <p className="mt-1 text-muted-foreground">
             {rooms.data ? `${rooms.data.length} in the house` : 'The spaces being worked on.'}
           </p>
         </div>
@@ -39,7 +39,7 @@ export function Rooms() {
       </div>
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-chalk p-5">
+        <div className="mt-8 rounded-lg border border-border p-5">
           <h2 className="text-lg font-medium">New room</h2>
           <div className="mt-4">
             <RoomForm
@@ -59,13 +59,15 @@ export function Rooms() {
       ) : null}
 
       <div className="mt-8">
-        {rooms.isPending ? <p className="text-pencil">Loading rooms…</p> : null}
+        {rooms.isPending ? <p className="text-muted-foreground">Loading rooms…</p> : null}
         {rooms.error ? <p role="alert">Couldn&apos;t load rooms: {rooms.error.message}</p> : null}
         {rooms.data && rooms.data.length === 0 ? (
-          <p className="text-pencil">No rooms yet.{canEdit ? ' Add the first one above.' : ''}</p>
+          <p className="text-muted-foreground">
+            No rooms yet.{canEdit ? ' Add the first one above.' : ''}
+          </p>
         ) : null}
         {rooms.data && rooms.data.length > 0 ? (
-          <ul className="divide-y divide-chalk border-t border-b border-chalk">
+          <ul className="divide-y divide-border border-t border-b border-border">
             {rooms.data.map((room) => {
               const { dims, sqft } = describeRoom(room);
               return (
@@ -73,10 +75,10 @@ export function Rooms() {
                   <Link
                     to="/rooms/$roomId"
                     params={{ roomId: room.id }}
-                    className="flex items-baseline justify-between gap-4 py-3 hover:bg-chalk/30 sm:px-2"
+                    className="flex items-baseline justify-between gap-4 py-3 hover:bg-accent sm:px-2"
                   >
                     <span className="text-base font-medium">{room.name}</span>
-                    <span className="shrink-0 text-right text-sm text-pencil tabular-nums">
+                    <span className="shrink-0 text-right text-sm text-muted-foreground tabular-nums">
                       {dims ?? 'Not measured'}
                       {sqft != null ? (
                         <span className="block sm:inline sm:before:content-['_·_']">

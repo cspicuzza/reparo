@@ -37,7 +37,7 @@ export function RoomDetail() {
     }),
   );
 
-  if (room.isPending) return <p className="text-pencil">Loading…</p>;
+  if (room.isPending) return <p className="text-muted-foreground">Loading…</p>;
   if (room.error) {
     const gone = trpcErrorCode(room.error) === 'NOT_FOUND';
     return (
@@ -54,7 +54,10 @@ export function RoomDetail() {
 
   return (
     <section>
-      <Link to="/rooms" className="text-sm text-pencil underline-offset-4 hover:underline">
+      <Link
+        to="/rooms"
+        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+      >
         ← All rooms
       </Link>
 
@@ -93,7 +96,7 @@ export function RoomDetail() {
             <Measurement label="Width" value={r.widthIn} />
             <Measurement label="Ceiling height" value={r.ceilingHeightIn} />
             <div>
-              <dt className="text-sm text-pencil">Floor area</dt>
+              <dt className="text-sm text-muted-foreground">Floor area</dt>
               <dd className="mt-0.5 text-lg tabular-nums">
                 {sqft != null ? `${sqft} sq ft` : dims ? 'Needs both sides' : '—'}
               </dd>
@@ -102,14 +105,14 @@ export function RoomDetail() {
 
           {r.notes ? (
             <div className="mt-6">
-              <h2 className="text-sm text-pencil">Notes</h2>
+              <h2 className="text-sm text-muted-foreground">Notes</h2>
               <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
             </div>
           ) : null}
 
           <div className="mt-10">
             <h2 className="text-lg font-medium">Jobs in this room</h2>
-            <p className="mt-1 text-sm text-pencil">
+            <p className="mt-1 text-sm text-muted-foreground">
               Each job&apos;s status here, and its spec — the job&apos;s, or one just for this room.
             </p>
             <div className="mt-4">
@@ -118,7 +121,7 @@ export function RoomDetail() {
           </div>
 
           {canEdit ? (
-            <div className="mt-12 border-t border-chalk pt-6">
+            <div className="mt-12 border-t border-border pt-6">
               {confirmingDelete ? (
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-sm">Remove {r.name} from the house?</span>
@@ -147,7 +150,7 @@ export function RoomDetail() {
                 <button
                   type="button"
                   onClick={() => setConfirmingDelete(true)}
-                  className={quietButtonClass + ' px-0 text-pencil'}
+                  className={quietButtonClass + ' px-0 text-muted-foreground'}
                 >
                   Remove this room
                 </button>
@@ -163,7 +166,7 @@ export function RoomDetail() {
 function Measurement({ label, value }: { label: string; value: number | null }) {
   return (
     <div>
-      <dt className="text-sm text-pencil">{label}</dt>
+      <dt className="text-sm text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-lg tabular-nums">{value == null ? '—' : formatLength(value)}</dd>
     </div>
   );

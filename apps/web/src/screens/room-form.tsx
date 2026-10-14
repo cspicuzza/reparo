@@ -82,7 +82,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
           />
         </Field>
       </div>
-      <p className="-mt-3 text-sm text-pencil">{lengthHint}</p>
+      <p className="-mt-3 text-sm text-muted-foreground">{lengthHint}</p>
 
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
         <Textarea id={id('notes')} rows={3} {...register('notes')} />
@@ -105,7 +105,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
       </Field>
 
       {serverError ? (
-        <p id={id('server-error')} role="alert" className="text-sm text-ink">
+        <p id={id('server-error')} role="alert" className="text-sm text-foreground">
           {serverError}
         </p>
       ) : null}

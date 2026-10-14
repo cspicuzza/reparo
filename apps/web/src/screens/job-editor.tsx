@@ -39,7 +39,7 @@ export function JobEditor({ idPrefix, item, job, onDone }: Props) {
   const removeRoom = useMutation(trpc.jobRooms.remove.mutationOptions());
   const error = create.error ?? update.error ?? addRoom.error ?? removeRoom.error;
 
-  if (phases.isPending || rooms.isPending) return <p className="text-pencil">Loading…</p>;
+  if (phases.isPending || rooms.isPending) return <p className="text-muted-foreground">Loading…</p>;
   if (phases.error || rooms.error) {
     return <p role="alert">Couldn&apos;t load: {(phases.error ?? rooms.error)?.message}</p>;
   }
@@ -187,7 +187,7 @@ function JobForm({
       <fieldset>
         <legend className="text-sm font-medium">Rooms this job covers</legend>
         {rooms.length === 0 ? (
-          <p className="mt-1 text-sm text-pencil">
+          <p className="mt-1 text-sm text-muted-foreground">
             No rooms yet. A job with no rooms (a fee, say) has its own status.
           </p>
         ) : (
@@ -202,14 +202,14 @@ function JobForm({
                     { shouldDirty: true },
                   )
                 }
-                className={quietButtonClass + ' border border-chalk'}
+                className={quietButtonClass + ' border border-input'}
               >
                 All rooms
               </button>
               <button
                 type="button"
                 onClick={() => setValue('roomIds', [], { shouldDirty: true })}
-                className={quietButtonClass + ' border border-chalk'}
+                className={quietButtonClass + ' border border-input'}
               >
                 None
               </button>
@@ -222,14 +222,14 @@ function JobForm({
                       type="checkbox"
                       checked={picked.has(r.id)}
                       onChange={(e) => toggle(r.id, e.target.checked)}
-                      className="size-5 accent-moss"
+                      className="size-5 accent-primary"
                     />
                     {r.name}
                   </label>
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-sm text-pencil">
+            <p className="mt-1 text-sm text-muted-foreground">
               Taking a room off removes its status and spec for this job.
             </p>
           </>

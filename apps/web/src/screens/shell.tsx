@@ -34,7 +34,7 @@ export function Shell() {
           </Link>
           <div className="flex items-center gap-4 text-sm">
             {me.data ? (
-              <span className="text-pencil">
+              <span className="text-muted-foreground">
                 {me.data.member.displayName}
                 <span aria-hidden="true"> · </span>
                 {me.data.member.role}
@@ -43,7 +43,7 @@ export function Shell() {
             <button
               type="button"
               onClick={() => void onSignOut()}
-              className="rounded-md px-2 py-1 text-ink underline-offset-4 hover:underline"
+              className="rounded-md px-2 py-1 text-foreground underline-offset-4 hover:underline"
             >
               Sign out
             </button>
@@ -56,14 +56,14 @@ export function Shell() {
                 {to ? (
                   <Link
                     to={to}
-                    className="text-ink underline-offset-4 hover:underline"
-                    activeProps={{ className: 'font-semibold text-ink' }}
+                    className="text-foreground underline-offset-4 hover:underline"
+                    activeProps={{ className: 'font-semibold text-foreground' }}
                   >
                     {name}
                   </Link>
                 ) : (
                   <span
-                    className="text-pencil"
+                    className="text-muted-foreground"
                     title="Coming with its milestone"
                     aria-disabled="true"
                   >
@@ -74,7 +74,7 @@ export function Shell() {
             ))}
           </ul>
         </nav>
-        <div className="h-px w-full bg-chalk" aria-hidden="true" />
+        <div className="h-px w-full bg-border" aria-hidden="true" />
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <Outlet />
@@ -89,13 +89,13 @@ export function NotAMember({ onSignOut }: { onSignOut: () => Promise<void> }) {
       <h1 className="text-3xl font-semibold tracking-tight">
         This Google account isn&apos;t on the household list.
       </h1>
-      <p className="mt-4 max-w-prose text-pencil">
+      <p className="mt-4 max-w-prose text-muted-foreground">
         Ask the admin to add it, or sign out and use a different account.
       </p>
       <button
         type="button"
         onClick={() => void onSignOut()}
-        className="mt-10 w-full rounded-md bg-moss px-5 py-3 text-left text-base font-medium text-paper hover:bg-moss-deep sm:w-auto"
+        className="mt-10 w-full rounded-md bg-primary px-5 py-3 text-left text-base font-medium text-primary-foreground hover:bg-primary/90 sm:w-auto"
       >
         Sign out
       </button>

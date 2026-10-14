@@ -2,13 +2,13 @@ import type { ComponentProps, ReactNode } from 'react';
 
 /** Shared form styling so every screen's inputs and buttons look like one app. */
 export const inputClass =
-  'w-full rounded-md border border-chalk bg-paper px-3 py-2 text-base text-ink placeholder:text-pencil/70 focus:border-moss focus:outline-none';
+  'w-full rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none';
 export const primaryButtonClass =
-  'rounded-md bg-moss px-4 py-2 text-sm font-medium text-paper transition-colors hover:bg-moss-deep disabled:opacity-50';
+  'rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50';
 export const quietButtonClass =
-  'rounded-md px-3 py-2 text-sm text-ink underline-offset-4 hover:underline disabled:opacity-50';
+  'rounded-md px-3 py-2 text-sm text-foreground underline-offset-4 hover:underline disabled:opacity-50';
 export const dangerButtonClass =
-  'rounded-md border border-chalk px-3 py-2 text-sm text-ink hover:border-ink disabled:opacity-50';
+  'rounded-md border border-input px-3 py-2 text-sm text-foreground hover:border-foreground disabled:opacity-50';
 
 type FieldProps = {
   label: string;
@@ -27,11 +27,11 @@ export function Field({ label, hint, error, children, htmlFor }: FieldProps) {
       </label>
       <div className="mt-1">{children}</div>
       {error ? (
-        <p role="alert" className="mt-1 text-sm text-ink">
+        <p role="alert" className="mt-1 text-sm text-foreground">
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1 text-sm text-pencil">{hint}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
       ) : null}
     </div>
   );

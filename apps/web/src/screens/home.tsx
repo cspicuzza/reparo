@@ -5,7 +5,7 @@ export function Home() {
   const trpc = useTRPC();
   const me = useQuery(trpc.health.ping.queryOptions());
 
-  if (me.isPending) return <p className="text-pencil">Checking who you are…</p>;
+  if (me.isPending) return <p className="text-muted-foreground">Checking who you are…</p>;
   if (me.error) {
     return (
       <p role="alert">
@@ -18,7 +18,7 @@ export function Home() {
       <h1 className="text-2xl font-semibold tracking-tight">
         Signed in as {me.data.member.displayName}
       </h1>
-      <p className="mt-2 text-pencil">
+      <p className="mt-2 text-muted-foreground">
         Role: {me.data.member.role}. Start with Rooms, then add jobs from each Item&apos;s page.
       </p>
     </section>

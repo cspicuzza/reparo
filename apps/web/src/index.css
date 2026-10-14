@@ -125,14 +125,6 @@
   --color-status-done: var(--status-done);
   --color-status-done-tint: var(--status-done-tint);
 
-  /* Old names, kept only until the rename commit replaces them; then deleted. */
-  --color-paper: var(--background);
-  --color-ink: var(--foreground);
-  --color-pencil: var(--muted-foreground);
-  --color-chalk: var(--border);
-  --color-moss: var(--status-done);
-  --color-moss-deep: var(--status-done);
-
   /* Corners: 6px on controls (sm–lg), 10px on panels (xl). */
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);

@@ -57,7 +57,7 @@ export function Items() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Items</h1>
-          <p className="mt-1 max-w-prose text-pencil">
+          <p className="mt-1 max-w-prose text-muted-foreground">
             The kinds of work and purchases, by category. Open one to see and add its jobs.
           </p>
         </div>
@@ -69,7 +69,7 @@ export function Items() {
       </div>
 
       {adding ? (
-        <div className="mt-8 rounded-lg border border-chalk p-5">
+        <div className="mt-8 rounded-lg border border-border p-5">
           <h2 className="text-lg font-medium">New item</h2>
           <div className="mt-4">
             <ItemForm
@@ -90,15 +90,15 @@ export function Items() {
       ) : null}
 
       <div className="mt-8">
-        {items.isPending ? <p className="text-pencil">Loading items…</p> : null}
+        {items.isPending ? <p className="text-muted-foreground">Loading items…</p> : null}
         {items.error ? <p role="alert">Couldn&apos;t load items: {items.error.message}</p> : null}
         {items.data && categories.data
           ? groups.map(({ category, items: inCategory }) => (
               <div key={category.id} className="mt-8 first:mt-0">
-                <h2 className="text-sm font-medium tracking-wide text-pencil uppercase">
+                <h2 className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
                   {category.name}
                 </h2>
-                <ul className="mt-2 divide-y divide-chalk border-t border-b border-chalk">
+                <ul className="mt-2 divide-y divide-border border-t border-b border-border">
                   {inCategory.map((item) =>
                     editingId === item.id ? (
                       <li key={item.id} className="py-4 sm:px-2">
@@ -147,7 +147,7 @@ export function Items() {
                               type="button"
                               disabled={update.isPending}
                               onClick={() => update.mutate({ id: item.id, retired: true })}
-                              className={quietButtonClass + ' text-pencil'}
+                              className={quietButtonClass + ' text-muted-foreground'}
                             >
                               Retire
                             </button>
@@ -176,19 +176,19 @@ export function Items() {
             type="button"
             onClick={() => setShowRetired((v) => !v)}
             aria-expanded={showRetired}
-            className="text-sm text-pencil underline-offset-4 hover:underline"
+            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
           >
             {showRetired ? 'Hide' : 'Show'} {retired.length} retired{' '}
             {retired.length === 1 ? 'item' : 'items'}
           </button>
           {showRetired ? (
-            <ul className="mt-3 divide-y divide-chalk border-t border-b border-chalk">
+            <ul className="mt-3 divide-y divide-border border-t border-b border-border">
               {retired.map((item) => (
                 <li
                   key={item.id}
-                  className="flex items-baseline justify-between gap-4 py-3 text-pencil sm:px-2"
+                  className="flex items-baseline justify-between gap-4 py-3 text-muted-foreground sm:px-2"
                 >
-                  <span className="line-through decoration-chalk">{item.name}</span>
+                  <span className="line-through decoration-muted-foreground">{item.name}</span>
                   {isAdmin ? (
                     <button
                       type="button"

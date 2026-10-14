@@ -24,14 +24,14 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
     }),
   );
 
-  if (jobs.isPending) return <p className="text-pencil">Loading jobs…</p>;
+  if (jobs.isPending) return <p className="text-muted-foreground">Loading jobs…</p>;
   if (jobs.error) return <p role="alert">Couldn&apos;t load jobs: {jobs.error.message}</p>;
 
   if (jobs.data.length === 0) {
     return (
-      <p className="text-pencil">
+      <p className="text-muted-foreground">
         No jobs cover this room yet. Jobs are set up on an item&apos;s page —{' '}
-        <Link to="/items" className="text-ink underline underline-offset-4">
+        <Link to="/items" className="text-foreground underline underline-offset-4">
           pick an item
         </Link>{' '}
         (Paint, Flooring…) and add a job that includes {roomName}.
@@ -41,7 +41,7 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
 
   return (
     <div>
-      <ul className="divide-y divide-chalk border-t border-b border-chalk">
+      <ul className="divide-y divide-border border-t border-b border-border">
         {jobs.data.map((j) => (
           <li key={j.id} className="py-4 sm:px-2">
             <JobRow
@@ -96,7 +96,7 @@ function JobRow({
           >
             {j.job.name}
           </Link>
-          <span className="ml-2 text-xs text-pencil">{j.phase.name}</span>
+          <span className="ml-2 text-xs text-muted-foreground">{j.phase.name}</span>
         </div>
         {canEdit ? (
           <StatusSelect
@@ -112,7 +112,7 @@ function JobRow({
       </div>
 
       {editing ? (
-        <div className="mt-3 rounded-lg border border-chalk p-4">
+        <div className="mt-3 rounded-lg border border-border p-4">
           <JobRoomEditor
             idPrefix={`jr-${j.id}`}
             jobRoom={j}
@@ -124,14 +124,16 @@ function JobRow({
       ) : (
         <div className="mt-2 grid gap-1 sm:grid-cols-[1fr_auto] sm:gap-6">
           <div className="min-w-0">
-            <p className="text-xs text-pencil">{SPEC_SOURCE_LABEL[j.specSource]}</p>
+            <p className="text-xs text-muted-foreground">{SPEC_SOURCE_LABEL[j.specSource]}</p>
             {j.resolvedSpec ? (
               <p className="mt-0.5 max-w-prose text-sm whitespace-pre-wrap">{j.resolvedSpec}</p>
             ) : (
-              <p className="mt-0.5 text-sm text-pencil">No spec yet.</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">No spec yet.</p>
             )}
             {j.notes ? (
-              <p className="mt-1 max-w-prose text-sm text-pencil whitespace-pre-wrap">{j.notes}</p>
+              <p className="mt-1 max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
+                {j.notes}
+              </p>
             ) : null}
           </div>
           {canEdit ? (
