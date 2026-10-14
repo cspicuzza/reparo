@@ -48,7 +48,7 @@ export async function updatePhase(db: Db, { id, ...patch }: PhaseUpdate) {
   }
 }
 
-/** Soft-delete. Work items in the phase keep their phase_id; they're hidden with it. */
+/** Soft-delete. Jobs in the phase keep their phase_id; they're hidden with it. */
 export async function removePhase(db: Db, id: string) {
   await getPhase(db, id);
   await db.update(phases).set({ deletedAt: new Date() }).where(eq(phases.id, id));

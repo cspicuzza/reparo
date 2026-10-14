@@ -5,7 +5,7 @@ import { id, timestamps } from './columns';
 /**
  * The managed catalog of kinds of work or purchase (Paint, Flooring, Ceiling Fans…).
  * Admin-managed (ADR-008). Items are never deleted: `retired_at` hides them from new work
- * while existing work items keep pointing at them. The starter list is seeded in the M1
+ * while existing jobs keep pointing at them. The starter list is seeded in the M1
  * migration. Every item belongs to a category (Model fix); the API files an item created
  * without one under Misc.
  */

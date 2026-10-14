@@ -6,7 +6,6 @@ import { itemsRouter } from './items';
 import { jobRoomsRouter, jobsRouter } from './jobs';
 import { phasesRouter } from './phases';
 import { roomsRouter } from './rooms';
-import { workItemsRouter } from './work-items';
 
 export const appRouter = router({
   health: healthRouter,
@@ -16,8 +15,6 @@ export const appRouter = router({
   items: itemsRouter,
   jobs: jobsRouter,
   jobRooms: jobRoomsRouter,
-  /** Replaced by jobs; removed in OD-35 with the work_items table. */
-  workItems: workItemsRouter,
 });
 
 export type AppRouter = typeof appRouter;

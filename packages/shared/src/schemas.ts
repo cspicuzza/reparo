@@ -1,5 +1,5 @@
 // Input schemas shared by the API (tRPC inputs) and the web forms (zodResolver), so both
-// validate the same way (docs/conventions.md → API, Forms). Output types are what the API
+// validate the same way. Output types are what the API
 // stores: inches as numbers, dates as ISO strings, names trimmed.
 
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { parseLength, snapInches } from './length';
 export const PHASE_STATUSES = ['planned', 'active', 'complete'] as const;
 export type PhaseStatusInput = (typeof PHASE_STATUSES)[number];
 
-/** ADR-013: `awaiting_review` = the work is done and someone still has to verify it's good. */
+/** `awaiting_review` = the work is done and someone still has to verify it's good. */
 export const WORK_STATUSES = [
   'unstarted',
   'in_progress',
@@ -120,41 +120,6 @@ export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export type ItemCreateInput = z.input<typeof itemCreateSchema>;
 export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
 
-// --- work items -----------------------------------------------------------------------------
-
-const workItemFields = {
-  phaseId: idSchema,
-  status: z.enum(WORK_STATUSES),
-  /** Markdown. */
-  spec: notesSchema,
-  notes: notesSchema,
-  sortOrder: sortOrderSchema,
-};
-
-/** `roomId` null = the item's house-wide default (ADR-009). Item and room are fixed after creation. */
-export const workItemCreateSchema = z.object({
-  itemId: idSchema,
-  roomId: idSchema.nullable().default(null),
-  ...workItemFields,
-  status: workItemFields.status.default('unstarted'),
-  spec: workItemFields.spec.default(''),
-  notes: workItemFields.notes.default(''),
-  sortOrder: workItemFields.sortOrder.default(0),
-});
-export const workItemUpdateSchema = z.object(workItemFields).partial().extend({ id: idSchema });
-export type WorkItemCreate = z.infer<typeof workItemCreateSchema>;
-export type WorkItemUpdate = z.infer<typeof workItemUpdateSchema>;
-
-/** The editable part of a work item — what the editor form holds; item and room are fixed. */
-export const workItemFormSchema = z.object({
-  phaseId: workItemFields.phaseId,
-  status: workItemFields.status,
-  spec: workItemFields.spec,
-  notes: workItemFields.notes,
-});
-export type WorkItemForm = z.infer<typeof workItemFormSchema>;
-export type WorkItemFormInput = z.input<typeof workItemFormSchema>;
-
 // --- jobs (Model fix) ------------------------------------------------------------------------
 
 /** Mirrors `file_kind` / `file_owner_type` in `@reparo/db`. Uploads arrive in M3. */
@@ -236,14 +201,10 @@ export const jobRoomUpdateSchema = z.object(jobRoomFields).partial().extend({ id
 export type JobRoomCreate = z.infer<typeof jobRoomCreateSchema>;
 export type JobRoomUpdate = z.infer<typeof jobRoomUpdateSchema>;
 
+/** The room spec & notes form: what `jobRooms.update` takes besides the id. */
+export const jobRoomFormSchema = jobRoomUpdateSchema.pick({ spec: true, notes: true });
+export type JobRoomForm = z.infer<typeof jobRoomFormSchema>;
+export type JobRoomFormInput = z.input<typeof jobRoomFormSchema>;
+
 /** Phase form: the create schema's input shape, reused for edits. */
 export type PhaseCreateInput = z.input<typeof phaseCreateSchema>;
-
-export const workItemListSchema = z
-  .object({
-    phaseId: idSchema,
-    roomId: idSchema.nullable(),
-    itemId: idSchema,
-  })
-  .partial();
-export type WorkItemList = z.infer<typeof workItemListSchema>;

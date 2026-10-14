@@ -317,7 +317,7 @@ describe('@reparo/api', () => {
 
       const [phase] = rows(await query(h, 'viewer', 'phases.list'));
       if (!phase) throw new Error('seed missing');
-      const blocked = await mutate(h, 'editor', 'workItems.create', {
+      const blocked = await mutate(h, 'editor', 'jobs.create', {
         itemId: stucco.id,
         phaseId: phase.id,
       });
@@ -326,117 +326,6 @@ describe('@reparo/api', () => {
 
       const restored = await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: false });
       expect(row(restored).retiredAt).toBeNull();
-    }));
-
-  it('work items: one default and one override per item; forRoom resolves room → default → none', () =>
-    withSeeded(async (_tx, h) => {
-      const [phase] = rows(await query(h, 'viewer', 'phases.list'));
-      const catalog = rows(await query(h, 'viewer', 'items.list'));
-      const paint = catalog.find((i) => i.name === 'Paint');
-      const flooring = catalog.find((i) => i.name === 'Flooring');
-      const trim = catalog.find((i) => i.name === 'Trim');
-      if (!phase || !paint || !flooring || !trim) throw new Error('seed missing');
-      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
-      const bath = row(await mutate(h, 'editor', 'rooms.create', { name: 'Powder/Pool Bath' }));
-
-      // House-wide defaults for paint and flooring; kitchen overrides paint.
-      const paintDefault = row(
-        await mutate(h, 'editor', 'workItems.create', {
-          itemId: paint.id,
-          phaseId: phase.id,
-          spec: 'SW Alabaster, eggshell',
-        }),
-      );
-      expect([paintDefault.roomId, paintDefault.status]).toEqual([null, 'unstarted']);
-      const dupDefault = await mutate(h, 'editor', 'workItems.create', {
-        itemId: paint.id,
-        phaseId: phase.id,
-      });
-      expect([dupDefault.status, dupDefault.code]).toEqual([409, 'CONFLICT']);
-      expect(dupDefault.message).toMatch(/house-wide default/);
-
-      await mutate(h, 'editor', 'workItems.create', { itemId: flooring.id, phaseId: phase.id });
-      const kitchenPaint = row(
-        await mutate(h, 'editor', 'workItems.create', {
-          itemId: paint.id,
-          roomId: kitchen.id,
-          phaseId: phase.id,
-          spec: 'SW Sea Salt, satin',
-          status: 'in_progress',
-        }),
-      );
-      const dupOverride = await mutate(h, 'editor', 'workItems.create', {
-        itemId: paint.id,
-        roomId: kitchen.id,
-        phaseId: phase.id,
-      });
-      expect(dupOverride.code).toBe('CONFLICT');
-      expect(dupOverride.message).toMatch(/already has work in this room/);
-
-      // Unknown room / phase → NOT_FOUND, not a 500.
-      const ghost = '99999999-9999-4999-8999-999999999999';
-      expect(
-        (
-          await mutate(h, 'editor', 'workItems.create', {
-            itemId: paint.id,
-            roomId: ghost,
-            phaseId: phase.id,
-          })
-        ).code,
-      ).toBe('NOT_FOUND');
-
-      // Filters.
-      expect(rows(await query(h, 'viewer', 'workItems.list', { roomId: null })).length).toBe(2);
-      expect(rows(await query(h, 'viewer', 'workItems.list', { roomId: kitchen.id })).length).toBe(
-        1,
-      );
-      expect(rows(await query(h, 'viewer', 'workItems.list', { itemId: paint.id })).length).toBe(2);
-      expect(rows(await query(h, 'viewer', 'workItems.list')).length).toBe(3);
-
-      // Resolution for the kitchen: paint from the room, flooring from the default, trim nothing.
-      type Resolved = {
-        item: Row;
-        work: Row | null;
-        source: string | null;
-        houseDefault: Row | null;
-      };
-      const byName = (r: Rpc): Record<string, Resolved | undefined> =>
-        Object.fromEntries((r.data as Resolved[]).map((x) => [x.item.name ?? '', x]));
-      const k = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: kitchen.id }));
-      expect([k['Paint']?.source, k['Paint']?.work?.spec, k['Paint']?.houseDefault?.id]).toEqual([
-        'room',
-        'SW Sea Salt, satin',
-        paintDefault.id,
-      ]);
-      expect([k['Flooring']?.source, k['Flooring']?.work?.roomId]).toEqual(['default', null]);
-      expect([k['Trim']?.source, k['Trim']?.work]).toEqual([null, null]);
-
-      // The bath has no override, so paint resolves to the house-wide default there.
-      const b = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: bath.id }));
-      expect([b['Paint']?.source, b['Paint']?.work?.id]).toEqual(['default', paintDefault.id]);
-
-      // Status update, then removing the override falls the kitchen back to the default.
-      const reviewed = await mutate(h, 'editor', 'workItems.update', {
-        id: kitchenPaint.id,
-        status: 'awaiting_review',
-      });
-      expect(row(reviewed).status).toBe('awaiting_review');
-      expect(
-        (await mutate(h, 'viewer', 'workItems.update', { id: kitchenPaint.id, notes: 'x' })).status,
-      ).toBe(403);
-      await mutate(h, 'editor', 'workItems.remove', { id: kitchenPaint.id });
-      const k2 = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: kitchen.id }));
-      expect(k2['Paint']?.source).toBe('default');
-      // …and the slot is free to override again.
-      expect(
-        (
-          await mutate(h, 'editor', 'workItems.create', {
-            itemId: paint.id,
-            roomId: kitchen.id,
-            phaseId: phase.id,
-          })
-        ).status,
-      ).toBe(200);
     }));
 
   // --- Model fix (OD-34) ------------------------------------------------------------------------

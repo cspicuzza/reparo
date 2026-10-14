@@ -108,12 +108,12 @@ export function RoomDetail() {
           ) : null}
 
           <div className="mt-10">
-            <h2 className="text-lg font-medium">Work</h2>
+            <h2 className="text-lg font-medium">Jobs in this room</h2>
             <p className="mt-1 text-sm text-pencil">
-              What each item means in this room — its own spec, or the house-wide one.
+              Each job&apos;s status here, and its spec — the job&apos;s, or one just for this room.
             </p>
             <div className="mt-4">
-              <RoomWork roomId={r.id} />
+              <RoomWork roomId={r.id} roomName={r.name} />
             </div>
           </div>
 

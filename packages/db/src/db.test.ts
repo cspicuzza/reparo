@@ -15,7 +15,6 @@ import {
   members,
   phases,
   rooms,
-  workItems,
   workStatus,
 } from './schema';
 import { prepareTestDatabase } from './testing';
@@ -71,7 +70,7 @@ describe('@reparo/db', () => {
   it('has both migrations applied', async () => {
     const rows = await client<{ n: number }[]>`
       SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
-    expect(rows[0]?.n).toBeGreaterThanOrEqual(5);
+    expect(rows[0]?.n).toBeGreaterThanOrEqual(8);
   });
 
   it('test databases: refuses a non-local host before touching it', async () => {
@@ -239,69 +238,12 @@ describe('@reparo/db', () => {
       if (!phase || !paint) throw new Error('seed missing');
       await expectDbError(
         tx.execute(
-          `INSERT INTO work_items (item_id, phase_id, status) VALUES ('${paint.id}','${phase.id}','done')`,
+          `INSERT INTO jobs (item_id, phase_id, name, status) VALUES ('${paint.id}','${phase.id}','x','done')`,
         ),
         /invalid input value for enum work_status/,
       );
     });
   });
-
-  it('allows one live house-wide default and one live override per item and room', () =>
-    withRollback(db, async (tx) => {
-      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
-      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
-      const [kitchen] = await tx.insert(rooms).values({ name: 'Kitchen' }).returning();
-      if (!phase || !paint || !kitchen) throw new Error('setup failed');
-      const base = { itemId: paint.id, phaseId: phase.id };
-
-      // House-wide default (room NULL): only one live row per item.
-      await tx.insert(workItems).values({ ...base, spec: 'Eggshell, SW Alabaster' });
-      await expectDbErrorIn(tx, /work_items_item_default_live_uidx/, (sp) =>
-        sp.insert(workItems).values({ ...base }),
-      );
-
-      // Room override: only one live row per (item, room).
-      const [override] = await tx
-        .insert(workItems)
-        .values({ ...base, roomId: kitchen.id, spec: 'Satin, SW Sea Salt' })
-        .returning();
-      if (!override) throw new Error('insert failed');
-      await expectDbErrorIn(tx, /work_items_item_room_live_uidx/, (sp) =>
-        sp.insert(workItems).values({ ...base, roomId: kitchen.id }),
-      );
-
-      // Soft-deleting the override frees the slot; the default is untouched.
-      await tx
-        .update(workItems)
-        .set({ deletedAt: new Date() })
-        .where(eq(workItems.id, override.id));
-      const [again] = await tx
-        .insert(workItems)
-        .values({ ...base, roomId: kitchen.id })
-        .returning();
-      expect(again?.status).toBe('unstarted');
-      expect(again?.deletedAt).toBeNull();
-
-      // A different item in the same room is fine.
-      const [floors] = await tx.select().from(items).where(eq(items.name, 'Flooring'));
-      if (!floors) throw new Error('seed missing');
-      await tx
-        .insert(workItems)
-        .values({ itemId: floors.id, phaseId: phase.id, roomId: kitchen.id });
-    }));
-
-  it('work items need a real phase, item, and room', () =>
-    withRollback(db, async (tx) => {
-      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
-      if (!paint) throw new Error('seed missing');
-      await expectDbError(
-        tx.insert(workItems).values({
-          itemId: paint.id,
-          phaseId: '00000000-0000-0000-0000-000000000000',
-        }),
-        /work_items_phase_id_phases_id_fk/,
-      );
-    }));
 
   it('stores room measurements as numeric(10,4) and reads them back as numbers', () =>
     withRollback(db, async (tx) => {
@@ -451,7 +393,6 @@ describe('@reparo/db', () => {
       ['members', true],
       ['phases', true],
       ['rooms', true],
-      ['work_items', true],
     ]);
     const policies = await client<{ n: number }[]>`
       SELECT count(*)::int AS n FROM pg_policies WHERE schemaname = 'public'`;

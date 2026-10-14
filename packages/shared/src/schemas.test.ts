@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  itemCreateSchema,
   itemUpdateSchema,
   jobCreateSchema,
   jobRoomCreateSchema,
@@ -10,8 +11,6 @@ import {
   phaseUpdateSchema,
   roomCreateSchema,
   roomUpdateSchema,
-  workItemCreateSchema,
-  workItemListSchema,
 } from './schemas';
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -83,27 +82,15 @@ describe('rooms', () => {
   });
 });
 
-describe('items and work items', () => {
-  it('item update accepts rename, reorder, retire', () => {
+describe('items', () => {
+  it('item update accepts rename, reorder, retire, recategorize', () => {
     expect(itemUpdateSchema.parse({ id: ID, retired: true })).toEqual({ id: ID, retired: true });
+    expect(itemUpdateSchema.parse({ id: ID, categoryId: ID })).toEqual({ id: ID, categoryId: ID });
   });
 
-  it('work item create defaults to a house-wide, unstarted row', () => {
-    expect(workItemCreateSchema.parse({ itemId: ID, phaseId: ID })).toEqual({
-      itemId: ID,
-      roomId: null,
-      phaseId: ID,
-      status: 'unstarted',
-      spec: '',
-      notes: '',
-      sortOrder: 0,
-    });
-    expect(workItemCreateSchema.safeParse({ itemId: 'nope', phaseId: ID }).success).toBe(false);
-  });
-
-  it('list filters are all optional; roomId null means house-wide only', () => {
-    expect(workItemListSchema.parse({})).toEqual({});
-    expect(workItemListSchema.parse({ roomId: null })).toEqual({ roomId: null });
+  it('item create: category is optional (the API files it under Misc)', () => {
+    expect(itemCreateSchema.parse({ name: 'Roofing' })).toEqual({ name: 'Roofing', sortOrder: 0 });
+    expect(itemCreateSchema.safeParse({ name: 'Roofing', categoryId: 'nope' }).success).toBe(false);
   });
 });
 

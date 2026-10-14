@@ -19,7 +19,7 @@ export function Home() {
         Signed in as {me.data.member.displayName}
       </h1>
       <p className="mt-2 text-pencil">
-        Role: {me.data.member.role}. Start with Rooms, then give each Item a spec.
+        Role: {me.data.member.role}. Start with Rooms, then add jobs from each Item&apos;s page.
       </p>
     </section>
   );

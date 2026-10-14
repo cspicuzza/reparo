@@ -50,6 +50,13 @@
       "when": 1791999899428,
       "tag": "0006_items_category_required",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792006590293,
+      "tag": "0007_drop_work_items",
+      "breakpoints": true
     }
   ]
 }

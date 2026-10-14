@@ -48,7 +48,7 @@ export async function updateRoom(db: Db, { id, ...patch }: RoomUpdate) {
   }
 }
 
-/** Soft-delete. The room's work items stay (hidden with it) so a restore is possible. */
+/** Soft-delete. The jobs covering the room keep their rows; the room is hidden from them. */
 export async function removeRoom(db: Db, id: string) {
   await getRoom(db, id);
   await db.update(rooms).set({ deletedAt: new Date() }).where(eq(rooms.id, id));

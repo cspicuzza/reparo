@@ -6,5 +6,4 @@ export * from './rooms';
 export * from './categories';
 export * from './items';
 export * from './work-status';
-export * from './work-items';
 export * from './jobs';

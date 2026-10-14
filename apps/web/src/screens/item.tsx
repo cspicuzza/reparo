@@ -2,38 +2,28 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 import { dangerButtonClass, primaryButtonClass, quietButtonClass } from '@/components/form';
-import { StatusBadge } from '@/components/status';
+import { StatusBadge, StatusSelect } from '@/components/status';
 import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
-import type { WorkItem } from '@/lib/work';
-import { WorkItemEditor } from './work-item-editor';
+import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
+import { JobEditor } from './job-editor';
+import { JobRoomEditor } from './job-room-editor';
 
-type Open = { key: string; mode: 'edit' | 'create' } | null;
-
-/** One item across the house: its house-wide default, then every room's override or inheritance. */
+/**
+ * One item across the house: its jobs in every phase, each with the rooms it covers. Jobs are
+ * created and edited here (Chris, 2026-10-14); a room's status saves the moment it's picked.
+ */
 export function ItemDetail() {
   const { itemId } = useParams({ from: '/_app/items/$itemId' });
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { canEdit } = useMe();
   const item = useQuery(trpc.items.get.queryOptions({ id: itemId }));
-  const rooms = useQuery(trpc.rooms.list.queryOptions());
-  const work = useQuery(trpc.workItems.list.queryOptions({ itemId }));
-  const [open, setOpen] = useState<Open>(null);
-  const [removing, setRemoving] = useState<string | null>(null);
-  const remove = useMutation(
-    trpc.workItems.remove.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.workItems.pathFilter());
-        setRemoving(null);
-      },
-    }),
-  );
+  const categories = useQuery(trpc.categories.list.queryOptions());
+  const jobs = useQuery(trpc.jobs.list.queryOptions({ itemId }));
+  const [adding, setAdding] = useState(false);
 
-  if (item.isPending || rooms.isPending || work.isPending) {
-    return <p className="text-pencil">Loading…</p>;
-  }
-  const err = item.error ?? rooms.error ?? work.error;
+  if (item.isPending || jobs.isPending) return <p className="text-pencil">Loading…</p>;
+  const err = item.error ?? jobs.error;
   if (err) {
     return (
       <section>
@@ -47,210 +37,233 @@ export function ItemDetail() {
     );
   }
 
-  const itemRow = item.data;
-  const roomRows = rooms.data;
-  const workRows = work.data;
-  if (!itemRow || !roomRows || !workRows) return <p className="text-pencil">Loading…</p>;
-  const houseDefault = workRows.find((w) => w.roomId === null) ?? null;
-  const byRoom = new Map(workRows.filter((w) => w.roomId !== null).map((w) => [w.roomId, w]));
-  const retired = itemRow.retiredAt !== null;
+  const it = item.data;
+  if (!it || !jobs.data) return <p className="text-pencil">Loading…</p>;
+  const retired = it.retiredAt !== null;
+  const category = categories.data?.find((c) => c.id === it.categoryId)?.name;
 
   return (
     <section>
       <Link to="/items" className="text-sm text-pencil underline-offset-4 hover:underline">
         ← All items
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-        {itemRow.name}
-        {retired ? <span className="ml-3 text-base font-normal text-pencil">retired</span> : null}
-      </h1>
-
-      <h2 className="mt-8 text-lg font-medium">House-wide</h2>
-      <p className="mt-1 text-sm text-pencil">
-        The default for every room that doesn&apos;t say otherwise.
-      </p>
-      <div className="mt-3 rounded-lg border border-chalk p-4">
-        {open?.key === 'default' ? (
-          <WorkItemEditor
-            idPrefix="default"
-            target={
-              houseDefault && open.mode === 'edit'
-                ? { kind: 'edit', workItem: houseDefault }
-                : { kind: 'create', itemId, roomId: null }
-            }
-            onDone={() => setOpen(null)}
-            onCancel={() => setOpen(null)}
-          />
-        ) : houseDefault ? (
-          <WorkCard
-            w={houseDefault}
-            canEdit={canEdit}
-            confirming={removing === houseDefault.id}
-            busy={remove.isPending}
-            onEdit={() => setOpen({ key: 'default', mode: 'edit' })}
-            onRemove={() => setRemoving(houseDefault.id)}
-            onConfirmRemove={() => remove.mutate({ id: houseDefault.id })}
-            onCancelRemove={() => setRemoving(null)}
-          />
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-pencil">No house-wide spec yet.</p>
-            {canEdit && !retired ? (
-              <button
-                type="button"
-                onClick={() => setOpen({ key: 'default', mode: 'create' })}
-                className={primaryButtonClass}
-              >
-                Add house-wide spec
-              </button>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {it.name}
+            {retired ? (
+              <span className="ml-3 text-base font-normal text-pencil">retired</span>
             ) : null}
-          </div>
-        )}
+          </h1>
+          {category ? <p className="mt-1 text-sm text-pencil">{category}</p> : null}
+        </div>
+        {canEdit && !retired && !adding ? (
+          <button type="button" onClick={() => setAdding(true)} className={primaryButtonClass}>
+            New job
+          </button>
+        ) : null}
       </div>
 
-      <h2 className="mt-10 text-lg font-medium">By room</h2>
-      {roomRows.length === 0 ? (
+      {adding ? (
+        <div className="mt-6 rounded-lg border border-chalk p-5">
+          <h2 className="text-lg font-medium">New {it.name} job</h2>
+          <div className="mt-4">
+            <JobEditor idPrefix="new-job" item={it} onDone={() => setAdding(false)} />
+          </div>
+        </div>
+      ) : null}
+
+      <h2 className="mt-10 text-lg font-medium">Jobs</h2>
+      {jobs.data.length === 0 ? (
         <p className="mt-2 text-pencil">
-          No rooms yet —{' '}
-          <Link to="/rooms" className="underline underline-offset-4">
-            add them
-          </Link>{' '}
-          first.
+          No {it.name} jobs yet.
+          {canEdit && !retired ? ' Add one to say what is being done and in which rooms.' : ''}
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-chalk border-t border-b border-chalk">
-          {roomRows.map((room) => {
-            const override = byRoom.get(room.id) ?? null;
-            const key = `room-${room.id}`;
-            return (
-              <li key={room.id} className="py-4 sm:px-2">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <Link
-                    to="/rooms/$roomId"
-                    params={{ roomId: room.id }}
-                    className="font-medium underline-offset-4 hover:underline"
-                  >
-                    {room.name}
-                  </Link>
-                  {override ? (
-                    <StatusBadge status={override.status} />
-                  ) : houseDefault ? (
-                    <span className="text-xs text-pencil">uses house-wide</span>
-                  ) : (
-                    <span className="text-xs text-pencil">nothing yet</span>
-                  )}
-                </div>
-                <div className="mt-2">
-                  {open?.key === key ? (
-                    <div className="rounded-lg border border-chalk p-4">
-                      <WorkItemEditor
-                        idPrefix={key}
-                        target={
-                          override && open.mode === 'edit'
-                            ? { kind: 'edit', workItem: override }
-                            : { kind: 'create', itemId, roomId: room.id, from: houseDefault }
-                        }
-                        onDone={() => setOpen(null)}
-                        onCancel={() => setOpen(null)}
-                      />
-                    </div>
-                  ) : override ? (
-                    <WorkCard
-                      w={override}
-                      canEdit={canEdit}
-                      confirming={removing === override.id}
-                      busy={remove.isPending}
-                      onEdit={() => setOpen({ key, mode: 'edit' })}
-                      onRemove={() => setRemoving(override.id)}
-                      onConfirmRemove={() => remove.mutate({ id: override.id })}
-                      onCancelRemove={() => setRemoving(null)}
-                      removeLabel="Remove override"
-                    />
-                  ) : canEdit && !retired ? (
-                    <button
-                      type="button"
-                      onClick={() => setOpen({ key, mode: 'create' })}
-                      className={quietButtonClass + ' px-0'}
-                    >
-                      {houseDefault ? 'Override for this room' : 'Add for this room'}
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
+        <ul className="mt-3 grid gap-6">
+          {jobs.data.map((job) => (
+            <li key={job.id} className="rounded-lg border border-chalk p-4 sm:p-5">
+              <JobCard job={job} item={it} canEdit={canEdit} />
+            </li>
+          ))}
         </ul>
       )}
-      {remove.error ? (
-        <p role="alert" className="mt-2 text-sm">
-          {remove.error.message}
-        </p>
-      ) : null}
     </section>
   );
 }
 
-function WorkCard({
-  w,
+function JobCard({
+  job,
+  item,
   canEdit,
-  confirming,
-  busy,
-  onEdit,
-  onRemove,
-  onConfirmRemove,
-  onCancelRemove,
-  removeLabel = 'Remove',
 }: {
-  w: WorkItem;
+  job: Job;
+  item: { id: string; name: string };
   canEdit: boolean;
-  confirming: boolean;
-  busy: boolean;
-  onEdit: () => void;
-  onRemove: () => void;
-  onConfirmRemove: () => void;
-  onCancelRemove: () => void;
-  removeLabel?: string;
 }) {
-  return (
-    <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:gap-6">
-      <div className="min-w-0">
-        <StatusBadge status={w.status} />
-        {w.spec ? (
-          <p className="mt-2 max-w-prose text-sm whitespace-pre-wrap">{w.spec}</p>
-        ) : (
-          <p className="mt-2 text-sm text-pencil">No spec yet.</p>
-        )}
-        {w.notes ? (
-          <p className="mt-1 max-w-prose text-sm text-pencil whitespace-pre-wrap">{w.notes}</p>
-        ) : null}
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [editingRoom, setEditingRoom] = useState<string | null>(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const invalidate = () => queryClient.invalidateQueries(trpc.jobs.pathFilter());
+  const roomStatus = useMutation(trpc.jobRooms.update.mutationOptions({ onSuccess: invalidate }));
+  const jobStatus = useMutation(trpc.jobs.update.mutationOptions({ onSuccess: invalidate }));
+  const remove = useMutation(trpc.jobs.remove.mutationOptions({ onSuccess: invalidate }));
+  const error = roomStatus.error ?? jobStatus.error ?? remove.error;
+
+  if (editing) {
+    return (
+      <div>
+        <h3 className="font-medium">Edit {job.name}</h3>
+        <div className="mt-4">
+          <JobEditor
+            idPrefix={`job-${job.id}`}
+            item={item}
+            job={job}
+            onDone={() => setEditing(false)}
+          />
+        </div>
       </div>
+    );
+  }
+
+  const progress = progressText(job.progress, job.rooms.length);
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-medium">{job.name}</h3>
+          <p className="mt-0.5 text-sm text-pencil">
+            {job.phase.name}
+            {progress ? ` · ${progress}` : ''}
+          </p>
+        </div>
+        {job.rooms.length === 0 && canEdit ? (
+          <StatusSelect
+            id={`job-status-${job.id}`}
+            label={`Status of ${job.name}`}
+            value={job.progress.status}
+            disabled={jobStatus.isPending}
+            onChange={(status) => jobStatus.mutate({ id: job.id, status })}
+          />
+        ) : (
+          <StatusBadge status={job.progress.status} />
+        )}
+      </div>
+
+      {job.spec ? (
+        <p className="mt-3 max-w-prose text-sm whitespace-pre-wrap">{job.spec}</p>
+      ) : (
+        <p className="mt-3 text-sm text-pencil">No spec yet.</p>
+      )}
+      {job.notes ? (
+        <p className="mt-1 max-w-prose text-sm text-pencil whitespace-pre-wrap">{job.notes}</p>
+      ) : null}
+
+      {job.rooms.length > 0 ? (
+        <ul className="mt-4 divide-y divide-chalk border-t border-chalk">
+          {job.rooms.map((r) => (
+            <li key={r.id} className="py-3">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <Link
+                  to="/rooms/$roomId"
+                  params={{ roomId: r.room.id }}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
+                  {r.room.name}
+                </Link>
+                {canEdit ? (
+                  <StatusSelect
+                    id={`room-status-${r.id}`}
+                    label={`Status of ${job.name} in ${r.room.name}`}
+                    value={r.status}
+                    disabled={roomStatus.isPending}
+                    onChange={(status) => roomStatus.mutate({ id: r.id, status })}
+                  />
+                ) : (
+                  <StatusBadge status={r.status} />
+                )}
+              </div>
+              {editingRoom === r.id ? (
+                <div className="mt-3 rounded-lg border border-chalk p-4">
+                  <JobRoomEditor
+                    idPrefix={`jr-${r.id}`}
+                    jobRoom={r}
+                    jobSpec={job.spec}
+                    roomName={r.room.name}
+                    onDone={() => setEditingRoom(null)}
+                  />
+                </div>
+              ) : (
+                <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
+                  <p className="min-w-0 text-sm">
+                    <span className="text-pencil">{SPEC_SOURCE_LABEL[r.specSource]}</span>
+                    {r.specSource === 'room' ? (
+                      <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
+                    ) : null}
+                    {r.notes ? (
+                      <span className="block text-pencil whitespace-pre-wrap">{r.notes}</span>
+                    ) : null}
+                  </p>
+                  {canEdit ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditingRoom(r.id)}
+                      aria-label={`Edit spec and notes for ${r.room.name}`}
+                      className={quietButtonClass + ' px-0 sm:px-3'}
+                    >
+                      Edit spec &amp; notes
+                    </button>
+                  ) : null}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-pencil">Covers no rooms — its status is set above.</p>
+      )}
+
+      {error ? (
+        <p role="alert" className="mt-2 text-sm">
+          {error.message}
+        </p>
+      ) : null}
+
       {canEdit ? (
-        <div className="flex flex-wrap items-start gap-1 text-sm sm:justify-end">
-          {confirming ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-chalk pt-3 text-sm">
+          {confirmingRemove ? (
             <>
+              <span>Remove {job.name}?</span>
               <button
                 type="button"
-                disabled={busy}
-                onClick={onConfirmRemove}
+                disabled={remove.isPending}
+                onClick={() => remove.mutate({ id: job.id })}
                 className={dangerButtonClass}
               >
-                {removeLabel}
+                Yes, remove it
               </button>
-              <button type="button" onClick={onCancelRemove} className={quietButtonClass}>
-                Keep
+              <button
+                type="button"
+                onClick={() => setConfirmingRemove(false)}
+                className={quietButtonClass}
+              >
+                Keep it
               </button>
             </>
           ) : (
             <>
-              <button type="button" onClick={onEdit} className={quietButtonClass}>
-                Edit
+              <button type="button" onClick={() => setEditing(true)} className={quietButtonClass}>
+                Edit job &amp; rooms
               </button>
               <button
                 type="button"
-                onClick={onRemove}
+                onClick={() => setConfirmingRemove(true)}
                 className={quietButtonClass + ' text-pencil'}
               >
-                Remove
+                Remove job
               </button>
             </>
           )}
