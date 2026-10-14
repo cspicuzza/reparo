@@ -1,41 +1,220 @@
+import type { RouterOutputs } from '@reparo/api';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { CircleAlert } from 'lucide-react';
+import { PlanGrid } from '@/components/plan-grid';
+import { StatusBadge } from '@/components/status';
+import { TapeStrip } from '@/components/tape';
 import { buttonVariants } from '@/components/ui/button';
+import { greeting } from '@/lib/home';
+import { useMe } from '@/lib/me';
+import { roomProgressText } from '@/lib/rooms';
 import { useTRPC } from '@/lib/trpc';
+import { progressText } from '@/lib/work';
 
+type Summary = RouterOutputs['home']['summary'];
+
+/** Room tiles shown on Home; the rest are one tap away. */
+const HOME_ROOMS = 8;
+
+/**
+ * Home (OD-41): what needs someone, how the current phase is going, and the rooms. Counts come
+ * from `home.summary`. M2 puts the money sentence and money tape at the top.
+ */
 export function Home() {
   const trpc = useTRPC();
-  const me = useQuery(trpc.health.ping.queryOptions());
+  const { member } = useMe();
+  const summary = useQuery(trpc.home.summary.queryOptions());
 
-  if (me.isPending) return <p className="text-muted-foreground">Checking who you are…</p>;
-  if (me.error) {
-    return (
-      <p role="alert">
-        Couldn&apos;t reach the API: {me.error.message}. Is <code>pnpm dev</code> running?
-      </p>
-    );
-  }
   return (
-    <section>
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Signed in as {me.data.member.displayName}
-      </h1>
-      <p className="mt-2 text-muted-foreground">
-        Role: {me.data.member.role}. Start with Rooms, then add jobs from each Item&apos;s page.
-      </p>
-      {/* Phones reach Phases from Home (no bottom-bar entry). The dashboard (OD-41) replaces this. */}
-      <ul className="mt-6 flex flex-wrap gap-2">
-        <li>
-          <Link to="/rooms" className={buttonVariants({ variant: 'outline' })}>
-            Rooms
+    <div className="flex flex-col gap-8">
+      <h1 className="text-3xl">{greeting(new Date(), member?.displayName)}</h1>
+      {summary.isPending ? (
+        <p className="text-muted-foreground">Loading the house…</p>
+      ) : summary.error ? (
+        <p role="alert">Couldn&apos;t load Home: {summary.error.message}</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-start gap-6">
+            <PhasePanel summary={summary.data} />
+            <NeedsYou items={summary.data.needsYou} />
+          </div>
+          <Rooms rooms={summary.data.rooms} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function NeedsYou({ items }: { items: Summary['needsYou'] }) {
+  return (
+    <section
+      aria-labelledby="needs-you"
+      className="min-w-0 flex-[1_1_20rem] rounded-xl border border-border bg-card p-5 sm:p-6"
+    >
+      <div className="flex items-center gap-2.5">
+        <h2 id="needs-you" className="text-2xl">
+          Needs you
+        </h2>
+        {items.length > 0 ? (
+          <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-tape px-2 font-bold text-tape-ink tabular-nums">
+            {items.length}
+          </span>
+        ) : null}
+      </div>
+      {items.length === 0 ? (
+        <p className="mt-3 text-muted-foreground">Nothing needs you right now.</p>
+      ) : (
+        <ul className="mt-2 divide-y divide-border">
+          {items.map((n) => (
+            <li key={n.id} className="flex items-start gap-3 py-4 last:pb-0">
+              <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
+                <CircleAlert aria-hidden className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{n.jobName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {n.room
+                    ? `${n.room.name} is done and ready to check.`
+                    : 'Done and ready to check.'}
+                </p>
+                {n.room ? (
+                  <Link
+                    to="/rooms/$roomId"
+                    params={{ roomId: n.room.id }}
+                    className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
+                  >
+                    Check it
+                  </Link>
+                ) : (
+                  <Link
+                    to="/items/$itemId"
+                    params={{ itemId: n.itemId }}
+                    className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
+                  >
+                    Check it
+                  </Link>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function PhasePanel({ summary }: { summary: Summary }) {
+  const { phase, phaseJobs } = summary;
+  return (
+    <section
+      aria-labelledby="phase"
+      className="min-w-0 flex-[999_1_30rem] rounded-xl border border-border bg-card p-5 sm:p-6"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="phase" className="text-2xl">
+          {phase == null
+            ? 'No phases yet'
+            : phase.status === 'active'
+              ? `${phase.name} is underway`
+              : `${phase.name} is next`}
+        </h2>
+        <Link to="/phases" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+          See all phases
+        </Link>
+      </div>
+      {phase == null ? null : phaseJobs.length === 0 ? (
+        <p className="mt-3 text-muted-foreground">
+          No jobs in {phase.name} yet. Jobs are planned on each item&apos;s page.
+        </p>
+      ) : (
+        <ul className="mt-4 flex flex-col gap-4">
+          {phaseJobs.map((j) => {
+            const count = progressText(j.progress, j.roomCount);
+            return (
+              <li
+                key={j.id}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,11rem)]"
+              >
+                <Link
+                  to="/items/$itemId"
+                  params={{ itemId: j.itemId }}
+                  className="truncate font-semibold underline-offset-4 hover:underline"
+                >
+                  {j.name}
+                </Link>
+                {j.roomCount > 0 ? (
+                  <>
+                    <TapeStrip
+                      mode="progress"
+                      size="sm"
+                      done={j.progress.done}
+                      total={j.progress.total}
+                      label={`${j.name}: ${count}`}
+                      className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto"
+                    />
+                    <span className="text-right text-sm text-muted-foreground tabular-nums sm:text-left sm:text-base">
+                      {count}
+                    </span>
+                  </>
+                ) : (
+                  <span className="justify-self-end sm:col-span-2 sm:justify-self-start">
+                    <StatusBadge status={j.progress.status} />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
+  return (
+    <section aria-labelledby="rooms">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="rooms" className="text-2xl">
+          Rooms
+        </h2>
+        <Link to="/rooms" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+          {rooms.length > HOME_ROOMS ? `See all ${rooms.length} rooms` : 'All rooms'}
+        </Link>
+      </div>
+      {rooms.length === 0 ? (
+        <p className="mt-3 text-muted-foreground">
+          No rooms yet.{' '}
+          <Link to="/rooms" className="text-foreground underline underline-offset-4">
+            Add the first one
           </Link>
-        </li>
-        <li>
-          <Link to="/phases" className={buttonVariants({ variant: 'outline' })}>
-            Phases
-          </Link>
-        </li>
-      </ul>
+          .
+        </p>
+      ) : (
+        <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {rooms.slice(0, HOME_ROOMS).map((r) => (
+            <li key={r.id}>
+              <Link
+                to="/rooms/$roomId"
+                params={{ roomId: r.id }}
+                className="block overflow-hidden rounded-xl border border-border bg-card hover:border-input"
+              >
+                <PlanGrid className="h-24 sm:h-32">No picture yet</PlanGrid>
+                <div className="p-3 sm:p-4">
+                  <p className="text-lg font-semibold">{r.name}</p>
+                  {r.awaitingReview ? (
+                    <span className="mt-1 inline-block">
+                      <StatusBadge status="awaiting_review" />
+                    </span>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{roomProgressText(r.progress)}</p>
+                  )}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

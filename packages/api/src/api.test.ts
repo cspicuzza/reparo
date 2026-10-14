@@ -558,6 +558,77 @@ describe('@reparo/api', () => {
       expect(await roomProgress(kitchen.id)).toEqual(kitchenWhileRemoved);
     }));
 
+  it('home: needs you, the current phase and room progress', () =>
+    withSeeded(async (_tx, h) => {
+      const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
+      const catalog = rows(await query(h, 'viewer', 'items.list'));
+      const paint = catalog.find((i) => i.name === 'Paint');
+      const fee = catalog.find((i) => i.name === 'Project Fee');
+      if (!phase1 || !paint || !fee) throw new Error('seed missing');
+      const room = async (name: string) => row(await mutate(h, 'editor', 'rooms.create', { name }));
+      const den = await room('Home Den');
+      const hall = await room('Home Hall');
+      await room('Home Loft');
+
+      type JobRow = Row & { rooms: (Row & { room: Row })[] };
+      const job = (
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          itemId: paint.id,
+          roomIds: [den.id, hall.id],
+        })
+      ).data as JobRow;
+      const jr = (name: string) => job.rooms.find((r) => r.room.name === name);
+      await mutate(h, 'editor', 'jobRooms.update', {
+        id: jr('Home Den')?.id,
+        status: 'awaiting_review',
+      });
+      await mutate(h, 'editor', 'jobRooms.update', {
+        id: jr('Home Hall')?.id,
+        status: 'completed',
+      });
+      // A job with no rooms (a fee) waits as a whole.
+      const feeJob = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          itemId: fee.id,
+          status: 'awaiting_review',
+        }),
+      );
+
+      type Summary = {
+        needsYou: { jobName: string; room: Row | null }[];
+        phase: Row | null;
+        phaseJobs: (Row & { roomCount: number; progress: Row })[];
+        rooms: (Row & { progress: Row; awaitingReview: boolean })[];
+      };
+      const home = (await query(h, 'viewer', 'home.summary')).data as Summary;
+
+      expect(home.needsYou.map((n) => [n.jobName, n.room?.name ?? null])).toEqual([
+        ['Paint — Phase 1', 'Home Den'],
+        [feeJob.name, null],
+      ]);
+      expect([home.phase?.name, home.phase?.status]).toEqual(['Phase 1', 'active']);
+      const paintJob = home.phaseJobs.find((j) => j.id === job.id);
+      expect([paintJob?.roomCount, paintJob?.progress]).toEqual([
+        2,
+        { status: 'awaiting_review', done: 1, total: 2 },
+      ]);
+      const tile = (name: string) => home.rooms.find((r) => r.name === name);
+      expect([tile('Home Den')?.progress, tile('Home Den')?.awaitingReview]).toEqual([
+        { done: 0, total: 1 },
+        true,
+      ]);
+      expect([tile('Home Hall')?.progress, tile('Home Hall')?.awaitingReview]).toEqual([
+        { done: 1, total: 1 },
+        false,
+      ]);
+      expect([tile('Home Loft')?.progress, tile('Home Loft')?.awaitingReview]).toEqual([
+        { done: 0, total: 0 },
+        false,
+      ]);
+    }));
+
   it('jobs: guards — viewers read only, retired items and unknown rooms are refused', () =>
     withSeeded(async (_tx, h) => {
       const [phase1] = rows(await query(h, 'viewer', 'phases.list'));

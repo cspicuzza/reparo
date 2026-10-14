@@ -26,8 +26,8 @@ describe('roomProgressText', () => {
   });
 
   it('says when everything is done or nothing is planned', () => {
-    expect(roomProgressText({ done: 4, total: 4 })).toBe('All 4 jobs done.');
-    expect(roomProgressText({ done: 1, total: 1 })).toBe('Its one job is done.');
-    expect(roomProgressText({ done: 0, total: 0 })).toBe('No jobs here yet.');
+    expect(roomProgressText({ done: 4, total: 4 })).toBe('All 4 jobs done');
+    expect(roomProgressText({ done: 1, total: 1 })).toBe('Its one job is done');
+    expect(roomProgressText({ done: 0, total: 0 })).toBe('No jobs here yet');
   });
 });

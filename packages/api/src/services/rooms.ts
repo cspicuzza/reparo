@@ -25,28 +25,41 @@ export type RoomProgress = {
 };
 
 /**
- * How far along a room is, for the room page ("2 of 4 jobs done"). Same counting rule as the
- * jobs roll-up: Cancelled doesn't count; jobs in deleted phases and removed jobs don't either.
+ * How far along rooms are, for the room page ("2 of 4 jobs done") and Home's room tiles. Same
+ * counting rule as the jobs roll-up: Cancelled doesn't count; jobs in deleted phases and removed
+ * jobs don't either. `awaitingReview` counts the jobs waiting for someone to check them there.
+ * Rooms with no counted jobs are absent from the map.
  */
-export async function roomProgress(db: Db, roomId: string): Promise<RoomProgress> {
-  const [row] = await db
+export async function roomsProgress(
+  db: Db,
+  roomId?: string,
+): Promise<Map<string, RoomProgress & { awaitingReview: number }>> {
+  const conds = [
+    isNull(jobRooms.deletedAt),
+    isNull(jobs.deletedAt),
+    isNull(phases.deletedAt),
+    ne(jobRooms.status, 'cancelled'),
+  ];
+  if (roomId !== undefined) conds.push(eq(jobRooms.roomId, roomId));
+  const rows = await db
     .select({
+      roomId: jobRooms.roomId,
       done: sql<number>`count(*) filter (where ${jobRooms.status} = 'completed')`.mapWith(Number),
+      awaitingReview:
+        sql<number>`count(*) filter (where ${jobRooms.status} = 'awaiting_review')`.mapWith(Number),
       total: sql<number>`count(*)`.mapWith(Number),
     })
     .from(jobRooms)
     .innerJoin(jobs, eq(jobs.id, jobRooms.jobId))
     .innerJoin(phases, eq(phases.id, jobs.phaseId))
-    .where(
-      and(
-        eq(jobRooms.roomId, roomId),
-        isNull(jobRooms.deletedAt),
-        isNull(jobs.deletedAt),
-        isNull(phases.deletedAt),
-        ne(jobRooms.status, 'cancelled'),
-      ),
-    );
-  return { done: row?.done ?? 0, total: row?.total ?? 0 };
+    .where(and(...conds))
+    .groupBy(jobRooms.roomId);
+  return new Map(rows.map(({ roomId: id, ...p }) => [id, p]));
+}
+
+export async function roomProgress(db: Db, roomId: string): Promise<RoomProgress> {
+  const p = (await roomsProgress(db, roomId)).get(roomId);
+  return { done: p?.done ?? 0, total: p?.total ?? 0 };
 }
 
 /** A room with its progress, for the room page. */
