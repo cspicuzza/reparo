@@ -2,6 +2,7 @@ import {
   createDb,
   eq,
   members,
+  Rollback,
   runMigrations,
   upsertMembers,
   withRollback,
@@ -75,11 +76,30 @@ describe('@reparo/api', () => {
     await client.end();
   });
 
-  /** Seed the test members inside a rolled-back transaction and hand the test a handler on it. */
+  /**
+   * Seed the test members inside a rolled-back transaction and hand the test a handler on it.
+   * Each request runs in its own savepoint, rolled back when the response isn't 2xx: in
+   * production every request has its own connection, but here they share one transaction and
+   * Postgres refuses everything after an error (e.g. an expected unique violation) until a
+   * rollback. The savepoint gives each request the isolation it would have for real.
+   */
   function withSeeded(fn: (tx: Db, handler: Handler) => Promise<void>): Promise<void> {
     return withRollback(db, async (tx) => {
       await upsertMembers(tx, MEMBERS);
-      await fn(tx, createFetchHandler({ db: tx, verify }));
+      const handler: Handler = async (req) => {
+        let response: Response | undefined;
+        try {
+          await tx.transaction(async (sp) => {
+            response = await createFetchHandler({ db: sp, verify })(req);
+            if (!response.ok) throw new Rollback();
+          });
+        } catch (e) {
+          if (!(e instanceof Rollback)) throw e;
+        }
+        if (!response) throw new Error('handler produced no response');
+        return response;
+      };
+      await fn(tx, handler);
     });
   }
 
@@ -137,6 +157,294 @@ describe('@reparo/api', () => {
       const res = await ping(handler, token);
       expect(res.status).toBe(403);
       expect((await body(res)).error?.message).toMatch(/not on the household list/);
+    }));
+
+  // --- M1 routers (OD-28) ---------------------------------------------------------------------
+
+  type Who = 'chris' | 'editor' | 'viewer';
+  const EMAIL: Record<Who, string> = {
+    chris: 'chris@example.com',
+    editor: 'editor@example.com',
+    viewer: 'viewer@example.com',
+  };
+  type Rpc = {
+    status: number;
+    data: unknown;
+    code: string | undefined;
+    message: string | undefined;
+  };
+
+  /** Call one procedure the way the web client does: GET for queries, POST for mutations. */
+  async function rpc(
+    handler: Handler,
+    who: Who,
+    path: string,
+    input?: unknown,
+    method: 'GET' | 'POST' = 'GET',
+  ): Promise<Rpc> {
+    const token = await sign({ sub: SUB[who], email: EMAIL[who] });
+    const headers = new Headers({ authorization: `Bearer ${token}` });
+    let url = `http://localhost${TRPC_ENDPOINT}/${path}`;
+    let body: string | undefined;
+    if (method === 'GET') {
+      if (input !== undefined) url += `?input=${encodeURIComponent(JSON.stringify(input))}`;
+    } else {
+      headers.set('content-type', 'application/json');
+      body = JSON.stringify(input ?? null);
+    }
+    const res = await handler(
+      new Request(url, body === undefined ? { method, headers } : { method, headers, body }),
+    );
+    const json = (await res.json()) as Body;
+    return {
+      status: res.status,
+      data: json.result?.data,
+      code: json.error?.data.code,
+      message: json.error?.message,
+    };
+  }
+  const query = (h: Handler, who: Who, path: string, input?: unknown) => rpc(h, who, path, input);
+  const mutate = (h: Handler, who: Who, path: string, input?: unknown) =>
+    rpc(h, who, path, input, 'POST');
+
+  type Row = { id: string; name?: string; [k: string]: unknown };
+  const rows = (r: Rpc) => r.data as Row[];
+  const row = (r: Rpc) => r.data as Row;
+
+  it('role guards: viewers read, editors write rooms/work, only admins touch phases/items', () =>
+    withSeeded(async (_tx, h) => {
+      expect((await query(h, 'viewer', 'rooms.list')).status).toBe(200);
+      expect((await query(h, 'viewer', 'items.list')).status).toBe(200);
+      expect((await query(h, 'viewer', 'phases.list')).status).toBe(200);
+
+      const v = await mutate(h, 'viewer', 'rooms.create', { name: 'Kitchen' });
+      expect([v.status, v.code, v.message]).toEqual([403, 'FORBIDDEN', 'Requires editor role']);
+
+      const e1 = await mutate(h, 'editor', 'phases.create', { name: 'Phase 2' });
+      expect([e1.status, e1.message]).toEqual([403, 'Requires admin role']);
+      const e2 = await mutate(h, 'editor', 'items.create', { name: 'Roofing' });
+      expect([e2.status, e2.message]).toEqual([403, 'Requires admin role']);
+
+      expect((await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' })).status).toBe(200);
+      expect((await mutate(h, 'chris', 'phases.create', { name: 'Phase 2' })).status).toBe(200);
+      expect((await mutate(h, 'chris', 'items.create', { name: 'Roofing' })).status).toBe(200);
+    }));
+
+  it('rooms: create parses lengths, update clears one, duplicates conflict, remove hides', () =>
+    withSeeded(async (_tx, h) => {
+      const created = await mutate(h, 'editor', 'rooms.create', {
+        name: 'Living Room',
+        lengthIn: `14' 6 1/16"`,
+        widthIn: '87.5',
+      });
+      expect(created.status).toBe(200);
+      const living = row(created);
+      expect([living.lengthIn, living.widthIn, living.ceilingHeightIn]).toEqual([
+        174.0625,
+        87.5,
+        null,
+      ]);
+
+      const bad = await mutate(h, 'editor', 'rooms.create', { name: 'Nook', lengthIn: 'wide' });
+      expect([bad.status, bad.code]).toEqual([400, 'BAD_REQUEST']);
+
+      const dup = await mutate(h, 'editor', 'rooms.create', { name: 'Living Room' });
+      expect([dup.status, dup.code]).toEqual([409, 'CONFLICT']);
+
+      const updated = await mutate(h, 'editor', 'rooms.update', { id: living.id, widthIn: '' });
+      expect([row(updated).lengthIn, row(updated).widthIn]).toEqual([174.0625, null]);
+
+      expect(rows(await query(h, 'viewer', 'rooms.list')).map((r) => r.name)).toEqual([
+        'Living Room',
+      ]);
+      expect((await mutate(h, 'editor', 'rooms.remove', { id: living.id })).status).toBe(200);
+      expect((await query(h, 'viewer', 'rooms.get', { id: living.id })).code).toBe('NOT_FOUND');
+      expect(rows(await query(h, 'viewer', 'rooms.list'))).toEqual([]);
+      // The name is free again once the old room is soft-deleted.
+      expect((await mutate(h, 'editor', 'rooms.create', { name: 'Living Room' })).status).toBe(200);
+    }));
+
+  it('phases: Phase 1 is seeded; admin adds, dates are validated, names are unique', () =>
+    withSeeded(async (_tx, h) => {
+      const seeded = rows(await query(h, 'viewer', 'phases.list'));
+      expect(seeded.map((p) => [p.name, p.status])).toEqual([['Phase 1', 'active']]);
+
+      const p2 = await mutate(h, 'chris', 'phases.create', {
+        name: 'Phase 2',
+        startsOn: '2027-03-01',
+      });
+      expect([row(p2).status, row(p2).startsOn, row(p2).endsOn]).toEqual([
+        'planned',
+        '2027-03-01',
+        null,
+      ]);
+      const badDate = await mutate(h, 'chris', 'phases.create', {
+        name: 'P3',
+        endsOn: '2027-02-30',
+      });
+      expect(badDate.code).toBe('BAD_REQUEST');
+      expect((await mutate(h, 'chris', 'phases.create', { name: 'Phase 1' })).code).toBe(
+        'CONFLICT',
+      );
+
+      const done = await mutate(h, 'chris', 'phases.update', {
+        id: row(p2).id,
+        status: 'complete',
+      });
+      expect(row(done).status).toBe('complete');
+      expect((await mutate(h, 'chris', 'phases.remove', { id: row(p2).id })).status).toBe(200);
+      expect(rows(await query(h, 'viewer', 'phases.list')).map((p) => p.name)).toEqual(['Phase 1']);
+    }));
+
+  it('items: starter catalog is listed; retire hides from pickers and blocks new work', () =>
+    withSeeded(async (_tx, h) => {
+      const all = rows(await query(h, 'viewer', 'items.list'));
+      expect(all.length).toBeGreaterThanOrEqual(23);
+      expect(all[0]?.name).toBe('Demo');
+      const stucco = all.find((i) => i.name === 'Stucco');
+      const paint = all.find((i) => i.name === 'Paint');
+      if (!stucco || !paint) throw new Error('seed missing');
+
+      expect((await mutate(h, 'chris', 'items.create', { name: 'Paint' })).code).toBe('CONFLICT');
+      const renamed = await mutate(h, 'chris', 'items.update', {
+        id: stucco.id,
+        name: 'Stucco repair',
+      });
+      expect(row(renamed).name).toBe('Stucco repair');
+
+      const retired = await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: true });
+      expect(row(retired).retiredAt).not.toBeNull();
+      expect(rows(await query(h, 'viewer', 'items.list')).some((i) => i.id === stucco.id)).toBe(
+        false,
+      );
+      expect(
+        rows(await query(h, 'viewer', 'items.list', { includeRetired: true })).some(
+          (i) => i.id === stucco.id,
+        ),
+      ).toBe(true);
+
+      const [phase] = rows(await query(h, 'viewer', 'phases.list'));
+      if (!phase) throw new Error('seed missing');
+      const blocked = await mutate(h, 'editor', 'workItems.create', {
+        itemId: stucco.id,
+        phaseId: phase.id,
+      });
+      expect([blocked.status, blocked.code]).toEqual([400, 'BAD_REQUEST']);
+      expect(blocked.message).toMatch(/retired/);
+
+      const restored = await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: false });
+      expect(row(restored).retiredAt).toBeNull();
+    }));
+
+  it('work items: one default and one override per item; forRoom resolves room → default → none', () =>
+    withSeeded(async (_tx, h) => {
+      const [phase] = rows(await query(h, 'viewer', 'phases.list'));
+      const catalog = rows(await query(h, 'viewer', 'items.list'));
+      const paint = catalog.find((i) => i.name === 'Paint');
+      const flooring = catalog.find((i) => i.name === 'Flooring');
+      const trim = catalog.find((i) => i.name === 'Trim');
+      if (!phase || !paint || !flooring || !trim) throw new Error('seed missing');
+      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
+      const bath = row(await mutate(h, 'editor', 'rooms.create', { name: 'Powder/Pool Bath' }));
+
+      // House-wide defaults for paint and flooring; kitchen overrides paint.
+      const paintDefault = row(
+        await mutate(h, 'editor', 'workItems.create', {
+          itemId: paint.id,
+          phaseId: phase.id,
+          spec: 'SW Alabaster, eggshell',
+        }),
+      );
+      expect([paintDefault.roomId, paintDefault.status]).toEqual([null, 'unstarted']);
+      const dupDefault = await mutate(h, 'editor', 'workItems.create', {
+        itemId: paint.id,
+        phaseId: phase.id,
+      });
+      expect([dupDefault.status, dupDefault.code]).toEqual([409, 'CONFLICT']);
+      expect(dupDefault.message).toMatch(/house-wide default/);
+
+      await mutate(h, 'editor', 'workItems.create', { itemId: flooring.id, phaseId: phase.id });
+      const kitchenPaint = row(
+        await mutate(h, 'editor', 'workItems.create', {
+          itemId: paint.id,
+          roomId: kitchen.id,
+          phaseId: phase.id,
+          spec: 'SW Sea Salt, satin',
+          status: 'in_progress',
+        }),
+      );
+      const dupOverride = await mutate(h, 'editor', 'workItems.create', {
+        itemId: paint.id,
+        roomId: kitchen.id,
+        phaseId: phase.id,
+      });
+      expect(dupOverride.code).toBe('CONFLICT');
+      expect(dupOverride.message).toMatch(/already has work in this room/);
+
+      // Unknown room / phase → NOT_FOUND, not a 500.
+      const ghost = '99999999-9999-4999-8999-999999999999';
+      expect(
+        (
+          await mutate(h, 'editor', 'workItems.create', {
+            itemId: paint.id,
+            roomId: ghost,
+            phaseId: phase.id,
+          })
+        ).code,
+      ).toBe('NOT_FOUND');
+
+      // Filters.
+      expect(rows(await query(h, 'viewer', 'workItems.list', { roomId: null })).length).toBe(2);
+      expect(rows(await query(h, 'viewer', 'workItems.list', { roomId: kitchen.id })).length).toBe(
+        1,
+      );
+      expect(rows(await query(h, 'viewer', 'workItems.list', { itemId: paint.id })).length).toBe(2);
+      expect(rows(await query(h, 'viewer', 'workItems.list')).length).toBe(3);
+
+      // Resolution for the kitchen: paint from the room, flooring from the default, trim nothing.
+      type Resolved = {
+        item: Row;
+        work: Row | null;
+        source: string | null;
+        houseDefault: Row | null;
+      };
+      const byName = (r: Rpc): Record<string, Resolved | undefined> =>
+        Object.fromEntries((r.data as Resolved[]).map((x) => [x.item.name ?? '', x]));
+      const k = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: kitchen.id }));
+      expect([k['Paint']?.source, k['Paint']?.work?.spec, k['Paint']?.houseDefault?.id]).toEqual([
+        'room',
+        'SW Sea Salt, satin',
+        paintDefault.id,
+      ]);
+      expect([k['Flooring']?.source, k['Flooring']?.work?.roomId]).toEqual(['default', null]);
+      expect([k['Trim']?.source, k['Trim']?.work]).toEqual([null, null]);
+
+      // The bath has no override, so paint resolves to the house-wide default there.
+      const b = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: bath.id }));
+      expect([b['Paint']?.source, b['Paint']?.work?.id]).toEqual(['default', paintDefault.id]);
+
+      // Status update, then removing the override falls the kitchen back to the default.
+      const reviewed = await mutate(h, 'editor', 'workItems.update', {
+        id: kitchenPaint.id,
+        status: 'awaiting_review',
+      });
+      expect(row(reviewed).status).toBe('awaiting_review');
+      expect(
+        (await mutate(h, 'viewer', 'workItems.update', { id: kitchenPaint.id, notes: 'x' })).status,
+      ).toBe(403);
+      await mutate(h, 'editor', 'workItems.remove', { id: kitchenPaint.id });
+      const k2 = byName(await query(h, 'viewer', 'workItems.forRoom', { roomId: kitchen.id }));
+      expect(k2['Paint']?.source).toBe('default');
+      // …and the slot is free to override again.
+      expect(
+        (
+          await mutate(h, 'editor', 'workItems.create', {
+            itemId: paint.id,
+            roomId: kitchen.id,
+            phaseId: phase.id,
+          })
+        ).status,
+      ).toBe(200);
     }));
 
   it('403 when a viewer calls an editor-only procedure; editor passes', () =>

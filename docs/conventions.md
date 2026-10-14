@@ -34,7 +34,8 @@ Rules that keep four people and several agents producing code that looks like on
 - Input is a Zod schema from `@reparo/shared`. Output types are inferred; don't annotate return types on procedures.
 - Services do the work; routers only parse input, call a service, and return. A service is a plain function taking `(db, ctx, input)` so it can be unit-tested without tRPC.
 - Two entry points share one router: `apps/web/api/index.ts` (Vercel, fetch adapter) and `packages/api/src/dev.ts` (local, standalone adapter on `API_PORT`, default 3001). `apps/web/api/` has its own `tsconfig.api.json` (Node types) and never uses the `@/` alias.
-- Errors: throw `TRPCError` with `NOT_FOUND`, `BAD_REQUEST`, `FORBIDDEN`. No stringly-typed error codes.
+- Errors: throw `TRPCError` with `NOT_FOUND`, `BAD_REQUEST`, `FORBIDDEN`, `CONFLICT` (a unique rule such as one live room per name — helpers in `packages/api/src/services/errors.ts`). No stringly-typed error codes.
+- Soft-deleted rows are invisible to every read and write (`deleted_at IS NULL` in the service's `live()` condition); a `get` on one is `NOT_FOUND`. Items don't delete — `items.update { retired }` retires or restores.
 - Derived values (areas, totals, progress) are computed in services or SQL views, not in React.
 
 ## Web
