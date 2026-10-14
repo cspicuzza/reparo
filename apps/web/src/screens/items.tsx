@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import { itemCreateSchema, type ItemCreate, type ItemCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Field, Input, primaryButtonClass, quietButtonClass } from '@/components/form';
@@ -107,7 +108,13 @@ export function Items() {
                   key={item.id}
                   className="flex items-baseline justify-between gap-4 py-3 sm:px-2"
                 >
-                  <span className="text-base font-medium">{item.name}</span>
+                  <Link
+                    to="/items/$itemId"
+                    params={{ itemId: item.id }}
+                    className="text-base font-medium underline-offset-4 hover:underline"
+                  >
+                    {item.name}
+                  </Link>
                   {isAdmin ? (
                     <span className="flex shrink-0 gap-1 text-sm">
                       <button

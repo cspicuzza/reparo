@@ -3,9 +3,9 @@ import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { signOut } from '@/lib/supabase';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 
-/** Nav entries light up as their milestone lands (OD-29 Rooms, OD-30 Items; Phases, Budget follow). */
-const sections: { name: string; to?: '/rooms' | '/items' }[] = [
-  { name: 'Phases' },
+/** Nav entries light up as their milestone lands (M1: Phases, Rooms, Items; Budget is M2). */
+const sections: { name: string; to?: '/phases' | '/rooms' | '/items' }[] = [
+  { name: 'Phases', to: '/phases' },
   { name: 'Rooms', to: '/rooms' },
   { name: 'Items', to: '/items' },
   { name: 'Budget' },

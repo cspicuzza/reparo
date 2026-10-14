@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppItemsIndexRouteImport } from './routes/_app/items/index'
+import { Route as AppItemsItemIdRouteImport } from './routes/_app/items/$itemId'
+import { Route as AppPhasesIndexRouteImport } from './routes/_app/phases/index'
 import { Route as AppRoomsIndexRouteImport } from './routes/_app/rooms/index'
 import { Route as AppRoomsRoomIdRouteImport } from './routes/_app/rooms/$roomId'
 
@@ -35,6 +37,16 @@ const AppItemsIndexRoute = AppItemsIndexRouteImport.update({
   path: '/items/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppItemsItemIdRoute = AppItemsItemIdRouteImport.update({
+  id: '/items/$itemId',
+  path: '/items/$itemId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPhasesIndexRoute = AppPhasesIndexRouteImport.update({
+  id: '/phases/',
+  path: '/phases/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRoomsIndexRoute = AppRoomsIndexRouteImport.update({
   id: '/rooms/',
   path: '/rooms/',
@@ -49,15 +61,19 @@ const AppRoomsRoomIdRoute = AppRoomsRoomIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
+  '/items/$itemId': typeof AppItemsItemIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/items/': typeof AppItemsIndexRoute
+  '/phases/': typeof AppPhasesIndexRoute
   '/rooms/': typeof AppRoomsIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/': typeof AppIndexRoute
+  '/items/$itemId': typeof AppItemsItemIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/items': typeof AppItemsIndexRoute
+  '/phases': typeof AppPhasesIndexRoute
   '/rooms': typeof AppRoomsIndexRoute
 }
 export interface FileRoutesById {
@@ -65,22 +81,40 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/items/$itemId': typeof AppItemsItemIdRoute
   '/_app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/_app/items/': typeof AppItemsIndexRoute
+  '/_app/phases/': typeof AppPhasesIndexRoute
   '/_app/rooms/': typeof AppRoomsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/rooms/$roomId' | '/items/' | '/rooms/'
+  fullPaths:
+    | '/'
+    | '/sign-in'
+    | '/items/$itemId'
+    | '/rooms/$roomId'
+    | '/items/'
+    | '/phases/'
+    | '/rooms/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/sign-in' | '/' | '/rooms/$roomId' | '/items' | '/rooms'
+  to:
+    | '/sign-in'
+    | '/'
+    | '/items/$itemId'
+    | '/rooms/$roomId'
+    | '/items'
+    | '/phases'
+    | '/rooms'
   id:
     | '__root__'
     | '/_app'
     | '/sign-in'
     | '/_app/'
+    | '/_app/items/$itemId'
     | '/_app/rooms/$roomId'
     | '/_app/items/'
+    | '/_app/phases/'
     | '/_app/rooms/'
   fileRoutesById: FileRoutesById
 }
@@ -119,6 +153,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppItemsIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/items/$itemId': {
+      id: '/_app/items/$itemId'
+      path: '/items/$itemId'
+      fullPath: '/items/$itemId'
+      preLoaderRoute: typeof AppItemsItemIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/phases/': {
+      id: '/_app/phases/'
+      path: '/phases'
+      fullPath: '/phases/'
+      preLoaderRoute: typeof AppPhasesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/rooms/': {
       id: '/_app/rooms/'
       path: '/rooms'
@@ -138,15 +186,19 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppItemsItemIdRoute: typeof AppItemsItemIdRoute
   AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
   AppItemsIndexRoute: typeof AppItemsIndexRoute
+  AppPhasesIndexRoute: typeof AppPhasesIndexRoute
   AppRoomsIndexRoute: typeof AppRoomsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppItemsItemIdRoute: AppItemsItemIdRoute,
   AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
   AppItemsIndexRoute: AppItemsIndexRoute,
+  AppPhasesIndexRoute: AppPhasesIndexRoute,
   AppRoomsIndexRoute: AppRoomsIndexRoute,
 }
 

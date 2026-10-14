@@ -7,6 +7,7 @@ import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { describeRoom } from '@/lib/rooms';
 import { RoomForm } from './room-form';
+import { RoomWork } from './room-work';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -105,6 +106,16 @@ export function RoomDetail() {
               <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
             </div>
           ) : null}
+
+          <div className="mt-10">
+            <h2 className="text-lg font-medium">Work</h2>
+            <p className="mt-1 text-sm text-pencil">
+              What each item means in this room — its own spec, or the house-wide one.
+            </p>
+            <div className="mt-4">
+              <RoomWork roomId={r.id} />
+            </div>
+          </div>
 
           {canEdit ? (
             <div className="mt-12 border-t border-chalk pt-6">

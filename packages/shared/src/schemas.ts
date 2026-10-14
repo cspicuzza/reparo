@@ -142,6 +142,19 @@ export const workItemUpdateSchema = z.object(workItemFields).partial().extend({ 
 export type WorkItemCreate = z.infer<typeof workItemCreateSchema>;
 export type WorkItemUpdate = z.infer<typeof workItemUpdateSchema>;
 
+/** The editable part of a work item — what the editor form holds; item and room are fixed. */
+export const workItemFormSchema = z.object({
+  phaseId: workItemFields.phaseId,
+  status: workItemFields.status,
+  spec: workItemFields.spec,
+  notes: workItemFields.notes,
+});
+export type WorkItemForm = z.infer<typeof workItemFormSchema>;
+export type WorkItemFormInput = z.input<typeof workItemFormSchema>;
+
+/** Phase form: the create schema's input shape, reused for edits. */
+export type PhaseCreateInput = z.input<typeof phaseCreateSchema>;
+
 export const workItemListSchema = z
   .object({
     phaseId: idSchema,

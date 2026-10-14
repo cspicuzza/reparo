@@ -19,7 +19,7 @@ export function Home() {
         Signed in as {me.data.member.displayName}
       </h1>
       <p className="mt-2 text-pencil">
-        Role: {me.data.member.role}. Phases, rooms, and items arrive with M1.
+        Role: {me.data.member.role}. Start with Rooms, then give each Item a spec.
       </p>
     </section>
   );
