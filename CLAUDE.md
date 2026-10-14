@@ -1,146 +1,107 @@
 # Reparo
 
-Home-renovation management app for a household acting as its own general contractor. One renovation, up to four signed-in people. It centralizes the budget, room measurements and specifications, vendors, materials, costs, task status and progress, and renderings of the intended final design for each space.
+Home-renovation app for Chris's household, acting as its own general contractor on one house, renovated in phases over years. Up to four people sign in with Google. It replaces a budget spreadsheet: money left, what each room is becoming (specs, products, images), what's been bought, who's doing what, and where it stands.
+
+## Where things live
+
+- **Scope, plan, milestones, issues, what's next:** Linear project **Reparo** (P-OD-4, team OD) — https://linear.app/okayishdev/project/reparo-ffa182a4db1c. Read its *Scope* and *Data model* documents and the issue you're on. Milestone descriptions hold done-criteria.
+- **Coding rules:** this file, plus `.claude/rules/` (each loads when you touch its area).
+- **What exists:** the code. The Drizzle schema in `packages/db/src/schema` is the data model as built.
+- If you can't reach Linear, say so and ask Chris for the issue text. Don't guess scope.
 
 ## Research & answering rules
 
-1. Accuracy comes first. Everything must be grounded in verifiable
-   information. Never guess, fabricate details, or fill gaps just to provide
-   an answer. If something cannot be verified, say so clearly.
-
-2. Research in proportion to the stakes. Do not rely on surface-level
-   information when additional research could materially improve accuracy or
-   completeness — but match the depth of research to the importance of the
-   question. If web search or document fetching is available, use it for
-   version-specific, product-specific, or time-sensitive questions rather
-   than answering from training memory.
-
-3. Prioritize primary sources. For technology, products, specifications,
-   compatibility, and technical questions, use official documentation as the
-   primary source. Verify the documentation applies to the exact product,
-   model, software version, or generation in use. In code, this means linking
-   the doc page for the API or library version you relied on.
-
-4. Separate fact from inference. When an answer rests on facts that could be
-   wrong or on a judgment call, label them:
+1. Accuracy comes first. Everything must be grounded in verifiable information. Never guess, fabricate details, or fill gaps just to provide an answer. If something cannot be verified, say so clearly.
+2. Research in proportion to the stakes. Do not rely on surface-level information when additional research could materially improve accuracy or completeness — but match the depth of research to the importance of the question. If web search or document fetching is available, use it for version-specific, product-specific, or time-sensitive questions rather than answering from training memory.
+3. Prioritize primary sources. For technology, products, specifications, compatibility, and technical questions, use official documentation as the primary source. Verify the documentation applies to the exact product, model, software version, or generation in use. In code, this means linking the doc page for the API or library version you relied on.
+4. Separate fact from inference. When an answer rests on facts that could be wrong or on a judgment call, label them:
    - Verified: directly supported by reliable evidence or documentation.
-   - Inferred: a reasonable conclusion from verified information, not
-     explicitly confirmed.
+   - Inferred: a reasonable conclusion from verified information, not explicitly confirmed.
    - Assumed: not verified; used only as a working assumption.
    Do not label the obvious or the trivial.
+5. Cite your sources. Provide direct links supporting important factual claims. Prefer primary over secondary sources when both are available.
+6. Check recency. Note the date of any figure that can go stale (prices, versions, availability, schedules). Prefer the docs version that matches the version actually in use.
+7. When sources conflict, observed behavior wins. If official docs disagree with what the code, tests, or a live system actually do, go with the observed behavior and flag the discrepancy.
+8. Handle ambiguity and missing information. If an interpretation or assumption would not materially change the answer, state it and proceed. If it would, ask before proceeding. Never make a material assumption silently.
+9. Stay within scope. Answer the question asked. In code, do not refactor, rename, reformat, or "improve" anything outside the task unless it is necessary or specifically requested. Do not branch into unrelated research, recommendations, or side quests.
+10. Do not simply agree. If a premise appears incorrect, incomplete, or contradicted by the evidence, say so. Point out meaningful risks, tradeoffs, flaws, or alternatives, even when they conflict with the stated position.
+11. Be transparent about uncertainty. Never present uncertain, outdated, conflicting, or incomplete information as established fact. Explain the limitation and, when possible, what would resolve it.
 
-5. Cite your sources. Provide direct links supporting important factual
-   claims. Prefer primary over secondary sources when both are available.
+## How Chris works
 
-6. Check recency. Note the date of any figure that can go stale (prices,
-   versions, availability, schedules). Prefer the docs version that matches
-   the version actually in use.
+- Proposals before artifacts. Nothing is written to the repo or Linear until Chris has said yes to a specific proposal.
+- Decisions are his. Lay out options and stop; don't pick a "recommended default" and build on it.
+- One Linear issue at a time. Chris names the next one; don't pick or suggest it unprompted.
+- Work on `develop`. No feature branches or PRs unless Chris asks. Leave `main` alone.
+- **Chris commits and pushes.** Leave changes in the working tree and give him a commit title and message: conventional commit with scope and issue (`feat(web): room list (OD-30)`), a body with the why and any new dependency. No `Co-Authored-By` or session trailer.
+- Never add a dependency, install a package, or run `brew` or another system installer without asking. Run commands only inside the project folder.
+- `pnpm check` must pass before you call work done. There is no CI.
+- Small changes, one concern each. If an issue grows, propose splitting it in Linear.
+- When an issue is done, comment on it in Linear: what changed, what's left, anything surprising.
 
-7. When sources conflict, observed behavior wins. If official docs disagree
-   with what the code, tests, or a live system actually do, go with the
-   observed behavior and flag the discrepancy.
+## Ask Chris before
 
-8. Handle ambiguity and missing information. If an interpretation or
-   assumption would not materially change the answer, state it and proceed.
-   If it would, ask before proceeding. Never make a material assumption
-   silently.
+- Deleting data, dropping tables, or rewriting an applied migration
+- Spending money (paid tiers, domains, services)
+- Reordering milestones or changing done-criteria
+- Changing the auth model or roles, or how money, lengths, or dates are represented
+- Adding a top-level app or package, or a new external service
+- Force-pushing or rewriting `develop` or `main`
 
-9. Stay within scope. Answer the question asked. In code, do not refactor,
-   rename, reformat, or "improve" anything outside the task unless it is
-   necessary or specifically requested. Do not branch into unrelated
-   research, recommendations, or side quests.
+## Hard rules
 
-10. Do not simply agree. If a premise appears incorrect, incomplete, or
-    contradicted by the evidence, say so. Point out meaningful risks,
-    tradeoffs, flaws, or alternatives, even when they conflict with the
-    stated position.
+- TypeScript `strict`. No `any`; no `@ts-ignore`/`@ts-expect-error` without a one-line reason.
+- Validate every boundary with Zod: tRPC inputs, env vars, uploads, imported data. Schemas live in `@reparo/shared`; types are inferred from them, never written twice.
+- **Money** is integer cents: `bigint` in Postgres, `number` in TS, never floats.
+- **Lengths** are inches, `numeric(10,4)`, snapped to 1/16". Shown as ft/in with fractions (`7' 3 1/2"`).
+- **Dates** without a time are `date` (ISO strings), not `timestamptz`.
+- All unit math goes through `@reparo/shared` (`cents`, `formatMoney`, `sumCents`, `parseLength`, `inches`, `formatLength`, `area`, `IsoDate`). If you're writing `/ 100`, `* 12`, or `new Date()` arithmetic anywhere else, stop.
+- Every tRPC procedure is `memberProcedure`, `editorProcedure`, or `adminProcedure`. There is no public procedure. Roles: admin (Chris: members, item list, phases, hard deletes), editor (everything else), viewer (read-only).
+- Schema changes only through Drizzle migrations in the repo. Never alter a database by hand.
+- Secrets only in `.env` (gitignored) and hosting dashboards. `.env.example` lists every variable.
+- Don't build what isn't in the Linear issue. If it needs something out of scope, say so on the issue.
+- `raw/` is Chris's source material (the current budget spreadsheet). Read it; never modify, move, rename, delete, or commit anything in it.
 
-11. Be transparent about uncertainty. Never present uncertain, outdated,
-    conflicting, or incomplete information as established fact. Explain the
-    limitation and, when possible, what would resolve it.
+## Settled — don't re-propose
 
-## Workflow expectations
+- React 19 SPA on Vite, not Next.js. tRPC + Zod, not REST/GraphQL. Drizzle owns the schema, not Supabase migrations.
+- Supabase Auth with Google only; membership by email in `members`. New Supabase keys (`sb_publishable_…` / `sb_secret_…`), not legacy anon/service_role. Tokens verified against JWKS (ES256), never a shared secret.
+- RLS on every table with no policies; the API connects as the DB owner and bypasses it.
+- Node 24 (newest Vercel runs). pnpm 12 (deploy needs `ENABLE_EXPERIMENTAL_COREPACK=1` on Vercel — on the Deploy issue).
+- Everything local until Chris says deploy. Target: Vercel + hosted Supabase at `reparo.okayish.dev`. Keep code Vercel-shaped.
+- No CI while local.
+- Parked, not rejected: scenario comparison; viewer scoping / hiding areas.
 
-- Do not add dependencies without asking.
-- Do not commit or push unless told to.
-- Run the relevant tests and linters before declaring work done (once they
-  exist).
-- Keep changes small and reviewable; one concern per change.
+## Stack and layout
 
-## Where truth lives
+```
+apps/web          React 19 + Vite + TanStack Router/Query + Tailwind v4; apps/web/api/index.ts is the Vercel function
+packages/api      tRPC routers + services + role guards (framework-free Node)
+packages/db       Drizzle schema, migrations, seed
+packages/shared   Zod schemas, env validation, money/length/date helpers (depends on nothing)
+```
 
-| What | Where |
-|---|---|
-| What we're building (and not) | `docs/scope.md` |
-| Why we chose things | `docs/decisions.md` — dated ADRs, append-only |
-| How we write code | `docs/conventions.md` |
-| Entities and relationships | `docs/data-model.md` |
-| Roadmap, milestones, done-criteria, tasks | Linear project **Reparo** (P-OD-4), team **OD** — https://linear.app/okayishdev/project/reparo-ffa182a4db1c. Milestone descriptions hold the done-criteria. |
-
-Linear issues reference these docs; they don't duplicate them. If code and docs disagree, the docs win until an ADR says otherwise. If a change alters behavior a doc describes, update the doc in the same commit series.
-
-## Stack (ADR-001, ADR-002)
-
-- **Web:** React 19 SPA on Vite, TypeScript strict, Tailwind, TanStack Router + Query, Zustand for the little client state that isn't server state.
-- **API:** Node + tRPC + Zod. One Vercel function, `apps/web/api/index.ts` (`export default { fetch }`), with `/api/trpc/*` rewritten to it (ADR-012). No `@/` alias inside `api/`.
-- **Data:** Postgres on Supabase, Drizzle ORM + migrations. Supabase Storage for renderings, receipts, quotes.
-- **Auth:** Google SSO via Supabase Auth; API only admits emails present in `members`, with roles admin / editor / viewer (ADR-008).
-- **Repo:** pnpm monorepo. `apps/web`, `packages/api`, `packages/db`, `packages/shared`.
-- **Hosting:** local only — Supabase CLI (`supabase start`) + Vite — until Chris says deploy (ADR-010). Target when he does: Vercel (web + API), Supabase (DB, auth, storage). Keep code Vercel-shaped.
+`api` depends on `db` and `shared`; `web` depends on `shared` and imports only the API's types. Packages are consumed as TypeScript source; only `apps/web` builds. Imports: `@/` within a workspace, package name across (`@reparo/shared`); no `../../..`.
 
 ## Commands
 
-`pnpm install`, `pnpm dev`, `pnpm check`, `pnpm build` work as of OD-24; `supabase start`, `db:generate`, `db:migrate` as of OD-22; `db:seed` and the API dev server as of OD-21; Google sign-in and the signed-in shell as of OD-20; Rooms screens as of OD-29; Items catalog as of OD-30; work items, by-item view, and Phases as of OD-31. Copy `.env.example` to `.env` first; `supabase start` prints the local keys. Vite reads `VITE_*` from `.env` itself.
+Copy `.env.example` to `.env` first; `supabase start` prints the local keys.
 
 ```
 pnpm install          # once
 supabase start        # local Postgres + Auth + Storage (Docker)
-pnpm dev              # Vite on :5173 + API on :3001 (tsx watch); Vite proxies /api
-pnpm check            # typecheck + lint + format + test — run before every commit
-pnpm db:generate      # Drizzle migration from schema change (packages/db/drizzle)
-pnpm db:migrate       # apply migrations to DATABASE_URL (local Supabase: port 54322)
+pnpm dev              # Vite :5173 + API :3001; Vite proxies /api
+pnpm check            # typecheck + lint + format + test — before calling work done
+pnpm db:generate      # migration from a schema change
+pnpm db:migrate       # apply migrations to DATABASE_URL (local: port 54322)
 pnpm db:seed          # upsert members from MEMBERS in .env
-pnpm db:studio        # Drizzle Studio over DATABASE_URL
+pnpm db:studio        # Drizzle Studio
 ```
 
-`@reparo/db` and `@reparo/api` tests are integration tests: they need a running Postgres (local Supabase) and read `DATABASE_URL` from the root `.env`, so `pnpm check` works once `supabase start` is up. A `DATABASE_URL` set in the shell takes precedence. They are non-destructive: migrations are applied only if pending and every test's writes are rolled back.
+`@reparo/db` and `@reparo/api` tests need local Supabase running. They apply pending migrations and roll back every test's writes.
 
-## Workflow for agents
+## Naming
 
-1. Start from a Linear issue. Work on `develop` — no feature branches or PRs unless Chris asks. Put `OD-<n>` in every commit message so Linear links the commit to the issue.
-2. Read this file, the relevant `docs/` pages, and the issue before writing code. Don't re-derive decisions that are already in `docs/decisions.md`. If you can't reach Linear from your session, say so and ask Chris for the issue text — don't guess the scope.
-3. One issue at a time; small commits, one concern each. Conventional-commit messages (`feat(web): room list (OD-30)`). Commit locally; don't push unless Chris says.
-4. `pnpm check` must pass before a commit. There is no CI; the local check is the gate.
-5. Behavior change → doc change in the same commit series. Choice from the "needs an ADR" list → ADR alongside it.
-6. When done, move the Linear issue and leave a comment: what changed, what's left, anything surprising.
-
-## Hard rules
-
-- TypeScript `strict`. No `any`, no `@ts-ignore`/`@ts-expect-error` without a one-line reason.
-- Validate every boundary with Zod: tRPC inputs, environment variables, file uploads, imported data.
-- **Money is integer cents** (`bigint` in Postgres, `number` in TS, never floats). **Lengths are stored in inches** as `numeric(10,4)`, snapped to 1/16" (ADR-011), and displayed as ft/in. Helpers live in `packages/shared`; don't reimplement them.
-- Every table has `id uuid`, `created_at`, `updated_at`. Soft-delete (`deleted_at`) on anything a person would regret deleting: phases, rooms, work items, cost lines, vendors, files.
-- Schema changes only through Drizzle migrations committed to the repo. Never alter the database by hand, locally or hosted.
-- No anonymous routes. Every tRPC procedure runs behind the member guard.
-- Secrets live only in `.env` (gitignored) and the Vercel/Supabase dashboards. `.env.example` lists every variable with a comment.
-- Don't add a dependency for something the stack already does. A new runtime dependency needs Chris's OK first and a sentence of justification in the commit body.
-- Don't write code that isn't on the roadmap. If an issue needs something out of scope, say so in the issue instead of building it.
-
-## Needs an ADR before doing
-
-- A new top-level app or package
-- A new external service or paid tier
-- Any change to the auth model or roles
-- Any change to how money, lengths, or dates are represented
-- Anything that changes a Linear milestone's done-criteria
-
-## Ask Chris before
-
-- Deleting data, dropping tables, or rewriting a migration that has been applied anywhere
-- Spending money (paid tiers, domains, services)
-- Reordering the roadmap
-- Force-pushing or rewriting `develop` or `main`
-
-## Do not touch `raw/`
-
-`raw/` holds Chris's source material (the current budget spreadsheet and anything else he drops there). It is gitignored. Read from it; never modify, move, rename, or delete anything in it, and never commit it.
+- Files `kebab-case.ts`; React components `PascalCase.tsx`, one per file, named export.
+- Tables and columns `snake_case`, plural tables. Booleans read as predicates (`isArchived`).
+- Comments explain why, not what. No `TODO` without a Linear issue number.

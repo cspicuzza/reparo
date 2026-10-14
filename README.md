@@ -1,5 +1,6 @@
 # Reparo
 
-Home-renovation management for a household acting as its own general contractor: budget, room specs, vendors, materials, costs, tasks, progress, and renderings in one place.
+Home-renovation management for a household acting as its own general contractor: budget, rooms and specs, purchases, vendors, status, and images in one place.
 
-Start with [`CLAUDE.md`](./CLAUDE.md) — it explains the stack, where decisions live, and how work flows through Linear. Setup commands land in milestone M0.
+- Setup and commands: `CLAUDE.md` → *Commands*.
+- Scope and plan: Linear project **Reparo** (link in `CLAUDE.md`).
