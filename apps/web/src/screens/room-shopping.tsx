@@ -2,6 +2,7 @@ import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
+import { EditPanel } from '@/components/edit-panel';
 import { Button } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
@@ -34,7 +35,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
     <div>
       {lines.isPending ? <p className="text-muted-foreground">Loading…</p> : null}
       {lines.error ? <p role="alert">Couldn&apos;t load: {lines.error.message}</p> : null}
-      {lines.data && lines.data.length === 0 && !adding ? (
+      {lines.data && lines.data.length === 0 ? (
         <p className="text-muted-foreground">Nothing on the list for {roomName} yet.</p>
       ) : null}
       {lines.data && lines.data.length > 0 ? (
@@ -46,23 +47,29 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
           className="-mt-4"
         />
       ) : null}
-      {adding ? (
-        <div className="mt-4 rounded-xl border border-border bg-background p-4">
-          <ShoppingLineForm
-            idPrefix={`room-line-${roomId}`}
-            defaults={{ roomId }}
-            submitLabel="Add to the list"
-            serverError={create.error?.message}
-            onCancel={() => {
-              create.reset();
-              setAdding(false);
-            }}
-            onSubmit={async (values) => {
-              await create.mutateAsync(values).catch(() => undefined);
-            }}
-          />
-        </div>
-      ) : (
+      <EditPanel
+        open={adding}
+        title={`Something for the ${roomName}`}
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <ShoppingLineForm
+          idPrefix={`room-line-${roomId}`}
+          defaults={{ roomId }}
+          submitLabel="Add to the list"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (values) => {
+            await create.mutateAsync(values).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
+      {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {canEdit ? (
             <Button
@@ -82,7 +89,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
             See it on the shopping list
           </Link>
         </div>
-      )}
+      }
       <ShoppingLinePanel
         line={lines.data?.find((l) => l.id === openId)}
         files={files.data ?? []}

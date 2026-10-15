@@ -7,6 +7,7 @@ import {
   type ShoppingLineCreateInput,
 } from '@reparo/shared';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,10 @@ import { PHASE_STATUS_LABEL } from '@/lib/work';
 const orNull = (v: unknown) => (v === '' ? null : v);
 
 /**
- * Add or edit a shopping line (M3, OD-52): what it is, where it goes, what it should cost and
- * which phase it belongs to. Buying and returning are separate actions on the line, not here.
+ * Add or edit a shopping line (M3, OD-52; shortened in Workflow polish, OD-80): what it is, its
+ * price, room, category, store, link and notes up front; how many, phase, job and model number
+ * under "More details". Store suggests the stores already in use. Buying and returning are
+ * separate actions on the line, not here. Lays out by the side panel's width (`@lg:`).
  */
 export function ShoppingLineForm({
   idPrefix,
@@ -45,6 +48,8 @@ export function ShoppingLineForm({
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const categories = useQuery(trpc.categories.list.queryOptions());
   const jobs = useQuery(trpc.jobs.list.queryOptions());
+  // Suggestions only; the form doesn't wait for them.
+  const stores = useQuery(trpc.shoppingLines.stores.queryOptions());
 
   if (phases.isPending || rooms.isPending || categories.isPending || jobs.isPending) {
     return <p className="text-muted-foreground">Loading…</p>;
@@ -66,6 +71,10 @@ export function ShoppingLineForm({
       rooms={rooms.data}
       categories={categories.data}
       jobs={jobs.data}
+      stores={(stores.data ?? []).map((st) => st.name)}
+      startWithMore={
+        line !== undefined && (line.quantity > 1 || line.jobId !== null || line.modelNumber !== '')
+      }
       defaultValues={{
         name: line?.name ?? '',
         phaseId: line?.phaseId ?? defaults?.phaseId ?? active?.id ?? '',
@@ -93,6 +102,8 @@ function LineFields({
   rooms,
   categories,
   jobs,
+  stores,
+  startWithMore,
   defaultValues,
   submitLabel,
   serverError,
@@ -100,6 +111,10 @@ function LineFields({
   onCancel,
 }: {
   idPrefix: string;
+  /** Store names already in use, for suggestions. */
+  stores: string[];
+  /** Open "More details" at the start (editing a line that already uses them). */
+  startWithMore: boolean;
   phases: { id: string; name: string; status: 'planned' | 'active' | 'complete' }[];
   rooms: { id: string; name: string }[];
   categories: { id: string; name: string }[];
@@ -122,9 +137,15 @@ function LineFields({
   const phaseJobs = jobs.filter((j) => j.phaseId === phaseId);
 
   const formRef = useFocusFirstField<HTMLFormElement>();
+  // The details people rarely set start folded (OD-80), unless the line already uses them or
+  // one of them has a problem to fix.
+  const moreErrors = Boolean(
+    errors.quantity ?? errors.phaseId ?? errors.jobId ?? errors.modelNumber,
+  );
+  const [more, setMore] = useState(startWithMore);
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+      <div className="grid gap-5 @lg:grid-cols-[1fr_12rem]">
         <Field label="What it is" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
@@ -142,7 +163,7 @@ function LineFields({
           />
         </Field>
       </div>
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 @lg:grid-cols-2">
         <Field label="Room" htmlFor={id('room')} error={errors.roomId?.message}>
           <Select id={id('room')} {...register('roomId', { setValueAs: orNull })}>
             <option value="">Whole house</option>
@@ -163,60 +184,88 @@ function LineFields({
           </Select>
         </Field>
         <Field
-          label="Phase"
-          htmlFor={id('phase')}
-          hint="Planned phases don't count against the money yet."
-          error={errors.phaseId?.message}
+          label="Store"
+          htmlFor={id('store')}
+          hint="Pick one you've used or type a new one."
+          error={errors.store?.message}
         >
-          <Select id={id('phase')} {...register('phaseId')}>
-            {phases.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({PHASE_STATUS_LABEL[p.status].toLowerCase()})
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <div className="grid gap-5 sm:grid-cols-3">
-        <Field label="Store" htmlFor={id('store')} error={errors.store?.message}>
-          <Input id={id('store')} autoComplete="off" {...register('store')} />
+          <Input id={id('store')} autoComplete="off" list={id('stores')} {...register('store')} />
         </Field>
         <Field label="Link" htmlFor={id('link')} error={errors.link?.message}>
           <Input id={id('link')} type="url" autoComplete="off" {...register('link')} />
         </Field>
-        <Field
-          label="For a job"
-          htmlFor={id('job')}
-          hint="Like tile for the flooring job."
-          error={errors.jobId?.message}
-        >
-          <Select id={id('job')} {...register('jobId', { setValueAs: orNull })}>
-            <option value="">No job</option>
-            {phaseJobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
       </div>
-      <div className="grid gap-5 sm:grid-cols-3">
-        <Field label="How many" htmlFor={id('qty')} error={errors.quantity?.message}>
-          <Input
-            id={id('qty')}
-            type="number"
-            min={1}
-            step={1}
-            {...register('quantity', { valueAsNumber: true })}
-          />
-        </Field>
-        <Field label="Model number" htmlFor={id('model')} error={errors.modelNumber?.message}>
-          <Input id={id('model')} autoComplete="off" {...register('modelNumber')} />
-        </Field>
-      </div>
+      {/* The browser's own suggestions as you type (Workflow polish, OD-69/OD-80). */}
+      <datalist id={id('stores')}>
+        {stores.map((st) => (
+          <option key={st} value={st} />
+        ))}
+      </datalist>
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
-        <Textarea id={id('notes')} rows={2} {...register('notes')} />
+        <Textarea id={id('notes')} rows={4} {...register('notes')} />
       </Field>
+
+      <div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="-ml-3"
+          aria-expanded={more || moreErrors}
+          aria-controls={id('more')}
+          onClick={() => setMore((v) => !v)}
+        >
+          {more || moreErrors ? 'Fewer details' : 'More details'}
+          <span className="text-muted-foreground">: how many, phase, job, model number</span>
+        </Button>
+        <div
+          id={id('more')}
+          hidden={!(more || moreErrors)}
+          className="mt-3 grid gap-5 @lg:grid-cols-2"
+        >
+          <Field label="How many" htmlFor={id('qty')} error={errors.quantity?.message}>
+            <Input
+              id={id('qty')}
+              type="number"
+              min={1}
+              step={1}
+              {...register('quantity', { valueAsNumber: true })}
+            />
+          </Field>
+          <Field
+            label="Phase"
+            htmlFor={id('phase')}
+            hint="Planned phases don't count against the money yet."
+            error={errors.phaseId?.message}
+          >
+            <Select id={id('phase')} {...register('phaseId')}>
+              {phases.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({PHASE_STATUS_LABEL[p.status].toLowerCase()})
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="For a job"
+            htmlFor={id('job')}
+            hint="Like tile for the flooring job."
+            error={errors.jobId?.message}
+          >
+            <Select id={id('job')} {...register('jobId', { setValueAs: orNull })}>
+              <option value="">No job</option>
+              {phaseJobs.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Model number" htmlFor={id('model')} error={errors.modelNumber?.message}>
+            <Input id={id('model')} autoComplete="off" {...register('modelNumber')} />
+          </Field>
+        </div>
+      </div>
+
       {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>

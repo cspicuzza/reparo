@@ -5,6 +5,7 @@ import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Select } from '@/components/form';
+import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
@@ -87,7 +88,7 @@ export function Shopping() {
           )
         }
         action={
-          canEdit && !adding ? (
+          canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-line">
               Add something
             </Button>
@@ -95,32 +96,32 @@ export function Shopping() {
         }
       />
 
-      {adding ? (
-        <Panel aria-labelledby="new-line">
-          <h2 id="new-line" className="text-2xl">
-            Something to buy
-          </h2>
-          <div className="mt-4">
-            <ShoppingLineForm
-              idPrefix="new-line"
-              defaults={{
-                ...(search.room && search.room !== 'house' ? { roomId: search.room } : {}),
-                ...(search.category ? { categoryId: search.category } : {}),
-                ...(search.phase ? { phaseId: search.phase } : {}),
-              }}
-              submitLabel="Add to the list"
-              serverError={create.error?.message}
-              onCancel={() => {
-                create.reset();
-                setAdding(false);
-              }}
-              onSubmit={async (values) => {
-                await create.mutateAsync(values).catch(() => undefined);
-              }}
-            />
-          </div>
-        </Panel>
-      ) : null}
+      <EditPanel
+        open={adding}
+        title="Something to buy"
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <ShoppingLineForm
+          idPrefix="new-line"
+          defaults={{
+            ...(search.room && search.room !== 'house' ? { roomId: search.room } : {}),
+            ...(search.category ? { categoryId: search.category } : {}),
+            ...(search.phase ? { phaseId: search.phase } : {}),
+          }}
+          submitLabel="Add to the list"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (values) => {
+            await create.mutateAsync(values).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
 
       <Filters search={search} />
 
@@ -130,7 +131,7 @@ export function Shopping() {
       {lines.error || totals.error ? (
         <p role="alert">Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}</p>
       ) : null}
-      {lines.data && lines.data.length === 0 && !adding ? (
+      {lines.data && lines.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>{filtered ? 'Nothing matches these filters.' : 'Nothing on the list yet.'}</span>
           {filtered ? (
