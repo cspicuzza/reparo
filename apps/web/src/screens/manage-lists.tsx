@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/page-header';
 import { useMe } from '@/lib/me';
 import { CategoriesAdmin } from './categories-admin';
+import { PanelPlaceholder } from '@/components/placeholder';
 
 /**
  * The admin's lists (Workflow polish, OD-70): settings that change rarely and shape the rest of
@@ -16,7 +17,7 @@ export function ManageLists() {
         description="How things are grouped across the house. Only the admin changes these."
       />
       {member === undefined ? (
-        <p className="text-muted-foreground">Loading…</p>
+        <PanelPlaceholder label="Loading" lines={5} />
       ) : isAdmin ? (
         <CategoriesAdmin />
       ) : (

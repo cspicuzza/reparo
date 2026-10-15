@@ -22,6 +22,7 @@ import { PanelList } from '@/components/panel';
 import { PhaseStatusBadge, PhaseStatusSelect } from '@/components/status';
 import { SaveState } from '@/components/save-state';
 import { TapeStrip } from '@/components/tape';
+import { ListPlaceholder } from '@/components/placeholder';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
 export function Phases() {
@@ -113,7 +114,7 @@ export function Phases() {
         ) : null}
       </EditPanel>
 
-      {phases.isPending ? <p className="text-muted-foreground">Loading phases…</p> : null}
+      {phases.isPending ? <ListPlaceholder label="Loading phases" rows={3} /> : null}
       {phases.error ? <p role="alert">Couldn&apos;t load phases: {phases.error.message}</p> : null}
       {phases.data && phases.data.length === 0 ? (
         <p className="text-muted-foreground">

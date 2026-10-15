@@ -14,6 +14,7 @@ import { useMe } from '@/lib/me';
 import { roomProgressText } from '@/lib/rooms';
 import { useTRPC } from '@/lib/trpc';
 import { progressText } from '@/lib/work';
+import { Bar, Loading, PanelShape } from '@/components/placeholder';
 
 type Summary = RouterOutputs['home']['summary'];
 
@@ -35,7 +36,16 @@ export function Home() {
       {summary.isPending ? (
         <>
           <h1 className="text-3xl">{hello}</h1>
-          <p className="text-muted-foreground">Loading the house…</p>
+          <Loading label="Loading the house">
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-col gap-3">
+                <Bar className="h-10 w-4/5" />
+                <Bar className="w-1/2" />
+                <Bar className="mt-3 h-8 w-full" />
+              </div>
+              <PanelShape lines={6} />
+            </div>
+          </Loading>
         </>
       ) : summary.error ? (
         <>

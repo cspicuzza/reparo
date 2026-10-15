@@ -28,6 +28,7 @@ import { useMe } from '@/lib/me';
 import { centsToInput, headline, money, plannedPhaseText } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
+import { Bar, Loading, PanelShape } from '@/components/placeholder';
 
 type Summary = RouterOutputs['money']['summary'];
 type Budget = RouterOutputs['budget']['get'];
@@ -64,7 +65,16 @@ export function Money() {
         description="The budget, what's spent, what's committed and what's left."
       />
       {summary.isPending || budget.isPending ? (
-        <p className="text-muted-foreground">Loading…</p>
+        <Loading label="Loading the money">
+          <div className="flex flex-col gap-8">
+            <div className="flex flex-col gap-3">
+              <Bar className="h-10 w-2/3" />
+              <Bar className="mt-3 h-8 w-full" />
+            </div>
+            <PanelShape lines={4} />
+            <PanelShape lines={4} />
+          </div>
+        </Loading>
       ) : null}
       {summary.error || budget.error ? (
         <p role="alert">Couldn&apos;t load the money: {(summary.error ?? budget.error)?.message}</p>

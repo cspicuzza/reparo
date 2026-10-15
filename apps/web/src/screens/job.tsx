@@ -21,6 +21,7 @@ import { JobEstimates } from './job-estimates';
 import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
+import { PagePlaceholder } from '@/components/placeholder';
 
 /**
  * One job (M2, OD-46; replaces the item page): who's doing it, the house-wide spec, and each
@@ -34,7 +35,7 @@ export function JobDetail() {
   const [editing, setEditing] = useState(false);
   useReturnFocus(editing ? 'edit-job' : null);
 
-  if (job.isPending) return <p className="text-muted-foreground">Loading…</p>;
+  if (job.isPending) return <PagePlaceholder label="Loading the job" />;
   if (job.error) {
     return (
       <section>

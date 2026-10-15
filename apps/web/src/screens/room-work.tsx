@@ -11,6 +11,7 @@ import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
 import { SaveState } from '@/components/save-state';
+import { ListPlaceholder } from '@/components/placeholder';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -23,7 +24,7 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
   const [editing, setEditing] = useState<string | null>(null);
   useReturnFocus(editing ? `jr-${editing}` : null);
 
-  if (jobs.isPending) return <p className="text-muted-foreground">Loading jobs…</p>;
+  if (jobs.isPending) return <ListPlaceholder label="Loading jobs" rows={2} />;
   if (jobs.error) return <p role="alert">Couldn&apos;t load jobs: {jobs.error.message}</p>;
 
   if (jobs.data.length === 0) {

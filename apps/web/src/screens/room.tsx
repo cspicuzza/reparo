@@ -22,6 +22,7 @@ import { RoomShopping } from './room-shopping';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { FormError } from '@/components/form';
+import { PagePlaceholder } from '@/components/placeholder';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -55,7 +56,7 @@ export function RoomDetail() {
   const saveRoom = (input: RoomUpdateInput) =>
     trpcClient.rooms.update.mutate(input).then(() => invalidate());
 
-  if (room.isPending) return <p className="text-muted-foreground">Loading…</p>;
+  if (room.isPending) return <PagePlaceholder label="Loading the room" />;
   if (room.error) {
     const gone = trpcErrorCode(room.error) === 'NOT_FOUND';
     return (

@@ -28,6 +28,7 @@ import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingLinePanel } from './shopping-line-panel';
 import { ShoppingRows } from './shopping-list';
 import { useLineFiles } from '@/lib/use-line-files';
+import { Loading, PanelShape } from '@/components/placeholder';
 
 const route = getRouteApi('/_app/shopping/');
 
@@ -127,7 +128,12 @@ export function Shopping() {
       <Filters search={search} />
 
       {lines.isPending || totals.isPending ? (
-        <p className="text-muted-foreground">Loading the list…</p>
+        <Loading label="Loading the list">
+          <div className="flex flex-col gap-4">
+            <PanelShape lines={5} />
+            <PanelShape lines={5} />
+          </div>
+        </Loading>
       ) : null}
       {lines.error || totals.error ? (
         <p role="alert">Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}</p>

@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { centsToInput, lineAmountText, money, moneyStep } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import type { Job } from '@/lib/work';
+import { LinesPlaceholder } from '@/components/placeholder';
 
 type CostLine = RouterOutputs['costLines']['list'][number];
 type Payment = RouterOutputs['payments']['list'][number];
@@ -102,7 +103,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         {costs.data ? (
           <CostLines jobId={job.id} lines={costs.data} canEdit={canEdit} />
         ) : (
-          <p className="mt-3 text-muted-foreground">Loading…</p>
+          <LinesPlaceholder label="Loading costs" className="mt-3" />
         )}
       </section>
 
@@ -113,7 +114,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         {paid.data ? (
           <Payments jobId={job.id} payments={paid.data} canEdit={canEdit} />
         ) : (
-          <p className="mt-3 text-muted-foreground">Loading…</p>
+          <LinesPlaceholder label="Loading payments" className="mt-3" />
         )}
       </section>
 

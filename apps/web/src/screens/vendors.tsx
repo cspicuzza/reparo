@@ -20,6 +20,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { jobCountText, telHref } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
+import { ListPlaceholder } from '@/components/placeholder';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
 
@@ -95,7 +96,7 @@ export function Vendors() {
         />
       </EditPanel>
 
-      {vendors.isPending ? <p className="text-muted-foreground">Loading vendors…</p> : null}
+      {vendors.isPending ? <ListPlaceholder label="Loading vendors" rows={6} /> : null}
       {vendors.error ? (
         <p role="alert">Couldn&apos;t load vendors: {vendors.error.message}</p>
       ) : null}

@@ -16,6 +16,7 @@ import { centsToInput } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
+import { FormPlaceholder } from '@/components/placeholder';
 
 /** Empty <select> values mean "none" (whole house, no job). */
 const orNull = (v: unknown) => (v === '' ? null : v);
@@ -53,7 +54,7 @@ export function ShoppingLineForm({
   const stores = useQuery(trpc.shoppingLines.stores.queryOptions());
 
   if (phases.isPending || rooms.isPending || categories.isPending || jobs.isPending) {
-    return <p className="text-muted-foreground">Loading…</p>;
+    return <FormPlaceholder label="Loading the form" fields={5} />;
   }
   if (phases.error || rooms.error || categories.error || jobs.error) {
     const message = (phases.error ?? rooms.error ?? categories.error ?? jobs.error)?.message;

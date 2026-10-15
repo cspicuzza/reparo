@@ -9,6 +9,7 @@ import { problemWith } from '@/lib/problem';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { SaveState } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
+import { GridPlaceholder } from '@/components/placeholder';
 
 type RoomJob = { id: string; name: string };
 
@@ -43,7 +44,7 @@ export function RoomPictures({
     }),
   );
 
-  if (files.isPending) return <p className="text-muted-foreground">Loading pictures…</p>;
+  if (files.isPending) return <GridPlaceholder label="Loading pictures" />;
   if (files.error) return <p role="alert">Couldn&apos;t load pictures: {files.error.message}</p>;
 
   const all = files.data;
