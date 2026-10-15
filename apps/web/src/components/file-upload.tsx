@@ -17,6 +17,7 @@ export function FileUpload({
   target,
   label,
   onUploaded,
+  compact = false,
   className,
 }: {
   /** Where the files go. Read when each upload starts, so a job picked just before counts. */
@@ -24,6 +25,8 @@ export function FileUpload({
   /** "Add renderings", "Add a receipt". */
   label: string;
   onUploaded: (file: FileView) => void | Promise<void>;
+  /** Just the button, for a row (a payment's receipt): no drop box or paste hint. */
+  compact?: boolean;
   className?: string;
 }) {
   const inputId = useId();
@@ -71,7 +74,7 @@ export function FileUpload({
         role="group"
         aria-label={label}
         // Focusable so a copied picture can be pasted into it.
-        tabIndex={0}
+        tabIndex={compact ? undefined : 0}
         onPaste={onPaste}
         onDragOver={(e) => {
           e.preventDefault();
@@ -80,7 +83,8 @@ export function FileUpload({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={cn(
-          'flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-dashed border-input p-3',
+          'flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl',
+          !compact && 'border border-dashed border-input p-3',
           dragging && 'border-solid border-foreground bg-inset',
         )}
       >
@@ -97,13 +101,19 @@ export function FileUpload({
             e.currentTarget.value = '';
           }}
         />
-        <Button type="button" variant="outline" onClick={() => input.current?.click()}>
+        <Button
+          type="button"
+          variant={compact ? 'ghost' : 'outline'}
+          onClick={() => input.current?.click()}
+        >
           <Upload aria-hidden className="size-4" />
           {label}
         </Button>
-        <p className="hidden text-sm text-muted-foreground sm:block">
-          Or drop files here. To paste a copied picture, click this box and paste.
-        </p>
+        {compact ? null : (
+          <p className="hidden text-sm text-muted-foreground sm:block">
+            Or drop files here. To paste a copied picture, click this box and paste.
+          </p>
+        )}
       </div>
 
       {uploads.length > 0 ? (

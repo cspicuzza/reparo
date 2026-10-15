@@ -245,6 +245,12 @@ export const captionSchema = z.string().trim().max(500, 'Keep the caption under 
 
 export const fileListSchema = z.object({ ownerType: fileOwnerSchema, ownerId: idSchema });
 export type FileOwnerRef = z.infer<typeof fileListSchema>;
+/** Files of many owners of one type at once (a job's payments, the shopping list's lines). */
+export const fileListManySchema = z.object({
+  ownerType: fileOwnerSchema,
+  ownerIds: z.array(idSchema).max(1000),
+});
+export type FileOwnerRefs = z.infer<typeof fileListManySchema>;
 
 /** Ask for a place to upload one file. The browser then sends the bytes straight to storage. */
 export const fileStartSchema = z.object({

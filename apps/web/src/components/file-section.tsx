@@ -54,7 +54,7 @@ export function FileSection({
   const Heading = headingLevel;
   const refresh = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: trpc.files.list.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
       onChanged?.(),
     ]);
   };

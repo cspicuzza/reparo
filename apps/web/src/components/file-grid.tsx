@@ -68,7 +68,8 @@ export function FileGrid({
                 aria-disabled={f.url ? undefined : true}
                 className="group block rounded-lg"
               >
-                <span className="flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-inset p-3 text-center">
+                <span className="relative flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-inset p-3 text-center">
+                  {chip ? <span className="absolute top-2 left-2">{chip}</span> : null}
                   {f.url ? (
                     <>
                       <FileText aria-hidden className="size-8 text-muted-foreground" />

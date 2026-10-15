@@ -14,6 +14,7 @@ import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
+import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
 
@@ -284,6 +285,8 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
           </ul>
         )}
       </Panel>
+
+      <JobFiles jobId={job.id} canEdit={canEdit} />
 
       {error ? <FormError>{error.message}</FormError> : null}
 

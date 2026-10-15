@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   and,
   asc,
+  inArray,
   desc,
   eq,
   files,
@@ -24,6 +25,7 @@ import {
   type FileKindInput,
   type FileOwner,
   type FileOwnerRef,
+  type FileOwnerRefs,
   type FileStart,
   type FileUpdate,
   type RoomCover,
@@ -307,4 +309,32 @@ export async function listRoomCovers(db: Db, storage: Storage) {
     const url = urls.get(r.path);
     return url ? [{ roomId: r.roomId, url, caption: r.caption }] : [];
   });
+}
+
+/** Files of many owners of one type in one go: newest first within each owner. */
+export async function listManyFiles(
+  db: Db,
+  storage: Storage,
+  { ownerType, ownerIds }: FileOwnerRefs,
+) {
+  if (ownerIds.length === 0) return [];
+  const rows = await db
+    .select({ file: files, jobName: sql<string | null>`null` })
+    .from(files)
+    .where(and(eq(files.ownerType, ownerType), inArray(files.ownerId, ownerIds), live()))
+    .orderBy(desc(files.createdAt), asc(files.id));
+  return withUrls(storage, rows, null);
+}
+
+/** Progress photos that show this job, from every room it covers (Q17), newest first. */
+export async function listJobProgressPhotos(db: Db, storage: Storage, jobId: string) {
+  const rows = await db
+    .select({ file: files, jobName: jobs.name, roomName: rooms.name })
+    .from(files)
+    .innerJoin(jobs, eq(jobs.id, files.jobId))
+    .innerJoin(rooms, and(eq(rooms.id, files.ownerId), isNull(rooms.deletedAt)))
+    .where(and(eq(files.jobId, jobId), eq(files.kind, 'progress_photo'), live()))
+    .orderBy(desc(files.takenOn), desc(files.createdAt), asc(files.id));
+  const views = await withUrls(storage, rows, null);
+  return views.map((v, i) => ({ ...v, roomName: rows[i]?.roomName ?? '' }));
 }

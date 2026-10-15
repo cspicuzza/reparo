@@ -15,6 +15,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { Field, FormError, Input } from '@/components/form';
 import { PaymentBadge, ShoppingStatusBadge } from '@/components/money';
@@ -343,6 +344,14 @@ function Payments({
   const create = useMutation(trpc.payments.create.mutationOptions());
   const update = useMutation(trpc.payments.update.mutationOptions());
   const remove = useMutation(trpc.payments.remove.mutationOptions({ onSuccess: invalidate }));
+  const receipts = useQuery(
+    trpc.files.listMany.queryOptions({
+      ownerType: 'payment',
+      ownerIds: payments.map((p) => p.id),
+    }),
+  );
+  const receiptsOf = (paymentId: string) =>
+    (receipts.data ?? []).filter((f) => f.ownerId === paymentId);
 
   return (
     <div>
@@ -385,6 +394,15 @@ function Payments({
                   <span className="block break-words">{p.note || 'Payment'}</span>
                   <span className="block text-sm text-muted-foreground">
                     {isIsoDate(p.paidOn) ? formatIsoDate(p.paidOn) : p.paidOn}
+                  </span>
+                  <span className="mt-1 block">
+                    <AttachedFiles
+                      files={receiptsOf(p.id)}
+                      target={{ ownerType: 'payment', ownerId: p.id, kind: 'receipt' }}
+                      addLabel="Attach a receipt"
+                      canEdit={canEdit}
+                      what="receipt"
+                    />
                   </span>
                 </span>
                 <span className="font-semibold tabular-nums">{money(p.amountCents)}</span>

@@ -1301,6 +1301,12 @@ describe('@reparo/api', () => {
       expect((undated.data as FileRow).takenOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
       const id = (made.data as FileRow).id;
+      const onJob = (await query(h, 'viewer', 'files.forJob', { jobId: tile.id }))
+        .data as (FileRow & {
+        roomName: string;
+      })[];
+      expect(onJob.map((f) => [f.id, f.roomName])).toEqual([[id, 'Bath']]);
+      expect((await query(h, 'viewer', 'files.forJob', { jobId: paint.id })).data).toEqual([]);
       const list = async () =>
         (await query(h, 'viewer', 'files.list', { ownerType: 'room', ownerId: bath.id }))
           .data as FileRow[];
@@ -1422,6 +1428,11 @@ describe('@reparo/api', () => {
         { ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' },
       ];
       for (const o of ok) expect((await upload(h, 'editor', { ...o, ...pdf })).status).toBe(200);
+      const receipts = await query(h, 'viewer', 'files.listMany', {
+        ownerType: 'payment',
+        ownerIds: [pay.id, job.id],
+      });
+      expect((receipts.data as FileRow[]).map((f) => f.kind)).toEqual(['receipt']);
 
       const productPdf = await upload(h, 'editor', {
         ownerType: 'shopping_line',

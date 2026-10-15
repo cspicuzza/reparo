@@ -34,7 +34,7 @@ export function RoomPictures({
     trpc.rooms.setCover.mutationOptions({
       onSuccess: () =>
         Promise.all([
-          queryClient.invalidateQueries({ queryKey: trpc.files.list.queryKey() }),
+          queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
           refreshCovers(),
         ]),
     }),
@@ -161,7 +161,7 @@ function ProgressDetails({
   const [jobId, setJobId] = useState(file.jobId ?? '');
   const update = useMutation(
     trpc.files.update.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.files.list.queryKey() }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
     }),
   );
   if (!canEdit) {
