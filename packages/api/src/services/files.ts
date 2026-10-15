@@ -5,6 +5,7 @@ import {
   inArray,
   desc,
   eq,
+  estimates,
   files,
   isNull,
   jobRooms,
@@ -111,7 +112,13 @@ async function assertOwner(db: Db, owner: FileOwner, id: string): Promise<void> 
         'Vendor',
       );
     case 'estimate':
-      throw badRequest('Quotes can be attached once estimates exist');
+      return one(
+        db
+          .select({ id: estimates.id })
+          .from(estimates)
+          .where(and(eq(estimates.id, id), isNull(estimates.deletedAt))),
+        'Estimate',
+      );
   }
 }
 

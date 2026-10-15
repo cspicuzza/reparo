@@ -4,7 +4,10 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { csvRecords } from './csv';
+import { adoptImportedQuotes } from './quotes';
 import { ImportProblem, runImport, validateLines } from './run';
+import { getMoneySummary } from '../services/money';
+import { estimates } from '@reparo/db';
 
 // The spreadsheet import against its own test database (`reparo_test_import`), with made-up
 // lines in the lines file's shape. Each test rolls back.
@@ -93,5 +96,21 @@ describe('spreadsheet import', () => {
       await expect(runImport(tx, lines)).rejects.toThrow(
         /already has .* so importing would count money twice/,
       );
+    }));
+
+  it('turns the imported vendor prices into chosen estimates without moving the money (Q29)', () =>
+    withRollback(db, async (tx) => {
+      const lines = validateLines(csvRecords(CSV));
+      await runImport(tx, lines);
+      const before = await getMoneySummary(tx);
+      const report = await adoptImportedQuotes(tx, lines);
+      expect(report.made).toEqual(['Demo: Estimate']);
+      const [e] = await tx.select().from(estimates);
+      expect(e).toMatchObject({ status: 'chosen', amountCents: 1650000 });
+      expect(e?.costLineId).not.toBeNull();
+      expect((await getMoneySummary(tx)).availableCents).toBe(before.availableCents);
+      const again = await adoptImportedQuotes(tx, lines);
+      expect(again.made).toEqual([]);
+      expect(again.skipped).toEqual(['L3 (Demo, TJ): Demo already has estimates']);
     }));
 });

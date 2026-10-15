@@ -17,6 +17,7 @@ import type { JobCreate, JobList, JobRoomCreate, JobRoomUpdate, JobUpdate } from
 import { badRequest, conflict, isUniqueViolation, notFound } from './errors';
 import { getPhase } from './phases';
 import { getRoom } from './rooms';
+import { estimateCounts } from './estimates';
 import { jobMoneyTotals } from './job-money';
 import { paymentStatus } from './money-rules';
 import { getVendor, vendorSummary } from './vendors';
@@ -108,6 +109,10 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
     db,
     rows.map((r) => r.job.id),
   );
+  const quotes = await estimateCounts(
+    db,
+    rows.map((r) => r.job.id),
+  );
 
   return rows.map(({ job, vendor, phase }) => {
     const totals = money.get(job.id) ?? { costCents: 0, paidCents: 0 };
@@ -125,6 +130,8 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
         owedCents: Math.max(totals.costCents - totals.paidCents, 0),
         payment: paymentStatus(totals.costCents, totals.paidCents),
       },
+      /** How many estimates the job has and whether one is chosen (M4, Q14). */
+      estimates: quotes.get(job.id) ?? { total: 0, chosen: false },
       rooms: mine,
       progress: rollUp(
         mine.map((r) => r.status),

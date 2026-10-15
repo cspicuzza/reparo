@@ -1447,7 +1447,209 @@ describe('@reparo/api', () => {
         kind: 'quote',
         ...pdf,
       });
-      expect(quoteEarly.status).toBe(400);
+      // An estimate owner must be a real estimate (OD-62).
+      expect(quoteEarly.status).toBe(404);
+    }));
+
+  // --- M4 estimates (OD-62) -------------------------------------------------------------------
+
+  type EstimateRow = {
+    id: string;
+    status: string;
+    amountCents: number | null;
+    costLineId: string | null;
+    declinedFrom: string | null;
+    isCheapest: boolean;
+    vendor: { id: string; name: string };
+  };
+
+  it('estimates: choosing sets the quote line and vendor, declines the rest; switching moves the line', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Roof' }),
+      );
+      const permit = row(
+        await mutate(h, 'editor', 'costLines.create', {
+          jobId: job.id,
+          description: 'Permit',
+          amountCents: '400',
+        }),
+      );
+      const v = async (name: string) => row(await mutate(h, 'editor', 'vendors.create', { name }));
+      const [acme, best, cheap] = [
+        await v('Acme Roofing'),
+        await v('Best Roofs'),
+        await v('Cheap Co'),
+      ];
+      const summary = async () =>
+        (await query(h, 'viewer', 'money.summary')).data as { committedCents: number };
+      const before = (await summary()).committedCents;
+
+      const add = async (input: Record<string, unknown>) =>
+        mutate(h, 'editor', 'estimates.create', { jobId: job.id, ...input });
+      expect((await add({ vendorId: acme.id, amountCents: '' })).message).toMatch(
+        /Enter the amount, or mark it as requested/,
+      );
+      const a = row(
+        await add({ vendorId: acme.id, amountCents: '12,000', validUntil: '2026-11-01' }),
+      );
+      const b = row(await add({ vendorId: best.id, amountCents: '10,500' }));
+      const c = row(await add({ vendorId: cheap.id, status: 'requested', amountCents: null }));
+      expect(
+        (
+          await mutate(h, 'viewer', 'estimates.create', {
+            jobId: job.id,
+            vendorId: acme.id,
+            amountCents: '1',
+          })
+        ).status,
+      ).toBe(403);
+
+      const list = async () =>
+        (await query(h, 'viewer', 'estimates.list', { jobId: job.id })).data as EstimateRow[];
+      expect((await list()).map((e) => [e.vendor.name, e.status, e.isCheapest])).toEqual([
+        ['Acme Roofing', 'received', false],
+        ['Best Roofs', 'received', true],
+        ['Cheap Co', 'requested', false],
+      ]);
+      // Nothing chosen: estimates count for nothing (Q3).
+      expect((await summary()).committedCents).toBe(before);
+      const jobRow = async () =>
+        rows(await query(h, 'viewer', 'jobs.list')).find((j) => j.id === job.id) as Row & {
+          estimates: { total: number; chosen: boolean };
+          vendor: { name: string } | null;
+        };
+      expect((await jobRow()).estimates).toEqual({ total: 3, chosen: false });
+
+      // A Requested one can't be chosen.
+      expect((await mutate(h, 'editor', 'estimates.choose', { id: c.id })).message).toMatch(
+        /Add the amount/,
+      );
+
+      const chose = await mutate(h, 'editor', 'estimates.choose', { id: b.id });
+      expect(chose.message).toBeUndefined();
+      expect(chose.data).toMatchObject({ paidCents: 0 });
+      let rows1 = await list();
+      expect(rows1.map((e) => [e.vendor.name, e.status, e.declinedFrom])).toEqual([
+        ['Acme Roofing', 'declined', 'received'],
+        ['Best Roofs', 'chosen', null],
+        ['Cheap Co', 'declined', 'requested'],
+      ]);
+      const costs = async () =>
+        rows(await query(h, 'viewer', 'costLines.list', { jobId: job.id })) as (Row & {
+          description: string;
+          amountCents: number;
+        })[];
+      expect((await costs()).map((l) => [l.description, l.amountCents])).toEqual([
+        ['Best Roofs quote', 1050000],
+        ['Permit', 40000],
+      ]);
+      expect((await jobRow()).vendor?.name).toBe('Best Roofs');
+      expect((await jobRow()).estimates).toEqual({ total: 3, chosen: true });
+      expect((await summary()).committedCents).toBe(before + 1050000);
+
+      // The quote line can't be removed on its own.
+      const quoteId = rows1.find((e) => e.status === 'chosen')?.costLineId;
+      const r = await mutate(h, 'editor', 'costLines.remove', { id: quoteId });
+      expect([r.status, r.message]).toEqual([
+        400,
+        'This is the chosen quote. Remove the estimate, or choose another, to change it.',
+      ]);
+      expect((await mutate(h, 'editor', 'costLines.remove', { id: permit.id })).status).toBe(200);
+
+      // A payment, then switching: allowed; the payment stays and is reported.
+      await mutate(h, 'editor', 'payments.create', {
+        jobId: job.id,
+        amountCents: '1,000',
+        paidOn: '2026-10-10',
+      });
+      const switched = await mutate(h, 'editor', 'estimates.choose', { id: a.id });
+      expect(switched.data).toMatchObject({ paidCents: 100000 });
+      rows1 = await list();
+      expect(rows1.map((e) => [e.vendor.name, e.status])).toEqual([
+        ['Acme Roofing', 'chosen'],
+        ['Best Roofs', 'declined'],
+        ['Cheap Co', 'declined'],
+      ]);
+      expect(rows1.find((e) => e.status === 'chosen')?.costLineId).toBe(quoteId);
+      expect((await costs()).map((l) => [l.id, l.description, l.amountCents])).toEqual([
+        [quoteId, 'Acme Roofing quote', 1200000],
+      ]);
+      expect((await jobRow()).vendor?.name).toBe('Acme Roofing');
+
+      // Editing the chosen one's amount carries to the quote line.
+      await mutate(h, 'editor', 'estimates.update', { id: a.id, amountCents: '11,800' });
+      expect((await costs())[0]?.amountCents).toBe(1180000);
+
+      // Removing the chosen one removes its line, puts the others back, keeps the vendor (Q28).
+      expect((await mutate(h, 'editor', 'estimates.remove', { id: a.id })).status).toBe(200);
+      expect((await list()).map((e) => [e.vendor.name, e.status, e.declinedFrom])).toEqual([
+        ['Best Roofs', 'received', null],
+        ['Cheap Co', 'requested', null],
+      ]);
+      expect(await costs()).toEqual([]);
+      expect((await jobRow()).vendor?.name).toBe('Acme Roofing');
+      // The $400 permit is gone too and nothing is left to pay, so this job commits nothing.
+      expect((await summary()).committedCents).toBe(before - 40000);
+    }));
+
+  it('estimates: quote PDFs attach; a hand decline is not undone; expiring quotes reach Home', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Deck' }),
+      );
+      const ven = row(await mutate(h, 'editor', 'vendors.create', { name: 'Deck Pros' }));
+      const ven2 = row(await mutate(h, 'editor', 'vendors.create', { name: 'Deck Two' }));
+      const soon = new Date();
+      soon.setDate(soon.getDate() + 3);
+      const iso = soon.toISOString().slice(0, 10);
+      const e1 = row(
+        await mutate(h, 'editor', 'estimates.create', {
+          jobId: job.id,
+          vendorId: ven.id,
+          amountCents: '8,000',
+          validUntil: iso,
+        }),
+      );
+      const e2 = row(
+        await mutate(h, 'editor', 'estimates.create', {
+          jobId: job.id,
+          vendorId: ven2.id,
+          amountCents: '9,000',
+        }),
+      );
+      const pdf = await upload(h, 'editor', {
+        ownerType: 'estimate',
+        ownerId: e1.id,
+        kind: 'quote',
+        originalName: 'quote.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 100,
+      });
+      expect(pdf.status).toBe(200);
+
+      const home = async () =>
+        (await query(h, 'viewer', 'home.summary')).data as {
+          expiringQuotes: { id: string; vendorName: string }[];
+        };
+      expect((await home()).expiringQuotes.map((q) => q.vendorName)).toEqual(['Deck Pros']);
+
+      // Declined by hand: choosing and then removing another doesn't bring it back.
+      await mutate(h, 'editor', 'estimates.update', { id: e1.id, status: 'declined' });
+      expect((await home()).expiringQuotes).toEqual([]);
+      await mutate(h, 'editor', 'estimates.choose', { id: e2.id });
+      await mutate(h, 'editor', 'estimates.remove', { id: e2.id });
+      const left = (await query(h, 'viewer', 'estimates.list', { jobId: job.id }))
+        .data as EstimateRow[];
+      expect(left.map((e) => [e.id, e.status])).toEqual([[e1.id, 'declined']]);
+
+      // The chosen one's status can't be changed by hand.
+      await mutate(h, 'editor', 'estimates.update', { id: e1.id, status: 'received' });
+      await mutate(h, 'editor', 'estimates.choose', { id: e1.id });
+      const bad = await mutate(h, 'editor', 'estimates.update', { id: e1.id, status: 'declined' });
+      expect(bad.status).toBe(400);
     }));
 
   it('403 when a viewer calls an editor-only procedure; editor passes', () =>

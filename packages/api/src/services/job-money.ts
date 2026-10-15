@@ -1,6 +1,18 @@
-import { and, asc, costLines, eq, inArray, isNull, jobs, payments, sql, type Db } from '@reparo/db';
+import {
+  and,
+  asc,
+  costLines,
+  eq,
+  estimates,
+  inArray,
+  isNull,
+  jobs,
+  payments,
+  sql,
+  type Db,
+} from '@reparo/db';
 import type { CostLineCreate, CostLineUpdate, PaymentCreate, PaymentUpdate } from '@reparo/shared';
-import { notFound } from './errors';
+import { badRequest, notFound } from './errors';
 
 // What a job costs (cost lines: the vendor's price, then permits, fees, extras) and what has
 // been paid toward it (payments against the job as a whole). M3, OD-50; Q10.
@@ -94,6 +106,16 @@ export async function updateCostLine(db: Db, { id, ...patch }: CostLineUpdate) {
 
 export async function removeCostLine(db: Db, id: string) {
   await getCostLine(db, id);
+  // The chosen estimate's quote line goes with the estimate (M4, Q28), not on its own.
+  const quote = await db
+    .select({ id: estimates.id })
+    .from(estimates)
+    .where(and(eq(estimates.costLineId, id), isNull(estimates.deletedAt)));
+  if (quote.length > 0) {
+    throw badRequest(
+      'This is the chosen quote. Remove the estimate, or choose another, to change it.',
+    );
+  }
   await db.update(costLines).set({ deletedAt: new Date() }).where(eq(costLines.id, id));
   return { id };
 }

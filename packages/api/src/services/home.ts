@@ -1,4 +1,5 @@
 import type { Db } from '@reparo/db';
+import { expiringEstimates } from './estimates';
 import { listJobs } from './jobs';
 import { getMoneySummary } from './money';
 import { listPhases } from './phases';
@@ -59,6 +60,8 @@ export async function homeSummary(db: Db) {
         })),
     },
     needsYou,
+    /** Received quotes that run out within a week (M4, Q4). */
+    expiringQuotes: await expiringEstimates(db),
     phase: current ? { id: current.id, name: current.name, status: current.status } : null,
     phaseJobs: current
       ? allJobs

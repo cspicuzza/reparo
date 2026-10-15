@@ -21,7 +21,8 @@
     "db:studio": "pnpm --filter @reparo/db studio",
     "db:seed": "pnpm --filter @reparo/db seed",
     "db:import": "pnpm --filter @reparo/api run import-spreadsheet",
-    "db:import-images": "pnpm --filter @reparo/api run import-images"
+    "db:import-images": "pnpm --filter @reparo/api run import-images",
+    "db:import-estimates": "pnpm --filter @reparo/api run import-estimates"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

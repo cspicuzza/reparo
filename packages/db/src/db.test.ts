@@ -3,12 +3,20 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDb, withRollback, type Db } from './client';
-import { FILE_KINDS, FILE_OWNER_TYPES, SHOPPING_STATUSES, WORK_STATUSES } from '@reparo/shared';
+import {
+  ESTIMATE_STATUSES,
+  FILE_KINDS,
+  FILE_OWNER_TYPES,
+  SHOPPING_STATUSES,
+  WORK_STATUSES,
+} from '@reparo/shared';
 import {
   budget,
   budgetAdjustments,
   categories,
   costLines,
+  estimateStatus,
+  estimates,
   fileKind,
   fileOwnerType,
   files,
@@ -273,6 +281,7 @@ describe('@reparo/db', () => {
     expect(fileKind.enumValues).toEqual([...FILE_KINDS]);
     expect(fileOwnerType.enumValues).toEqual([...FILE_OWNER_TYPES]);
     expect(shoppingStatus.enumValues).toEqual([...SHOPPING_STATUSES]);
+    expect(estimateStatus.enumValues).toEqual([...ESTIMATE_STATUSES]);
   });
 
   it('a job covers each room once; a removed room can be added back', () =>
@@ -624,6 +633,59 @@ describe('@reparo/db', () => {
       expect(paper?.kind).toBe('paperwork');
     }));
 
+  it('estimates: one chosen per job, tied to its quote line; Received needs an amount', () =>
+    withRollback(db, async (tx) => {
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [v] = await tx.insert(vendors).values({ name: 'Test Tiler' }).returning();
+      if (!phase || !v) throw new Error('fixture missing');
+      const [job] = await tx.insert(jobs).values({ phaseId: phase.id, name: 'Tile' }).returning();
+      if (!job) throw new Error('insert failed');
+      const [line] = await tx
+        .insert(costLines)
+        .values({ jobId: job.id, description: 'Test Tiler quote', amountCents: 500000 })
+        .returning();
+      if (!line) throw new Error('insert failed');
+
+      const [asked] = await tx
+        .insert(estimates)
+        .values({ jobId: job.id, vendorId: v.id, status: 'requested' })
+        .returning();
+      expect(asked?.amountCents).toBeNull();
+      await expectDbErrorIn(tx, /estimates_amount_needed_ck/, (sp) =>
+        sp.insert(estimates).values({ jobId: job.id, vendorId: v.id, status: 'received' }),
+      );
+      await expectDbErrorIn(tx, /estimates_chosen_line_ck/, (sp) =>
+        sp
+          .insert(estimates)
+          .values({ jobId: job.id, vendorId: v.id, status: 'chosen', amountCents: 1 }),
+      );
+      await tx.insert(estimates).values({
+        jobId: job.id,
+        vendorId: v.id,
+        status: 'chosen',
+        amountCents: 500000,
+        costLineId: line.id,
+      });
+      await expectDbErrorIn(tx, /estimates_one_chosen_uidx|estimates_cost_line_uidx/, (sp) =>
+        sp.insert(estimates).values({
+          jobId: job.id,
+          vendorId: v.id,
+          status: 'chosen',
+          amountCents: 400000,
+          costLineId: line.id,
+        }),
+      );
+      await expectDbErrorIn(tx, /estimates_declined_from_ck/, (sp) =>
+        sp.insert(estimates).values({
+          jobId: job.id,
+          vendorId: v.id,
+          status: 'received',
+          amountCents: 1,
+          declinedFrom: 'requested',
+        }),
+      );
+    }));
+
   it('has row level security enabled on every table, with no policies', async () => {
     const rows = await client<{ relname: string; relrowsecurity: boolean }[]>`
       SELECT relname, relrowsecurity FROM pg_class
@@ -633,6 +695,7 @@ describe('@reparo/db', () => {
       ['budget_adjustments', true],
       ['categories', true],
       ['cost_lines', true],
+      ['estimates', true],
       ['files', true],
       ['job_rooms', true],
       ['jobs', true],

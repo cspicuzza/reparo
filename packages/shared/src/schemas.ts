@@ -22,6 +22,9 @@ export type WorkStatusInput = (typeof WORK_STATUSES)[number];
 
 /** Mirrors `shopping_status` in `@reparo/db`: To buy → Purchased → Returned (M3). */
 export const SHOPPING_STATUSES = ['to_buy', 'purchased', 'returned'] as const;
+/** Mirrors `estimate_status` in `@reparo/db` (M4). */
+export const ESTIMATE_STATUSES = ['requested', 'received', 'chosen', 'declined'] as const;
+export type EstimateStatusInput = (typeof ESTIMATE_STATUSES)[number];
 export type ShoppingStatusInput = (typeof SHOPPING_STATUSES)[number];
 
 export const idSchema = z.uuid({ error: 'id must be a UUID' });
@@ -612,3 +615,53 @@ export const importImageSchema = z
     path: ['line_id'],
   });
 export type ImportImage = z.infer<typeof importImageSchema>;
+
+// --- estimates (M4, OD-62) -------------------------------------------------------------------
+
+/** An amount, or blank/null for none yet (a Requested estimate). */
+const optionalMoneySchema = z
+  .union([z.string(), z.number(), z.null()])
+  .transform((v, ctx) => (v === null || v === '' ? null : parseDollars(v, ctx)))
+  .refine((c) => c === null || c >= 0, { error: 'Enter 0 or more' });
+const optionalDateSchema = z
+  .union([isoDateSchema, z.literal(''), z.null()])
+  .transform((v) => (v === '' ? null : v));
+
+const estimateFields = {
+  vendorId: idSchema,
+  amountCents: optionalMoneySchema,
+  receivedOn: optionalDateSchema,
+  validUntil: optionalDateSchema,
+  notes: notesSchema,
+};
+const AMOUNT_NEEDED = 'Enter the amount, or mark it as requested';
+
+/** A new estimate: Received with an amount, or Requested (asked for, no amount yet). */
+export const estimateCreateSchema = z
+  .object({
+    jobId: idSchema,
+    ...estimateFields,
+    status: z.enum(['requested', 'received']).default('received'),
+    receivedOn: estimateFields.receivedOn.default(null),
+    validUntil: estimateFields.validUntil.default(null),
+    notes: notesSchema.default(''),
+  })
+  .refine((e) => e.status === 'requested' || e.amountCents !== null, {
+    error: AMOUNT_NEEDED,
+    path: ['amountCents'],
+  });
+export type EstimateCreate = z.infer<typeof estimateCreateSchema>;
+export type EstimateCreateInput = z.input<typeof estimateCreateSchema>;
+
+/**
+ * Changes to an estimate. Status here is Requested, Received or Declined by hand; choosing has
+ * its own call because it changes the job's money.
+ */
+export const estimateUpdateSchema = z
+  .object(estimateFields)
+  .partial()
+  .extend({ id: idSchema, status: z.enum(['requested', 'received', 'declined']).optional() });
+export type EstimateUpdate = z.infer<typeof estimateUpdateSchema>;
+
+/** The estimate form: the create schema's fields without the job. */
+export type EstimateFormInput = Omit<EstimateCreateInput, 'jobId'>;
