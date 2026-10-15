@@ -209,7 +209,7 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 @lg:grid-cols-[1fr_12rem]">
+      <div className="grid gap-5">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
@@ -223,16 +223,17 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
           </Select>
         </Field>
       </div>
-      <div className="grid gap-5 @lg:grid-cols-3">
+      <div className="grid gap-5">
         <Field label="Starts" htmlFor={id('starts')} error={errors.startsOn?.message}>
-          <Input id={id('starts')} type="date" {...date('startsOn')} />
+          <Input id={id('starts')} type="date" className="max-w-48" {...date('startsOn')} />
         </Field>
         <Field label="Ends" htmlFor={id('ends')} error={errors.endsOn?.message}>
-          <Input id={id('ends')} type="date" {...date('endsOn')} />
+          <Input id={id('ends')} type="date" className="max-w-48" {...date('endsOn')} />
         </Field>
         <Field label="Order" htmlFor={id('order')} error={errors.sortOrder?.message}>
           <Input
             id={id('order')}
+            className="max-w-48"
             type="number"
             min={0}
             step={1}

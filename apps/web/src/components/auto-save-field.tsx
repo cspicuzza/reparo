@@ -1,7 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { use, useState, type ReactNode } from 'react';
 import { FormError, inputClass } from '@/components/form';
 import { SaveState } from '@/components/save-state';
+import { PanelDirtyContext } from '@/lib/panel-dirty';
 import { cn } from '@/lib/utils';
 
 /**
@@ -24,6 +25,10 @@ export function AutoSaveField({
   what,
   wrap,
   type = 'text',
+  inputMode,
+  list,
+  labelClassName,
+  className,
 }: {
   id: string;
   label: ReactNode;
@@ -41,7 +46,14 @@ export function AutoSaveField({
   what: string;
   /** Draw something around the field, such as a dimension line. */
   wrap?: (field: ReactNode) => ReactNode;
-  type?: 'text' | 'date';
+  type?: 'text' | 'date' | 'url';
+  inputMode?: 'text' | 'decimal' | 'numeric' | 'url';
+  /** A <datalist> id, for suggestions as you type. */
+  list?: string;
+  /** e.g. `sr-only` when something else on screen already says what the field is. */
+  labelClassName?: string;
+  /** Sizes the whole field, e.g. a short width for money (OD-82, Q52). */
+  className?: string;
 }) {
   const [value, setValue] = useState(initial);
   const [problem, setProblem] = useState<string | null>(null);
@@ -53,14 +65,18 @@ export function AutoSaveField({
     setValue(initial);
   }
   const save = useMutation({ mutationFn: onSave });
+  // Inside a side panel, typing that hasn't been saved yet makes closing ask first (OD-82).
+  const setPanelDirty = use(PanelDirtyContext);
 
   const commit = () => {
     if (value === initial) {
       setProblem(null);
+      setPanelDirty?.(false);
       return;
     }
     const message = validate?.(value) ?? null;
     setProblem(message);
+    setPanelDirty?.(message !== null);
     if (message === null) save.mutate(value);
   };
 
@@ -71,7 +87,10 @@ export function AutoSaveField({
     placeholder,
     'aria-invalid': problem ? true : undefined,
     'aria-describedby': describedBy,
-    onChange: (e: { target: { value: string } }) => setValue(e.target.value),
+    onChange: (e: { target: { value: string } }) => {
+      setValue(e.target.value);
+      setPanelDirty?.(e.target.value !== initial);
+    },
     onBlur: commit,
     className: cn(inputClass, inputClassName),
   };
@@ -81,6 +100,8 @@ export function AutoSaveField({
     <input
       type={type}
       autoComplete="off"
+      inputMode={inputMode}
+      list={list}
       {...common}
       onKeyDown={(e) => {
         if (e.key === 'Enter') commit();
@@ -89,11 +110,13 @@ export function AutoSaveField({
   );
 
   return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-semibold">
+    <div className={className}>
+      <label htmlFor={id} className={cn('block text-sm font-semibold', labelClassName)}>
         {label}
       </label>
-      <div className="mt-1.5">{wrap ? wrap(field) : field}</div>
+      <div className={labelClassName === 'sr-only' ? undefined : 'mt-1.5'}>
+        {wrap ? wrap(field) : field}
+      </div>
       {problem ? (
         <FormError id={`${id}-error`}>{problem}</FormError>
       ) : hint ? (

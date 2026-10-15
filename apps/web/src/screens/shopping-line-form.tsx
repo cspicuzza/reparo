@@ -25,7 +25,8 @@ const orNull = (v: unknown) => (v === '' ? null : v);
  * Add or edit a shopping line (M3, OD-52; shortened in Workflow polish, OD-80): what it is, its
  * price, room, category, store, link and notes up front; how many, phase, job and model number
  * under "More details". Store suggests the stores already in use. Buying and returning are
- * separate actions on the line, not here. Lays out by the side panel's width (`@lg:`).
+ * separate actions on the line, not here. One field per line (OD-82). Used for adding; an
+ * existing line is edited in place in its panel.
  */
 export function ShoppingLineForm({
   idPrefix,
@@ -147,7 +148,7 @@ function LineFields({
   const [more, setMore] = useState(startWithMore);
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 @lg:grid-cols-[1fr_12rem]">
+      <div className="grid gap-5">
         <Field label="What it is" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
@@ -159,13 +160,14 @@ function LineFields({
         >
           <Input
             id={id('price')}
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('priceCents')}
           />
         </Field>
       </div>
-      <div className="grid gap-5 @lg:grid-cols-2">
+      <div className="grid gap-5">
         <Field label="Room" htmlFor={id('room')} error={errors.roomId?.message}>
           <Select id={id('room')} {...register('roomId', { setValueAs: orNull })}>
             <option value="">Whole house</option>
@@ -221,14 +223,11 @@ function LineFields({
             (how many, phase, job, model number)
           </span>
         </Button>
-        <Reveal
-          open={more || moreErrors}
-          id={id('more')}
-          className="mt-3 grid gap-5 @lg:grid-cols-2"
-        >
+        <Reveal open={more || moreErrors} id={id('more')} className="mt-3 grid gap-5">
           <Field label="How many" htmlFor={id('qty')} error={errors.quantity?.message}>
             <Input
               id={id('qty')}
+              className="max-w-48"
               type="number"
               min={1}
               step={1}

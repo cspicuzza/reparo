@@ -62,17 +62,24 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
         <Input id={id('name')} autoComplete="off" {...register('name')} />
       </Field>
 
-      <div className="grid gap-5 @lg:grid-cols-3">
+      <div className="grid gap-5">
         <Field label="Length" htmlFor={id('length')} error={errors.lengthIn?.message}>
           <Input
             id={id('length')}
+            className="max-w-48"
             inputMode="text"
             placeholder={`14' 6"`}
             {...register('lengthIn')}
           />
         </Field>
         <Field label="Width" htmlFor={id('width')} error={errors.widthIn?.message}>
-          <Input id={id('width')} inputMode="text" placeholder={`12'`} {...register('widthIn')} />
+          <Input
+            id={id('width')}
+            className="max-w-48"
+            inputMode="text"
+            placeholder={`12'`}
+            {...register('widthIn')}
+          />
         </Field>
         <Field
           label="Ceiling height"
@@ -81,6 +88,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
         >
           <Input
             id={id('ceiling')}
+            className="max-w-48"
             inputMode="text"
             placeholder={`9'`}
             {...register('ceilingHeightIn')}
@@ -107,7 +115,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
           type="number"
           min={0}
           step={1}
-          className="@lg:w-32"
+          className="max-w-48"
           {...register('sortOrder', { valueAsNumber: true })}
         />
       </Field>

@@ -185,7 +185,7 @@ function NewVendor({
       <p id={id('title')} className="font-semibold">
         New vendor
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Field label="Name" htmlFor={id('name')} error={errors.name}>
           <Input id={id('name')} autoComplete="off" value={values.name} onChange={set('name')} />
         </Field>

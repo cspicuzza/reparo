@@ -310,7 +310,7 @@ function CostLineForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
+      <div className="grid gap-4">
         <Field
           label="What for"
           htmlFor={id('description')}
@@ -322,6 +322,7 @@ function CostLineForm({
         <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
           <Input
             id={id('amount')}
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('amountCents')}
@@ -522,17 +523,18 @@ function PaymentForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4">
         <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
           <Input
             id={id('amount')}
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('amountCents')}
           />
         </Field>
         <Field label="Paid on" htmlFor={id('date')} error={errors.paidOn?.message}>
-          <Input id={id('date')} type="date" {...register('paidOn')} />
+          <Input id={id('date')} type="date" className="max-w-48" {...register('paidOn')} />
         </Field>
         <Field
           label="Note"

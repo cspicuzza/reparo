@@ -360,10 +360,11 @@ function BudgetForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         <Field label="Starting balance" htmlFor="pool-start" error={errors.startingCents?.message}>
           <Input
             id="pool-start"
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('startingCents')}
@@ -372,6 +373,7 @@ function BudgetForm({
         <Field label="As of" htmlFor="pool-asof" error={errors.asOf?.message}>
           <Input
             id="pool-asof"
+            className="max-w-48"
             type="date"
             {...register('asOf', { setValueAs: (v: unknown) => (v === '' ? null : v) })}
           />
@@ -428,7 +430,7 @@ function AdjustmentForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4">
         <Field
           label="Amount"
           htmlFor={id('amount')}
@@ -437,13 +439,14 @@ function AdjustmentForm({
         >
           <Input
             id={id('amount')}
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('amountCents')}
           />
         </Field>
         <Field label="On" htmlFor={id('on')} error={errors.on?.message}>
-          <Input id={id('on')} type="date" {...register('on')} />
+          <Input id={id('on')} type="date" className="max-w-48" {...register('on')} />
         </Field>
         <Field
           label="What it is"

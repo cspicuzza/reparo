@@ -1,4 +1,4 @@
-import { CircleAlert } from 'lucide-react';
+import { ChevronDown, CircleAlert } from 'lucide-react';
 import {
   Children,
   cloneElement,
@@ -89,6 +89,29 @@ export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
   return <textarea {...props} className={cn(inputClass, className)} />;
 }
 
+/**
+ * A dropdown with our own chevron (OD-82, Q45): the browser's arrow sits against the edge and
+ * ignores padding, so it's hidden and ours sits 12px in, with 40px kept clear for it. `className`
+ * places the dropdown (margins, width); the field itself fills it.
+ */
 export function Select({ className, ...props }: ComponentProps<'select'>) {
-  return <select {...props} className={cn(inputClass, className)} />;
+  return (
+    <div className={cn('relative', className)}>
+      <select {...props} className={cn(inputClass, 'appearance-none pr-10')} />
+      <SelectChevron />
+    </div>
+  );
+}
+
+/** The chevron on every dropdown; the parent must be `relative`. */
+export function SelectChevron({ className }: { className?: string }) {
+  return (
+    <ChevronDown
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-muted-foreground',
+        className,
+      )}
+    />
+  );
 }

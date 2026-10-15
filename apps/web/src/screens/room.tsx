@@ -289,9 +289,9 @@ function RoomSizeFields({ room: r }: { room: Room }) {
     { key: 'ceilingHeightIn', label: 'Ceiling', value: r.ceilingHeightIn },
   ] as const;
   return (
-    <div className="flex flex-wrap gap-x-8 gap-y-5">
+    <div className="flex flex-col gap-5">
       {sides.map((side) => (
-        <div key={side.key} className="min-w-52 flex-1">
+        <div key={side.key} className="w-full max-w-60">
           <AutoSaveField
             id={`room-${side.key}-${r.id}`}
             label={side.label}
@@ -316,7 +316,7 @@ function RoomSizeFields({ room: r }: { room: Room }) {
           )}
         </p>
       </div>
-      <p className="w-full text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Feet and inches, like 14&apos; 6 1/2&quot;, or plain inches. Saves when you leave the field.
       </p>
     </div>

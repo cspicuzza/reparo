@@ -426,7 +426,7 @@ function EstimateForm({
           )}
         />
       )}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4">
         <Field
           label="Amount"
           htmlFor={id('amount')}
@@ -435,16 +435,17 @@ function EstimateForm({
         >
           <Input
             id={id('amount')}
+            className="max-w-48"
             inputMode="decimal"
             autoComplete="off"
             {...register('amountCents')}
           />
         </Field>
         <Field label="Received on" htmlFor={id('received')} error={errors.receivedOn?.message}>
-          <Input id={id('received')} type="date" {...register('receivedOn')} />
+          <Input id={id('received')} type="date" className="max-w-48" {...register('receivedOn')} />
         </Field>
         <Field label="Good until" htmlFor={id('until')} error={errors.validUntil?.message}>
-          <Input id={id('until')} type="date" {...register('validUntil')} />
+          <Input id={id('until')} type="date" className="max-w-48" {...register('validUntil')} />
         </Field>
       </div>
       <Field

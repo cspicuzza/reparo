@@ -391,7 +391,7 @@ function VendorForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 @lg:grid-cols-2">
+      <div className="grid gap-5">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>

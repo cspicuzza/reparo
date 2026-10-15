@@ -58,11 +58,11 @@ describe('shopping words (OD-75)', () => {
 
 describe('lineDetails (OD-78)', () => {
   const phase = { name: 'Phase 1', status: 'active' as const };
-  it('gives the store and how many, and a planned phase', () => {
-    expect(lineDetails({ store: 'Wayfair', quantity: 2, phase })).toBe('Wayfair, 2 of them');
-    expect(lineDetails({ store: '', quantity: 1, phase })).toBe('');
-    expect(
-      lineDetails({ store: 'IKEA', quantity: 1, phase: { name: 'Phase 2', status: 'planned' } }),
-    ).toBe('IKEA, Phase 2 (planned)');
+  it('gives how many and a planned phase; the store is its own link (OD-82)', () => {
+    expect(lineDetails({ quantity: 2, phase })).toBe('2 of them');
+    expect(lineDetails({ quantity: 1, phase })).toBe('');
+    expect(lineDetails({ quantity: 1, phase: { name: 'Phase 2', status: 'planned' } })).toBe(
+      'Phase 2 (planned)',
+    );
   });
 });

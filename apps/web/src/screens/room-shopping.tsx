@@ -24,6 +24,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
   const files = useLineFiles(lines.data);
   const [openId, setOpenId] = useState<string | null>(null);
   useReturnFocus(adding ? `add-line-${roomId}` : null);
+  useReturnFocus(openId);
   const create = useMutation(
     trpc.shoppingLines.create.mutationOptions({
       onSuccess: async () => {

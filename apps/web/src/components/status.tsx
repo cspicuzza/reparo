@@ -7,6 +7,7 @@ import {
 import { Circle, CircleAlert, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { PHASE_STATUS_LABEL, WORK_STATUS_LABEL } from '@/lib/work';
+import { SelectChevron } from '@/components/form';
 import { cn } from '@/lib/utils';
 
 /**
@@ -73,7 +74,7 @@ export function StatusSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as WorkStatusInput)}
         className={cn(
-          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
+          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
           bg,
           fg,
         )}
@@ -84,6 +85,7 @@ export function StatusSelect({
           </option>
         ))}
       </select>
+      <SelectChevron className={fg} />
     </span>
   );
 }
@@ -141,7 +143,7 @@ export function PhaseStatusSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as PhaseStatusInput)}
         className={cn(
-          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
+          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
           bg,
           fg,
         )}
@@ -152,6 +154,7 @@ export function PhaseStatusSelect({
           </option>
         ))}
       </select>
+      <SelectChevron className={fg} />
     </span>
   );
 }

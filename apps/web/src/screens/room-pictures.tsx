@@ -179,7 +179,7 @@ function ProgressDetails({
   }
   const shownJob = (job.isPending ? job.variables : undefined) ?? file.jobId ?? '';
   return (
-    <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+    <div className="flex flex-col gap-4">
       <div className="w-48">
         <AutoSaveField
           id={`taken-${file.id}`}
@@ -191,7 +191,7 @@ function ProgressDetails({
           onSave={(v) => saveFile({ takenOn: v })}
         />
       </div>
-      <div className="min-w-0 flex-1 basis-48">
+      <div>
         <label htmlFor={`job-${file.id}`} className="block text-sm font-semibold">
           Shows the job
         </label>

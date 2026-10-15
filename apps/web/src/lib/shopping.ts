@@ -73,14 +73,15 @@ export function summaryText(count: number, cents: number, money: (c: number) => 
   return `${count} ${count === 1 ? 'thing' : 'things'} to buy, ${money(cents)} in all.`;
 }
 
-/** "Wayfair, 2 of them": the store and how many, the details you check while ordering (OD-78). */
+/**
+ * "2 of them": how many and a planned phase, the details you check while ordering (OD-78). The
+ * store is shown beside them as a link to the product page (OD-82).
+ */
 export function lineDetails(line: {
-  store: string;
   quantity: number;
   phase: { name: string; status: 'planned' | 'active' | 'complete' };
 }): string {
   return [
-    line.store || null,
     line.quantity > 1 ? `${line.quantity} of them` : null,
     line.phase.status === 'planned' ? `${line.phase.name} (planned)` : null,
   ]

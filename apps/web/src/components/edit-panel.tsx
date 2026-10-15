@@ -23,11 +23,24 @@ export function EditPanel({
   open,
   onClose,
   title,
+  heading,
+  focusFirstField = true,
   children,
 }: {
   open: boolean;
   onClose: () => void;
+  /** The panel's name; screen readers hear it when the panel opens. */
   title: string;
+  /**
+   * Shown in place of the title, such as the shopping line's name as a field you can edit
+   * (OD-82, Q39). The title is then kept for screen readers only.
+   */
+  heading?: ReactNode;
+  /**
+   * Put the cursor in the first field on opening. Off for a panel that is mostly for reading,
+   * so a phone doesn't raise its keyboard just because the panel opened (OD-82).
+   */
+  focusFirstField?: boolean;
   children: ReactNode;
 }) {
   const popup = useRef<HTMLDivElement>(null);
@@ -47,11 +60,20 @@ export function EditPanel({
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-scrim transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <Dialog.Popup
           ref={popup}
-          initialFocus={() => popup.current?.querySelector<HTMLElement>(FIELD) ?? true}
+          // Lets the panel itself take focus when it opens without a field focused.
+          tabIndex={-1}
+          initialFocus={() =>
+            focusFirstField
+              ? (popup.current?.querySelector<HTMLElement>(FIELD) ?? true)
+              : popup.current
+          }
           className="fixed inset-x-0 top-[max(2.5rem,env(safe-area-inset-top))] bottom-0 z-50 flex flex-col overflow-hidden rounded-t-xl border-t border-border bg-popover text-base text-popover-foreground shadow-lg transition-[opacity,translate] duration-200 ease-out outline-none data-ending-style:translate-y-6 data-ending-style:opacity-0 data-starting-style:translate-y-6 data-starting-style:opacity-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[min(36rem,100vw)] sm:rounded-none sm:border-t-0 sm:border-l sm:data-ending-style:translate-x-8 sm:data-ending-style:translate-y-0 sm:data-starting-style:translate-x-8 sm:data-starting-style:translate-y-0"
         >
-          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2 sm:px-6">
-            <Dialog.Title className="min-w-0 truncate text-2xl">{title}</Dialog.Title>
+          <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-2 sm:px-6">
+            <Dialog.Title className={heading ? 'sr-only' : 'min-w-0 self-center truncate text-2xl'}>
+              {title}
+            </Dialog.Title>
+            {heading ? <div className="min-w-0 flex-1">{heading}</div> : null}
             <Dialog.Close className={buttonVariants({ variant: 'ghost', className: '-mr-2' })}>
               <X aria-hidden className="size-5" />
               Close

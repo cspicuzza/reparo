@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, ExternalLink, PanelRightOpen } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
 import { useMutation } from '@tanstack/react-query';
@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { Field, FormError, Input } from '@/components/form';
 import { UnsavedGuard } from '@/components/unsaved-guard';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { centsToInput, lineAmountText, money } from '@/lib/money';
 import { lineDetails, type ShoppingLine } from '@/lib/shopping';
@@ -18,11 +18,14 @@ import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { cn } from '@/lib/utils';
 
 /**
- * Shopping lines as rows (M3, OD-52; reshaped in Workflow polish, OD-78). A row shows only
- * what you need while shopping: the picture, the name, the price, store and quantity, and the
- * one next step. To buy: "Open product page" and "Mark as purchased" (asks what was paid, then
- * offers Undo). Purchased: what was paid and "Attach receipt". Everything else lives in the
- * line's panel, opened from its name.
+ * Shopping lines as rows (M3, OD-52; reshaped in Workflow polish, OD-78 and OD-82). A row shows
+ * what you need while shopping: the picture, the name, the store as a link to the product
+ * page, how many, the price, and the next step. To buy: Details and "Mark as purchased" (asks
+ * what was paid, then offers Undo). Purchased: Details and "Attach receipt". Everything else
+ * lives in the line's panel, opened from Details.
+ *
+ * On a laptop the rows share one grid (CSS subgrid), so pictures, names, prices and buttons
+ * each line up in a column and the prices can be scanned down the list (Q41).
  */
 export function ShoppingRows({
   lines,
@@ -39,14 +42,29 @@ export function ShoppingRows({
   onOpen: (line: ShoppingLine) => void;
   className?: string;
 }) {
+  // A picture column only when some line in this list has a picture, so a list without any
+  // doesn't start every name one gap in.
+  const pictured = new Set(
+    files.filter((f) => f.kind === 'product_image' && f.url).map((f) => f.ownerId),
+  );
+  const withPictures = lines.some((l) => pictured.has(l.id));
   return (
-    <ul className={cn('divide-y divide-border', className)}>
+    <ul
+      className={cn(
+        'divide-y divide-border sm:grid sm:gap-x-4',
+        withPictures
+          ? 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
+          : 'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
+        className,
+      )}
+    >
       {lines.map((l) => (
-        <li key={l.id} className="py-4">
+        <li key={l.id} className="py-4 sm:col-span-full sm:grid sm:grid-cols-subgrid">
           <ShoppingRow
             line={l}
             canEdit={canEdit}
             files={files.filter((f) => f.ownerId === l.id)}
+            pictureColumn={withPictures}
             onOpen={() => onOpen(l)}
           />
         </li>
@@ -55,15 +73,25 @@ export function ShoppingRows({
   );
 }
 
+/**
+ * Row buttons on a laptop look 36px tall with 14px text, so the price outweighs them; an
+ * invisible margin keeps the tap area 44px (OD-82, Q54). Phones keep full-size buttons.
+ */
+const ROW_BUTTON =
+  "relative sm:min-h-9 sm:px-3 sm:text-sm sm:[&_svg:not([class*='size-'])]:size-4 sm:after:absolute sm:after:inset-x-0 sm:after:-inset-y-1";
+
 function ShoppingRow({
   line,
   canEdit,
   files,
+  pictureColumn,
   onOpen,
 }: {
   line: ShoppingLine;
   canEdit: boolean;
   files: FileView[];
+  /** The list has a picture column on a laptop, so this row fills its cell even without one. */
+  pictureColumn: boolean;
   onOpen: () => void;
 }) {
   const [buying, setBuying] = useState(false);
@@ -72,61 +100,62 @@ function ShoppingRow({
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
   const receipts = files.filter((f) => f.kind === 'receipt');
-  const details = lineDetails(line);
 
-  const actions = buying ? null : line.status === 'to_buy' ? (
-    line.link || canEdit ? (
-      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-        {line.link ? (
-          <a
-            href={line.link}
-            target="_blank"
-            rel="noreferrer"
-            className={buttonVariants({ variant: 'outline' })}
-          >
-            Open product page
-            <span className="sr-only"> for {line.name} (opens in a new tab)</span>
-          </a>
-        ) : null}
-        {canEdit ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setBuying(true)}
-            data-return-focus={`line-purchase-${line.id}`}
-          >
-            <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
-            Mark as purchased
-            <span className="sr-only"> {line.name}</span>
-          </Button>
-        ) : null}
-      </div>
-    ) : null
-  ) : line.status === 'purchased' && (receipts.length > 0 || canEdit) ? (
-    <AttachedFiles
-      files={receipts}
-      target={{ ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' }}
-      addLabel="Attach receipt"
-      canEdit={canEdit}
-      what="receipt"
-    />
-  ) : null;
+  const details = (
+    <Button
+      type="button"
+      variant="ghost"
+      // On a phone it starts the row of buttons, so its icon lines up with the name.
+      className={cn(ROW_BUTTON, '-ml-3 sm:ml-0')}
+      onClick={onOpen}
+      data-return-focus={line.id}
+    >
+      <PanelRightOpen aria-hidden absoluteStrokeWidth strokeWidth={2} />
+      Details
+      <span className="sr-only"> for {line.name}</span>
+    </Button>
+  );
+  const actions = buying ? null : (
+    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
+      {details}
+      {line.status === 'to_buy' && canEdit ? (
+        <Button
+          type="button"
+          variant="outline"
+          className={ROW_BUTTON}
+          onClick={() => setBuying(true)}
+          data-return-focus={`line-purchase-${line.id}`}
+        >
+          <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
+          Mark as purchased
+          <span className="sr-only"> {line.name}</span>
+        </Button>
+      ) : null}
+      {line.status === 'purchased' && (receipts.length > 0 || canEdit) ? (
+        <AttachedFiles
+          files={receipts}
+          target={{ ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' }}
+          addLabel="Attach receipt"
+          canEdit={canEdit}
+          what="receipt"
+        />
+      ) : null}
+    </div>
+  );
 
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 transition-[opacity,translate] duration-150 ease-out',
+        'flex flex-col gap-3 transition-[opacity,translate] duration-150 ease-out sm:col-span-full sm:grid sm:grid-cols-subgrid',
         leaving && '-translate-y-3 opacity-0',
       )}
     >
-      {/* Phone: picture, name and price, with the buttons underneath. Laptop: one line, so a
-          long list stays short (OD-78). */}
+      {/* Phone: picture, name and price, with the buttons underneath. Laptop: one line per
+          item, in the list's shared columns. */}
       <div
         className={cn(
-          'grid items-start gap-x-3 gap-y-3 sm:items-center sm:gap-x-4',
-          thumb?.url
-            ? 'grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
-            : 'grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto]',
+          'grid items-start gap-x-3 gap-y-3 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:gap-x-4',
+          thumb?.url ? 'grid-cols-[auto_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_auto]',
         )}
       >
         {thumb?.url ? (
@@ -137,37 +166,66 @@ function ShoppingRow({
             decoding="async"
             className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
           />
+        ) : pictureColumn ? (
+          // Keeps the picture column on a laptop, so names still line up.
+          <span aria-hidden className="hidden sm:block" />
         ) : null}
         <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="-mx-1 rounded-md px-1 text-left text-lg font-semibold break-words underline-offset-4 hover:underline"
-          >
-            {line.name}
-            <span className="sr-only">, open details</span>
-          </button>
-          {details ? <p className="text-sm text-muted-foreground">{details}</p> : null}
+          <p className="text-lg font-semibold break-words">{line.name}</p>
+          <LineFacts line={line} />
         </div>
-        <span className="text-right text-lg font-semibold whitespace-nowrap tabular-nums">
+        <span className="text-right text-xl font-semibold whitespace-nowrap tabular-nums">
           {lineAmountText(line)}
         </span>
         {actions ? <div className="col-span-full sm:col-span-1">{actions}</div> : null}
       </div>
       {buying ? (
-        <PurchaseForm
-          line={line}
-          onDone={() => setBuying(false)}
-          onLeaving={async (refresh) => {
-            setLeaving(true);
-            await new Promise((done) => setTimeout(done, 150));
-            await refresh();
-            // Where the list shows every status, the row stays: bring it back.
-            setLeaving(false);
-          }}
-        />
+        <div className="sm:col-span-full">
+          <PurchaseForm
+            line={line}
+            onDone={() => setBuying(false)}
+            onLeaving={async (refresh) => {
+              setLeaving(true);
+              await new Promise((done) => setTimeout(done, 150));
+              await refresh();
+              // Where the list shows every status, the row stays: bring it back.
+              setLeaving(false);
+            }}
+          />
+        </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The grey line under a name: the store as a link to the product page (or "Product page" when
+ * there's a link but no store; plain text when there's no link), how many, and a planned phase
+ * (OD-82, Q43).
+ */
+function LineFacts({ line }: { line: ShoppingLine }) {
+  const facts = lineDetails(line);
+  const store = line.link ? (
+    <a
+      href={line.link}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-foreground underline underline-offset-4"
+    >
+      {line.store || 'Product page'}
+      <ExternalLink aria-hidden className="size-3.5 shrink-0" />
+      <span className="sr-only"> for {line.name} (opens in a new tab)</span>
+    </a>
+  ) : line.store ? (
+    line.store
+  ) : null;
+  if (!store && !facts) return null;
+  return (
+    <p className="text-sm text-muted-foreground">
+      {store}
+      {store && facts ? ', ' : null}
+      {facts}
+    </p>
   );
 }
 
