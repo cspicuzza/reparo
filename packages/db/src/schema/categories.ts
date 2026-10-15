@@ -2,9 +2,9 @@ import { integer, pgTable, text } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './columns';
 
 /**
- * Where money is totalled: Remodel, Furnishing, Tech, Appliances, Moving, Misc (seeded in the
- * Model fix migration). Every item belongs to one; labor and fee lines without a job pick one
- * directly (M2). Linear *Data model* doc → Model fix.
+ * Seeded in the Model fix migration (Remodel, Furnishing, Tech, Appliances, Moving, Misc) to group
+ * items. Items were retired in M2 (OD-44), so nothing points here until M3 reshapes this table
+ * into the shopping categories. Linear *Data model* doc → M3.
  */
 export const categories = pgTable('categories', {
   id: id(),

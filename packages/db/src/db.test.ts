@@ -9,12 +9,12 @@ import {
   fileKind,
   fileOwnerType,
   files,
-  items,
   jobRooms,
   jobs,
   members,
   phases,
   rooms,
+  vendors,
   workStatus,
 } from './schema';
 import { prepareTestDatabase } from './testing';
@@ -197,53 +197,21 @@ describe('@reparo/db', () => {
 
   // --- M1 (OD-27) ---
 
-  it('seeds Phase 1 and the starter item catalog', async () => {
+  it('seeds Phase 1', async () => {
     const [phase] = await db.select().from(phases).where(eq(phases.name, 'Phase 1'));
     expect(phase?.status).toBe('active');
     expect(phase?.deletedAt).toBeNull();
-
-    const catalog = await db.select().from(items).orderBy(items.sortOrder);
-    expect(catalog.length).toBeGreaterThanOrEqual(23);
-    expect(catalog[0]?.name).toBe('Demo');
-    expect(catalog.map((i) => i.name)).toEqual(
-      expect.arrayContaining([
-        'Paint',
-        'Flooring',
-        'Bathroom Remodel',
-        'Ceiling Fans',
-        'Appliances',
-      ]),
-    );
-    expect(catalog.every((i) => i.retiredAt === null)).toBe(true);
   });
 
-  it('rejects a duplicate item name, an item without a category, and an unknown work status', async () => {
-    await withRollback(db, async (tx) => {
-      const [misc] = await tx.select().from(categories).where(eq(categories.name, 'Misc'));
-      if (!misc) throw new Error('seed missing');
-      await expectDbError(
-        tx.insert(items).values({ name: 'Paint', categoryId: misc.id }),
-        /items_name_unique/,
-      );
-    });
-    await withRollback(db, (tx) =>
-      expectDbError(
-        tx.execute(`INSERT INTO items (name) VALUES ('No Category')`),
-        /null value in column "category_id"/,
-      ),
-    );
-    await withRollback(db, async (tx) => {
+  it('rejects an unknown work status', () =>
+    withRollback(db, async (tx) => {
       const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
-      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
-      if (!phase || !paint) throw new Error('seed missing');
+      if (!phase) throw new Error('seed missing');
       await expectDbError(
-        tx.execute(
-          `INSERT INTO jobs (item_id, phase_id, name, status) VALUES ('${paint.id}','${phase.id}','x','done')`,
-        ),
+        tx.execute(`INSERT INTO jobs (phase_id, name, status) VALUES ('${phase.id}','x','done')`),
         /invalid input value for enum work_status/,
       );
-    });
-  });
+    }));
 
   it('stores room measurements as numeric(10,4) and reads them back as numbers', () =>
     withRollback(db, async (tx) => {
@@ -277,7 +245,7 @@ describe('@reparo/db', () => {
 
   // --- Model fix (OD-33) ---
 
-  it('seeds six categories and puts every item under one, Other under Misc', async () => {
+  it('keeps the six seeded categories until M3 reshapes them', async () => {
     const cats = await db.select().from(categories).orderBy(categories.sortOrder);
     expect(cats.map((c) => c.name)).toEqual([
       'Remodel',
@@ -287,18 +255,6 @@ describe('@reparo/db', () => {
       'Moving',
       'Misc',
     ]);
-    const byId = new Map(cats.map((c) => [c.id, c.name]));
-    const catalog = await db.select().from(items);
-    const categoryOf = (name: string) =>
-      byId.get(catalog.find((i) => i.name === name)?.categoryId ?? '');
-    expect(catalog.every((i) => i.categoryId !== null)).toBe(true);
-    expect(categoryOf('Paint')).toBe('Remodel');
-    expect(categoryOf('Project Fee')).toBe('Remodel');
-    expect(categoryOf('Ceiling Fans')).toBe('Furnishing');
-    expect(categoryOf('Window Treatments')).toBe('Furnishing');
-    expect(categoryOf('Network & Security')).toBe('Tech');
-    expect(categoryOf('Appliances')).toBe('Appliances');
-    expect(categoryOf('Other')).toBe('Misc');
   });
 
   it('Postgres enums match the Zod lists in @reparo/shared', () => {
@@ -310,21 +266,20 @@ describe('@reparo/db', () => {
   it('a job covers each room once; a removed room can be added back', () =>
     withRollback(db, async (tx) => {
       const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
-      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
       const [kitchen] = await tx.insert(rooms).values({ name: 'Test Kitchen' }).returning();
-      if (!phase || !paint || !kitchen) throw new Error('fixture missing');
+      if (!phase || !kitchen) throw new Error('fixture missing');
 
       const [job] = await tx
         .insert(jobs)
         .values({
           phaseId: phase.id,
-          itemId: paint.id,
           name: 'Paint — Phase 1',
           spec: 'SW Alabaster',
         })
         .returning();
       if (!job) throw new Error('insert failed');
       expect(job.status).toBe('unstarted');
+      expect(job.vendorId).toBeNull();
 
       const [jr] = await tx
         .insert(jobRooms)
@@ -344,33 +299,29 @@ describe('@reparo/db', () => {
         .returning();
       expect(again?.spec).toBe('Accent wall: SW Naval');
 
-      // The same item can have another job in another phase, covering the same room.
+      // Another job in another phase can cover the same room.
       const [p2] = await tx.insert(phases).values({ name: 'Test Phase 2' }).returning();
       if (!p2) throw new Error('insert failed');
       const [job2] = await tx
         .insert(jobs)
-        .values({ phaseId: p2.id, itemId: paint.id, name: 'Paint — Phase 2' })
+        .values({ phaseId: p2.id, name: 'Paint — Phase 2' })
         .returning();
       if (!job2) throw new Error('insert failed');
       await tx.insert(jobRooms).values({ jobId: job2.id, roomId: kitchen.id });
     }));
 
-  it('jobs need a real phase and item; job rooms need a real job and room', () =>
+  it('jobs need a real phase and, if set, a real vendor; job rooms need a real job and room', () =>
     withRollback(db, async (tx) => {
       const none = '00000000-0000-0000-0000-000000000000';
-      const [paint] = await tx.select().from(items).where(eq(items.name, 'Paint'));
       const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
-      if (!paint || !phase) throw new Error('fixture missing');
+      if (!phase) throw new Error('fixture missing');
       await expectDbErrorIn(tx, /jobs_phase_id_phases_id_fk/, (sp) =>
-        sp.insert(jobs).values({ phaseId: none, itemId: paint.id, name: 'x' }),
+        sp.insert(jobs).values({ phaseId: none, name: 'x' }),
       );
-      await expectDbErrorIn(tx, /jobs_item_id_items_id_fk/, (sp) =>
-        sp.insert(jobs).values({ phaseId: phase.id, itemId: none, name: 'x' }),
+      await expectDbErrorIn(tx, /jobs_vendor_id_vendors_id_fk/, (sp) =>
+        sp.insert(jobs).values({ phaseId: phase.id, vendorId: none, name: 'x' }),
       );
-      const [job] = await tx
-        .insert(jobs)
-        .values({ phaseId: phase.id, itemId: paint.id, name: 'x' })
-        .returning();
+      const [job] = await tx.insert(jobs).values({ phaseId: phase.id, name: 'x' }).returning();
       if (!job) throw new Error('insert failed');
       await expectDbErrorIn(tx, /job_rooms_room_id_rooms_id_fk/, (sp) =>
         sp.insert(jobRooms).values({ jobId: job.id, roomId: none }),
@@ -380,6 +331,49 @@ describe('@reparo/db', () => {
       );
     }));
 
+  // --- M2 (OD-44) ---
+
+  it('the items table is gone and jobs no longer have an item', async () => {
+    const tables = await client<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = 'public' AND tablename = 'items'`;
+    expect(tables[0]?.n).toBe(0);
+    const cols = await client<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM information_schema.columns
+      WHERE table_name = 'jobs' AND column_name = 'item_id'`;
+    expect(cols[0]?.n).toBe(0);
+  });
+
+  it('a job can name a vendor; a vendor in use cannot be hard-deleted', () =>
+    withRollback(db, async (tx) => {
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [tj] = await tx
+        .insert(vendors)
+        .values({ name: 'TJ', trade: 'Demo crew', phone: '555-0100' })
+        .returning();
+      if (!phase || !tj) throw new Error('fixture missing');
+      expect(tj.email).toBe('');
+      expect(tj.deletedAt).toBeNull();
+      const [job] = await tx
+        .insert(jobs)
+        .values({ phaseId: phase.id, vendorId: tj.id, name: 'Demo week' })
+        .returning();
+      expect(job?.vendorId).toBe(tj.id);
+      await expectDbErrorIn(tx, /jobs_vendor_id_vendors_id_fk/, (sp) =>
+        sp.delete(vendors).where(eq(vendors.id, tj.id)),
+      );
+    }));
+
+  it('live vendor names are unique ignoring case; archiving frees the name', () =>
+    withRollback(db, async (tx) => {
+      const [brian] = await tx.insert(vendors).values({ name: 'Brian' }).returning();
+      if (!brian) throw new Error('insert failed');
+      await expectDbErrorIn(tx, /vendors_name_live_uidx/, (sp) =>
+        sp.insert(vendors).values({ name: 'brian' }),
+      );
+      await tx.update(vendors).set({ deletedAt: new Date() }).where(eq(vendors.id, brian.id));
+      await tx.insert(vendors).values({ name: 'Brian' });
+    }));
+
   it('has row level security enabled on every table, with no policies', async () => {
     const rows = await client<{ relname: string; relrowsecurity: boolean }[]>`
       SELECT relname, relrowsecurity FROM pg_class
@@ -387,12 +381,12 @@ describe('@reparo/db', () => {
     expect(rows.map((r) => [r.relname, r.relrowsecurity])).toEqual([
       ['categories', true],
       ['files', true],
-      ['items', true],
       ['job_rooms', true],
       ['jobs', true],
       ['members', true],
       ['phases', true],
       ['rooms', true],
+      ['vendors', true],
     ]);
     const policies = await client<{ n: number }[]>`
       SELECT count(*)::int AS n FROM pg_policies WHERE schemaname = 'public'`;

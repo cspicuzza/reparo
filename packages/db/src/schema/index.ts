@@ -4,6 +4,6 @@ export * from './files';
 export * from './phases';
 export * from './rooms';
 export * from './categories';
-export * from './items';
+export * from './vendors';
 export * from './work-status';
 export * from './jobs';

@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm';
 import { check, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './columns';
 
-/** ADR-008. Admin: everything + members/roles/items/phases/hard deletes. Editor: edits all. Viewer: reads all. */
+/** ADR-008. Admin: everything + members/roles/categories/phases/archiving vendors/hard deletes. Editor: edits all. Viewer: reads all. */
 export const memberRole = pgEnum('member_role', ['admin', 'editor', 'viewer']);
 export type MemberRole = (typeof memberRole.enumValues)[number];
 
