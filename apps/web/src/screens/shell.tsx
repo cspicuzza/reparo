@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   LogOut,
   Menu as MenuIcon,
+  ShoppingBag,
 } from 'lucide-react';
 import { useState, type ComponentType } from 'react';
 import { LogoMark } from '@/components/logo';
@@ -26,24 +27,25 @@ import { signOut } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 
-type Path = '/' | '/rooms' | '/jobs' | '/phases' | '/vendors';
+type Path = '/' | '/rooms' | '/jobs' | '/shopping' | '/phases' | '/vendors';
 type Section = { name: string; to: Path; icon: ComponentType<{ 'aria-hidden'?: boolean }> };
 
 /*
  * Navigation (OD-48, Q25/Q27). Laptop: one top bar. Phone: the places used every day stay
  * visible in the bottom bar, the rest sit in a slide-out Menu panel (hidden navigation is used
- * less, so only the less-used sections go there). Shopping joins the bar and Money joins the
- * panel in M3; nothing is shown before it exists (no dead links). Vendors is reached from the
+ * less, so only the less-used sections go there). Money joins the top bar and the panel with
+ * the Money page (OD-53); nothing is shown before it exists (no dead links). Vendors is reached from the
  * Jobs page on a laptop.
  */
 const HOME: Section = { name: 'Home', to: '/', icon: House };
 const ROOMS: Section = { name: 'Rooms', to: '/rooms', icon: LayoutGrid };
 const JOBS: Section = { name: 'Jobs', to: '/jobs', icon: Hammer };
+const SHOPPING: Section = { name: 'Shopping', to: '/shopping', icon: ShoppingBag };
 const PHASES: Section = { name: 'Phases', to: '/phases', icon: CalendarRange };
 const VENDORS: Section = { name: 'Vendors', to: '/vendors', icon: Contact };
 
-const TOP_BAR = [HOME, ROOMS, JOBS, PHASES];
-const BOTTOM_BAR = [HOME, ROOMS, JOBS];
+const TOP_BAR = [HOME, ROOMS, JOBS, SHOPPING, PHASES];
+const BOTTOM_BAR = [HOME, ROOMS, JOBS, SHOPPING];
 const MENU_PANEL = [PHASES, VENDORS];
 
 /** Whether `pathname` is inside `to` (Home only matches itself). */

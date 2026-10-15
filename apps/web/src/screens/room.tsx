@@ -8,6 +8,7 @@ import { describeRoom, roomProgressText } from '@/lib/rooms';
 import { DimensionLine } from '@/components/dimension';
 import { PlanGrid } from '@/components/plan-grid';
 import { RoomForm } from './room-form';
+import { RoomShopping } from './room-shopping';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { FormError } from '@/components/form';
@@ -144,6 +145,18 @@ export function RoomDetail() {
             </p>
             <div className="mt-4">
               <RoomWork roomId={r.id} roomName={r.name} />
+            </div>
+          </section>
+
+          <section
+            aria-labelledby="room-buying"
+            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+          >
+            <h2 id="room-buying" className="text-2xl">
+              What we&apos;re buying
+            </h2>
+            <div className="mt-4">
+              <RoomShopping roomId={r.id} roomName={r.name} />
             </div>
           </section>
 

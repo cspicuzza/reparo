@@ -12,6 +12,7 @@ import {
   type PaymentCreateInput,
 } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ConfirmRemove } from '@/components/confirm-remove';
@@ -133,6 +134,13 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
               </li>
             ))}
           </ul>
+          <Link
+            to="/shopping"
+            search={{ job: job.id }}
+            className="mt-2 inline-flex min-h-11 items-center underline underline-offset-4"
+          >
+            See them on the shopping list
+          </Link>
         </section>
       ) : null}
     </Panel>

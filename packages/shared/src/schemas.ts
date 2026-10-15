@@ -283,6 +283,11 @@ const urlishSchema = z.string().trim().max(2000, 'Keep the link under 2,000 char
 const shortText = (max: number, what: string) =>
   z.string().trim().max(max, `Keep the ${what} under ${max} characters`);
 
+/** A one-field form: what was paid for a line, or how much came back. */
+export const amountFormSchema = z.object({ amount: moneyInputSchema });
+export type AmountForm = z.infer<typeof amountFormSchema>;
+export type AmountFormInput = z.input<typeof amountFormSchema>;
+
 // Categories -----------------------------------------------------------------------------------
 
 export const categoryCreateSchema = z.object({ name: nameSchema });
