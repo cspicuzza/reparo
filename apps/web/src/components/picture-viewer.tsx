@@ -1,9 +1,12 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, FileText, X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { AutoSaveField } from '@/components/auto-save-field';
 import { ConfirmRemove } from '@/components/confirm-remove';
-import { FormError, Input } from '@/components/form';
+import { problemWith } from '@/lib/problem';
+import { fileUpdateSchema } from '@reparo/shared';
+import { FormError } from '@/components/form';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useTRPC } from '@/lib/trpc';
 import { formatSize, type FileView } from '@/lib/upload';
@@ -103,7 +106,6 @@ function ViewerBody({
   actions: ((picture: FileView) => ReactNode) | undefined;
 }) {
   const trpc = useTRPC();
-  const [caption, setCaption] = useState(picture.caption);
   const update = useMutation(trpc.files.update.mutationOptions({ onSuccess: onChanged }));
   const remove = useMutation(
     trpc.files.remove.mutationOptions({
@@ -189,33 +191,14 @@ function ViewerBody({
         </p>
         {details?.(picture)}
         {canEdit ? (
-          <form
-            className="flex flex-wrap items-end gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              update.mutate({ id: picture.id, caption });
-            }}
-          >
-            <div className="min-w-0 flex-1 basis-56">
-              <label htmlFor={`caption-${picture.id}`} className="block text-sm font-semibold">
-                Caption
-              </label>
-              <Input
-                id={`caption-${picture.id}`}
-                className="mt-1.5"
-                value={caption}
-                maxLength={500}
-                onChange={(e) => setCaption(e.target.value)}
-              />
-            </div>
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={update.isPending || caption === picture.caption}
-            >
-              Save caption
-            </Button>
-          </form>
+          <AutoSaveField
+            id={`caption-${picture.id}`}
+            label="Caption"
+            initial={picture.caption}
+            what={`Caption of ${picture.caption || picture.originalName}`}
+            validate={(v) => problemWith(fileUpdateSchema.shape.caption, v)}
+            onSave={(v) => update.mutateAsync({ id: picture.id, caption: v })}
+          />
         ) : null}
         {canEdit ? (
           <div className="-ml-3 flex flex-wrap items-center gap-1">
@@ -227,9 +210,7 @@ function ViewerBody({
             />
           </div>
         ) : null}
-        {(update.error ?? remove.error) ? (
-          <FormError>{(update.error ?? remove.error)?.message}</FormError>
-        ) : null}
+        {remove.error ? <FormError>{remove.error.message}</FormError> : null}
       </div>
     </>
   );

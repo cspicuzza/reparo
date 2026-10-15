@@ -1,16 +1,15 @@
-import { UnsavedGuard } from '@/components/unsaved-guard';
-import { useFocusFirstField } from '@/lib/editor-focus';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { jobRoomFormSchema, type JobRoomForm, type JobRoomFormInput } from '@reparo/shared';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { Field, FormError, Textarea } from '@/components/form';
-import { useTRPC } from '@/lib/trpc';
+import { jobRoomUpdateSchema } from '@reparo/shared';
+import { useQueryClient } from '@tanstack/react-query';
+import { AutoSaveField } from '@/components/auto-save-field';
 import { Button } from '@/components/ui/button';
+import { useFocusFirstField } from '@/lib/editor-focus';
+import { problemWith } from '@/lib/problem';
+import { trpcClient, useTRPC } from '@/lib/trpc';
 
 /**
  * One room's own spec and notes on a job. A blank spec means "same as the job" — the room
- * then follows the job's spec, including later edits to it.
+ * then follows the job's spec, including later edits to it. Each field saves when you leave it
+ * (Workflow polish, OD-77); Done only closes the editor.
  */
 export function JobRoomEditor({
   idPrefix,
@@ -27,58 +26,44 @@ export function JobRoomEditor({
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const update = useMutation(
-    trpc.jobRooms.update.mutationOptions({
-      onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.jobs.pathFilter());
-        onDone();
-      },
-    }),
-  );
-  const { register, handleSubmit, formState } = useForm<JobRoomFormInput, unknown, JobRoomForm>({
-    resolver: zodResolver(jobRoomFormSchema),
-    defaultValues: { spec: jobRoom.spec ?? '', notes: jobRoom.notes },
-  });
+  const ref = useFocusFirstField<HTMLDivElement>();
+  const save = (input: { spec?: string; notes?: string }) =>
+    trpcClient.jobRooms.update
+      .mutate({ id: jobRoom.id, ...input })
+      .then(() => queryClient.invalidateQueries(trpc.jobs.pathFilter()));
   const id = (f: string) => `${idPrefix}-${f}`;
 
-  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form
-      ref={formRef}
-      onSubmit={(e) =>
-        void handleSubmit(async (values) => {
-          await update.mutateAsync({ id: jobRoom.id, ...values }).catch(() => undefined);
-        })(e)
-      }
-      className="grid gap-4"
-    >
-      <Field
+    <div ref={ref} className="grid gap-4">
+      <AutoSaveField
+        id={id('spec')}
         label={`Spec for ${roomName}`}
-        htmlFor={id('spec')}
         hint={
           jobSpec
             ? `Leave blank to use the job's spec: “${jobSpec.split('\n')[0] ?? ''}”`
             : "Leave blank to use the job's spec."
         }
-        error={formState.errors.spec?.message}
-      >
-        <Textarea id={id('spec')} rows={3} {...register('spec')} />
-      </Field>
-      <Field label="Notes" htmlFor={id('notes')} error={formState.errors.notes?.message}>
-        <Textarea id={id('notes')} rows={2} {...register('notes')} />
-      </Field>
-      {update.error ? <FormError>{update.error.message}</FormError> : null}
-      <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={formState.isSubmitting}>
-          Save spec &amp; notes
-        </Button>
-        <Button type="button" onClick={onDone} variant="ghost">
-          Cancel
+        initial={jobRoom.spec ?? ''}
+        multiline
+        what={`Spec for ${roomName}`}
+        validate={(v) => problemWith(jobRoomUpdateSchema.shape.spec, v)}
+        onSave={(v) => save({ spec: v })}
+      />
+      <AutoSaveField
+        id={id('notes')}
+        label="Notes"
+        initial={jobRoom.notes}
+        multiline
+        rows={2}
+        what={`Notes for ${roomName}`}
+        validate={(v) => problemWith(jobRoomUpdateSchema.shape.notes, v)}
+        onSave={(v) => save({ notes: v })}
+      />
+      <div>
+        <Button type="button" variant="outline" onClick={onDone}>
+          Done
         </Button>
       </div>
-      <UnsavedGuard
-        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
-      />
-    </form>
+    </div>
   );
 }

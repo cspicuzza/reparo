@@ -18,7 +18,8 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
 import { EditPanel } from '@/components/edit-panel';
 import { PanelList } from '@/components/panel';
-import { PhaseStatusBadge } from '@/components/status';
+import { PhaseStatusBadge, PhaseStatusSelect } from '@/components/status';
+import { SaveState } from '@/components/save-state';
 import { TapeStrip } from '@/components/tape';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
@@ -124,7 +125,11 @@ export function Phases() {
               <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <h2 className="text-2xl">{phase.name}</h2>
-                  <PhaseStatusBadge status={phase.status} />
+                  {isAdmin ? (
+                    <PhaseStatus phase={phase} />
+                  ) : (
+                    <PhaseStatusBadge status={phase.status} />
+                  )}
                 </div>
                 {isAdmin ? (
                   <Button
@@ -247,5 +252,42 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
         when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
       />
     </form>
+  );
+}
+
+/**
+ * A phase's status for the admin: changes save at once, with Saving / Saved / Couldn't save
+ * beside it (OD-77). Starting or finishing a phase moves the money, so Home and Money refresh.
+ */
+function PhaseStatus({ phase }: { phase: Phase }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const save = useMutation(
+    trpc.phases.update.mutationOptions({
+      onSuccess: () =>
+        Promise.all([
+          queryClient.invalidateQueries(trpc.phases.pathFilter()),
+          queryClient.invalidateQueries(trpc.money.pathFilter()),
+          queryClient.invalidateQueries(trpc.home.pathFilter()),
+          queryClient.invalidateQueries(trpc.shoppingLines.pathFilter()),
+        ]),
+    }),
+  );
+  const what = `Status of ${phase.name}`;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <PhaseStatusSelect
+        id={`phase-status-${phase.id}`}
+        label={what}
+        value={(save.isPending ? save.variables.status : undefined) ?? phase.status}
+        disabled={save.isPending}
+        onChange={(status) => save.mutate({ id: phase.id, status })}
+      />
+      <SaveState
+        mutation={save}
+        what={what}
+        onRetry={() => save.mutate(save.variables ?? { id: phase.id })}
+      />
+    </span>
   );
 }

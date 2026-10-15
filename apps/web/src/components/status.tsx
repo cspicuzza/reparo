@@ -1,4 +1,9 @@
-import { WORK_STATUSES, type PhaseStatusInput, type WorkStatusInput } from '@reparo/shared';
+import {
+  PHASE_STATUSES,
+  WORK_STATUSES,
+  type PhaseStatusInput,
+  type WorkStatusInput,
+} from '@reparo/shared';
 import { Circle, CircleAlert, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { PHASE_STATUS_LABEL, WORK_STATUS_LABEL } from '@/lib/work';
@@ -102,6 +107,51 @@ export function PhaseStatusBadge({ status }: { status: PhaseStatusInput }) {
     >
       <Icon aria-hidden className="size-4 shrink-0" />
       {PHASE_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+/**
+ * A phase's status as a dropdown that saves the moment a new one is picked (admin only;
+ * Workflow polish, OD-77). Styled like the job status dropdown, from the same looks.
+ */
+export function PhaseStatusSelect({
+  id,
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: PhaseStatusInput;
+  disabled?: boolean;
+  onChange: (status: PhaseStatusInput) => void;
+}) {
+  const { icon: Icon, bg, fg } = STATUS[PHASE[value]];
+  return (
+    <span className="relative inline-flex items-center">
+      <label htmlFor={id} className="sr-only">
+        {label}
+      </label>
+      <Icon aria-hidden className={cn('pointer-events-none absolute left-3 size-5', fg)} />
+      <select
+        id={id}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value as PhaseStatusInput)}
+        className={cn(
+          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold disabled:opacity-50',
+          bg,
+          fg,
+        )}
+      >
+        {PHASE_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {PHASE_STATUS_LABEL[s]}
+          </option>
+        ))}
+      </select>
     </span>
   );
 }

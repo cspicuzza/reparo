@@ -1,4 +1,5 @@
 import { formatLength, type Inches } from '@reparo/shared';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -57,5 +58,18 @@ function LengthText({ text }: { text: string }) {
       <span className="[font-variant-numeric:diagonal-fractions_tabular-nums]">{m[0]}</span>
       {after}
     </>
+  );
+}
+
+/** A field drawn inside a dimension line, so an editable size keeps the drafting look (OD-77). */
+export function DimensionFrame({ children }: { children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <Tick />
+      <Line />
+      <span className="w-32 shrink-0">{children}</span>
+      <Line />
+      <Tick />
+    </span>
   );
 }

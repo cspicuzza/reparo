@@ -1,10 +1,13 @@
-import { formatIsoDate, isIsoDate, today } from '@reparo/shared';
+import { fileUpdateSchema, formatIsoDate, isIsoDate, today } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { FileSection } from '@/components/file-section';
-import { FormError, Input, Select } from '@/components/form';
+import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
-import { useTRPC } from '@/lib/trpc';
+import { trpcClient, useTRPC } from '@/lib/trpc';
+import { problemWith } from '@/lib/problem';
+import { AutoSaveField } from '@/components/auto-save-field';
+import { SaveState } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
 
 type RoomJob = { id: string; name: string };
@@ -145,7 +148,10 @@ export function RoomPictures({
   );
 }
 
-/** A progress photo's date and job, changeable by editors (Q17). */
+/**
+ * A progress photo's date and job, changeable by editors (Q17). Each saves on its own when it
+ * changes, with no Save button (Workflow polish, OD-77).
+ */
 function ProgressDetails({
   file,
   jobs,
@@ -157,13 +163,11 @@ function ProgressDetails({
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [takenOn, setTakenOn] = useState(file.takenOn ?? '');
-  const [jobId, setJobId] = useState(file.jobId ?? '');
-  const update = useMutation(
-    trpc.files.update.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
-    }),
-  );
+  const saveFile = (input: { takenOn?: string; jobId?: string | null }) =>
+    trpcClient.files.update
+      .mutate({ id: file.id, ...input })
+      .then(() => queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }));
+  const job = useMutation({ mutationFn: (jobId: string) => saveFile({ jobId: jobId || null }) });
   if (!canEdit) {
     return (
       <p>
@@ -172,26 +176,18 @@ function ProgressDetails({
       </p>
     );
   }
-  const changed = takenOn !== (file.takenOn ?? '') || jobId !== (file.jobId ?? '');
+  const shownJob = (job.isPending ? job.variables : undefined) ?? file.jobId ?? '';
   return (
-    <form
-      className="flex flex-wrap items-end gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!isIsoDate(takenOn)) return;
-        update.mutate({ id: file.id, takenOn, jobId: jobId || null });
-      }}
-    >
-      <div>
-        <label htmlFor={`taken-${file.id}`} className="block text-sm font-semibold">
-          Taken on
-        </label>
-        <Input
+    <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+      <div className="w-48">
+        <AutoSaveField
           id={`taken-${file.id}`}
+          label="Taken on"
           type="date"
-          className="mt-1.5"
-          value={takenOn}
-          onChange={(e) => setTakenOn(e.target.value)}
+          initial={file.takenOn ?? ''}
+          what="Date the photo was taken"
+          validate={(v) => problemWith(fileUpdateSchema.shape.takenOn, v)}
+          onSave={(v) => saveFile({ takenOn: v })}
         />
       </div>
       <div className="min-w-0 flex-1 basis-48">
@@ -201,8 +197,9 @@ function ProgressDetails({
         <Select
           id={`job-${file.id}`}
           className="mt-1.5"
-          value={jobId}
-          onChange={(e) => setJobId(e.target.value)}
+          value={shownJob}
+          disabled={job.isPending}
+          onChange={(e) => job.mutate(e.target.value)}
         >
           <option value="">No particular job</option>
           {jobs.map((j) => (
@@ -211,15 +208,13 @@ function ProgressDetails({
             </option>
           ))}
         </Select>
+        <SaveState
+          className="mt-1"
+          mutation={job}
+          what="Job the photo shows"
+          onRetry={() => job.mutate(job.variables ?? shownJob)}
+        />
       </div>
-      <Button
-        type="submit"
-        variant="outline"
-        disabled={update.isPending || !changed || !isIsoDate(takenOn)}
-      >
-        Save date and job
-      </Button>
-      {update.error ? <FormError className="w-full">{update.error.message}</FormError> : null}
-    </form>
+    </div>
   );
 }
