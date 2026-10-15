@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { problemWith } from '@/lib/problem';
 import { AutoSaveField } from '@/components/auto-save-field';
-import { SaveState } from '@/components/save-state';
+import { SaveProblem, SaveStatus } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
 import { GridPlaceholder } from '@/components/placeholder';
 
@@ -192,9 +192,12 @@ function ProgressDetails({
         />
       </div>
       <div>
-        <label htmlFor={`job-${file.id}`} className="block text-sm font-semibold">
-          Shows the job
-        </label>
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor={`job-${file.id}`} className="block text-sm font-semibold">
+            Shows the job
+          </label>
+          <SaveStatus mutation={job} what="Job the photo shows" />
+        </div>
         <Select
           id={`job-${file.id}`}
           className="mt-1.5"
@@ -209,12 +212,7 @@ function ProgressDetails({
             </option>
           ))}
         </Select>
-        <SaveState
-          className="mt-1"
-          mutation={job}
-          what="Job the photo shows"
-          onRetry={() => job.mutate(job.variables ?? shownJob)}
-        />
+        <SaveProblem mutation={job} onRetry={() => job.mutate(job.variables ?? shownJob)} />
       </div>
     </div>
   );

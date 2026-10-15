@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { use, useState, type ReactNode } from 'react';
 import { FormError, inputClass } from '@/components/form';
-import { SaveState } from '@/components/save-state';
+import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { PanelDirtyContext } from '@/lib/panel-dirty';
 import { cn } from '@/lib/utils';
 
@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils';
  * A one-value edit that saves when you leave the field, with no Save button (web.md → Saving;
  * Workflow polish, OD-77). It saves only if the value changed and passes `validate` (the same
  * Zod schema the API uses); otherwise it says what to fix and keeps the old value on the server.
- * Saving / Saved / Couldn't save show beside it.
+ * Saving / Saved / Couldn't save show on its label line, and why a save failed shows under it
+ * (OD-84).
  */
 export function AutoSaveField({
   id,
@@ -80,7 +81,14 @@ export function AutoSaveField({
     if (message === null) save.mutate(value);
   };
 
-  const describedBy = problem ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const failed = save.status === 'error';
+  const describedBy = problem
+    ? `${id}-error`
+    : failed
+      ? `${id}-save-error`
+      : hint
+        ? `${id}-hint`
+        : undefined;
   const common = {
     id,
     value,
@@ -108,28 +116,43 @@ export function AutoSaveField({
       }}
     />
   );
+  const status = <SaveStatus mutation={save} what={what} />;
+  const retry = () => save.mutate(save.variables ?? value);
+  const labelHidden = labelClassName === 'sr-only';
 
   return (
     <div className={className}>
-      <label htmlFor={id} className={cn('block text-sm font-semibold', labelClassName)}>
-        {label}
-      </label>
-      <div className={labelClassName === 'sr-only' ? undefined : 'mt-1.5'}>
-        {wrap ? wrap(field) : field}
-      </div>
+      {/* The label, with what happened to the last save at the right of its line (OD-84). A
+          field whose label is hidden (the panel's name heading) has its state beside it. */}
+      {labelHidden ? (
+        <label htmlFor={id} className="sr-only">
+          {label}
+        </label>
+      ) : (
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor={id} className={cn('block text-sm font-semibold', labelClassName)}>
+            {label}
+          </label>
+          {status}
+        </div>
+      )}
+      {labelHidden ? (
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">{wrap ? wrap(field) : field}</div>
+          {status}
+        </div>
+      ) : (
+        <div className="mt-1.5">{wrap ? wrap(field) : field}</div>
+      )}
       {problem ? (
         <FormError id={`${id}-error`}>{problem}</FormError>
+      ) : failed ? (
+        <SaveProblem id={`${id}-save-error`} mutation={save} onRetry={retry} />
       ) : hint ? (
         <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted-foreground">
           {hint}
         </p>
       ) : null}
-      <SaveState
-        className="mt-1"
-        mutation={save}
-        what={what}
-        onRetry={() => save.mutate(save.variables ?? value)}
-      />
     </div>
   );
 }

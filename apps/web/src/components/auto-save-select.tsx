@@ -1,11 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { SelectChevron, inputClass } from '@/components/form';
-import { SaveState } from '@/components/save-state';
+import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { cn } from '@/lib/utils';
 
 /**
  * A dropdown that saves the moment something is picked, with Saving / Saved / Couldn't save
- * beside it (web.md → Saving; OD-82, Q53). While it saves it shows the new choice; if the save
+ * on its label line (OD-84) (web.md → Saving; OD-82, Q53). While it saves it shows the new choice; if the save
  * fails it goes back to what the server holds and offers Try again.
  */
 export function AutoSaveSelect({
@@ -29,16 +29,23 @@ export function AutoSaveSelect({
 }) {
   const save = useMutation({ mutationFn: onSave });
   const shown = save.isPending && save.variables !== undefined ? save.variables : value;
+  const failed = save.status === 'error';
+  const retry = () => {
+    if (save.variables !== undefined) save.mutate(save.variables);
+  };
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-semibold">
-        {label}
-      </label>
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="block text-sm font-semibold">
+          {label}
+        </label>
+        <SaveStatus mutation={save} what={what} />
+      </div>
       <div className="relative mt-1.5">
         <select
           id={id}
           value={shown}
-          aria-describedby={hint ? `${id}-hint` : undefined}
+          aria-describedby={failed ? `${id}-save-error` : hint ? `${id}-hint` : undefined}
           onChange={(e) => {
             if (e.target.value !== value) save.mutate(e.target.value);
           }}
@@ -52,19 +59,13 @@ export function AutoSaveSelect({
         </select>
         <SelectChevron />
       </div>
-      {hint ? (
+      {failed ? (
+        <SaveProblem id={`${id}-save-error`} mutation={save} onRetry={retry} />
+      ) : hint ? (
         <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted-foreground">
           {hint}
         </p>
       ) : null}
-      <SaveState
-        className="mt-1"
-        mutation={save}
-        what={what}
-        onRetry={() => {
-          if (save.variables !== undefined) save.mutate(save.variables);
-        }}
-      />
     </div>
   );
 }

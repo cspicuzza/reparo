@@ -55,8 +55,9 @@ export function Field({ label, hint, error, children, htmlFor }: FieldProps) {
 }
 
 /**
- * A problem to fix, next to where it happened: the "needs you" marker (tape yellow) and words
- * that say what to do. Brick red stays for money and deleting (Design system → Colour).
+ * A problem to fix, next to where it happened: an alert icon and words that say what to do, in
+ * brick red, the one look for every error in the app (Workflow polish, OD-84, Q65). Yellow stays
+ * for what needs someone, the tape and the current-page marker.
  */
 export function FormError({
   id,
@@ -71,11 +72,12 @@ export function FormError({
     <p
       id={id}
       role="alert"
-      className={cn('mt-1.5 flex items-start gap-2 text-sm font-semibold', className)}
+      className={cn(
+        'mt-1.5 flex items-start gap-1.5 text-sm font-semibold text-destructive',
+        className,
+      )}
     >
-      <span className="mt-px inline-flex shrink-0 rounded-md bg-tape p-0.5 text-tape-ink">
-        <CircleAlert aria-hidden className="size-3.5" />
-      </span>
+      <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span className="min-w-0">{children}</span>
     </p>
   );
