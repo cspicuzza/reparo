@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, Mail, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { FormError } from '@/components/form';
+import { SaveState } from '@/components/save-state';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { StatusBadge, StatusSelect } from '@/components/status';
@@ -113,14 +114,6 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const mendIfCompleted = (vars: { status?: string | undefined }) => {
     if (vars.status === 'completed') celebrateMended();
   };
-  const roomStatus = useMutation(
-    trpc.jobRooms.update.mutationOptions({
-      onSuccess: (_d, vars) => {
-        mendIfCompleted(vars);
-        return invalidate();
-      },
-    }),
-  );
   const jobStatus = useMutation(
     trpc.jobs.update.mutationOptions({
       onSuccess: (_d, vars) => {
@@ -137,7 +130,6 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
       },
     }),
   );
-  const error = roomStatus.error ?? jobStatus.error ?? remove.error;
   const progress = progressText(job.progress, job.rooms.length);
 
   return (
@@ -148,13 +140,23 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
             How it&apos;s going
           </h2>
           {job.rooms.length === 0 && canEdit ? (
-            <StatusSelect
-              id={`job-status-${job.id}`}
-              label={`Status of ${job.name}`}
-              value={job.progress.status}
-              disabled={jobStatus.isPending}
-              onChange={(status) => jobStatus.mutate({ id: job.id, status })}
-            />
+            <div className="flex flex-col items-end gap-1">
+              <StatusSelect
+                id={`job-status-${job.id}`}
+                label={`Status of ${job.name}`}
+                value={
+                  (jobStatus.isPending ? jobStatus.variables.status : undefined) ??
+                  job.progress.status
+                }
+                disabled={jobStatus.isPending}
+                onChange={(status) => jobStatus.mutate({ id: job.id, status })}
+              />
+              <SaveState
+                mutation={jobStatus}
+                what={`Status of ${job.name}`}
+                onRetry={() => jobStatus.mutate(jobStatus.variables ?? { id: job.id })}
+              />
+            </div>
           ) : (
             <StatusBadge status={job.progress.status} />
           )}
@@ -233,12 +235,11 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
                     ) : null}
                   </div>
                   {canEdit ? (
-                    <StatusSelect
-                      id={`room-status-${r.id}`}
-                      label={`Status of ${job.name} in ${r.room.name}`}
-                      value={r.status}
-                      disabled={roomStatus.isPending}
-                      onChange={(status) => roomStatus.mutate({ id: r.id, status })}
+                    <RoomStatus
+                      jobRoomId={r.id}
+                      status={r.status}
+                      what={`Status of ${job.name} in ${r.room.name}`}
+                      onSaved={invalidate}
                     />
                   ) : (
                     <StatusBadge status={r.status} />
@@ -291,8 +292,6 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
 
       <JobFiles jobId={job.id} canEdit={canEdit} />
 
-      {error ? <FormError>{error.message}</FormError> : null}
-
       {canEdit ? (
         <div className="flex flex-wrap items-center gap-2">
           {confirmingRemove ? (
@@ -309,6 +308,9 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
               <Button type="button" onClick={() => setConfirmingRemove(false)} variant="ghost">
                 Keep it
               </Button>
+              {remove.error ? (
+                <FormError className="w-full">{remove.error.message}</FormError>
+              ) : null}
             </>
           ) : (
             <Button
@@ -323,6 +325,49 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
         </div>
       ) : null}
     </>
+  );
+}
+
+/**
+ * One covered room's status on the job page. Each row saves on its own (OD-72): it shows the
+ * new status at once, says Saving / Saved / Couldn't save beside it, and locks only itself.
+ */
+function RoomStatus({
+  jobRoomId,
+  status,
+  what,
+  onSaved,
+}: {
+  jobRoomId: string;
+  status: Job['rooms'][number]['status'];
+  what: string;
+  onSaved: () => Promise<unknown>;
+}) {
+  const trpc = useTRPC();
+  const save = useMutation(
+    trpc.jobRooms.update.mutationOptions({
+      onSuccess: (_d, vars) => {
+        if (vars.status === 'completed') celebrateMended();
+        // Returning the refetch keeps the save pending until the new status is on screen.
+        return onSaved();
+      },
+    }),
+  );
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <StatusSelect
+        id={`room-status-${jobRoomId}`}
+        label={what}
+        value={(save.isPending ? save.variables.status : undefined) ?? status}
+        disabled={save.isPending}
+        onChange={(next) => save.mutate({ id: jobRoomId, status: next })}
+      />
+      <SaveState
+        mutation={save}
+        what={what}
+        onRetry={() => save.mutate(save.variables ?? { id: jobRoomId })}
+      />
+    </div>
   );
 }
 

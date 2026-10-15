@@ -8,7 +8,7 @@ import { SPEC_SOURCE_LABEL, type RoomJob } from '@/lib/work';
 import { JobRoomEditor } from './job-room-editor';
 import { Button } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
-import { FormError } from '@/components/form';
+import { SaveState } from '@/components/save-state';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -16,18 +16,9 @@ import { FormError } from '@/components/form';
  */
 export function RoomWork({ roomId, roomName }: { roomId: string; roomName: string }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { canEdit } = useMe();
   const jobs = useQuery(trpc.jobs.forRoom.queryOptions({ roomId }));
   const [editing, setEditing] = useState<string | null>(null);
-  const setStatus = useMutation(
-    trpc.jobRooms.update.mutationOptions({
-      onSuccess: (_data, vars) => {
-        if (vars.status === 'completed') celebrateMended();
-        return queryClient.invalidateQueries(trpc.jobs.pathFilter());
-      },
-    }),
-  );
 
   if (jobs.isPending) return <p className="text-muted-foreground">Loading jobs…</p>;
   if (jobs.error) return <p role="alert">Couldn&apos;t load jobs: {jobs.error.message}</p>;
@@ -54,15 +45,12 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
               roomName={roomName}
               canEdit={canEdit}
               editing={editing === j.id}
-              busy={setStatus.isPending}
-              onStatus={(status) => setStatus.mutate({ id: j.id, status })}
               onEdit={() => setEditing(j.id)}
               onDone={() => setEditing(null)}
             />
           </li>
         ))}
       </ul>
-      {setStatus.error ? <FormError>{setStatus.error.message}</FormError> : null}
     </div>
   );
 }
@@ -72,8 +60,6 @@ function JobRow({
   roomName,
   canEdit,
   editing,
-  busy,
-  onStatus,
   onEdit,
   onDone,
 }: {
@@ -81,11 +67,24 @@ function JobRow({
   roomName: string;
   canEdit: boolean;
   editing: boolean;
-  busy: boolean;
-  onStatus: (status: RoomJob['status']) => void;
   onEdit: () => void;
   onDone: () => void;
 }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  // Each row saves on its own, so one save never locks or hides another row (OD-72).
+  const setStatus = useMutation(
+    trpc.jobRooms.update.mutationOptions({
+      onSuccess: (_data, vars) => {
+        if (vars.status === 'completed') celebrateMended();
+        // Returning the refetch keeps the save pending until the new status is on screen.
+        return queryClient.invalidateQueries(trpc.jobs.pathFilter());
+      },
+    }),
+  );
+  // Shown at once while it saves; a failed save falls back to what the server holds.
+  const shown = (setStatus.isPending ? setStatus.variables.status : undefined) ?? j.status;
+  const what = `Status of ${j.job.name} in ${roomName}`;
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -107,13 +106,20 @@ function JobRow({
           ) : null}
         </div>
         {canEdit ? (
-          <StatusSelect
-            id={`status-${j.id}`}
-            label={`Status of ${j.job.name} in ${roomName}`}
-            value={j.status}
-            disabled={busy}
-            onChange={onStatus}
-          />
+          <div className="flex flex-col items-end gap-1">
+            <StatusSelect
+              id={`status-${j.id}`}
+              label={what}
+              value={shown}
+              disabled={setStatus.isPending}
+              onChange={(status) => setStatus.mutate({ id: j.id, status })}
+            />
+            <SaveState
+              mutation={setStatus}
+              what={what}
+              onRetry={() => setStatus.mutate(setStatus.variables ?? { id: j.id })}
+            />
+          </div>
         ) : (
           <StatusBadge status={j.status} />
         )}
