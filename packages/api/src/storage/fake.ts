@@ -32,6 +32,11 @@ export function createFakeStorage(bucket = 'files') {
     stat(path) {
       return Promise.resolve(objects.get(path) ?? null);
     },
+    putBytes(uploadUrl, bytes, mimeType) {
+      const path = uploadUrl.replace(`fake://${bucket}/upload/`, '');
+      objects.set(path, { sizeBytes: bytes.byteLength, mimeType });
+      return Promise.resolve();
+    },
   };
   return storage;
 }

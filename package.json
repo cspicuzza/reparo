@@ -20,7 +20,8 @@
     "db:migrate": "pnpm --filter @reparo/db migrate",
     "db:studio": "pnpm --filter @reparo/db studio",
     "db:seed": "pnpm --filter @reparo/db seed",
-    "db:import": "pnpm --filter @reparo/api run import-spreadsheet"
+    "db:import": "pnpm --filter @reparo/api run import-spreadsheet",
+    "db:import-images": "pnpm --filter @reparo/api run import-images"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

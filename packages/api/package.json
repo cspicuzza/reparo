@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc -p tsconfig.json",
-    "import-spreadsheet": "tsx src/cli/import-spreadsheet.ts"
+    "import-spreadsheet": "tsx src/cli/import-spreadsheet.ts",
+    "import-images": "tsx src/cli/import-images.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

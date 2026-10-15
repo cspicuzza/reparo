@@ -19,6 +19,11 @@ export interface Storage {
   createViewUrls(paths: string[], expiresInSeconds: number): Promise<Map<string, string | null>>;
   /** What storage holds at `path`, or null if nothing was uploaded there. */
   stat(path: string): Promise<{ sizeBytes: number; mimeType: string } | null>;
+  /**
+   * Send bytes from the server to an upload link, as the browser does (the spreadsheet image
+   * import, OD-61). Not used by the app itself.
+   */
+  putBytes(uploadUrl: string, bytes: Uint8Array, mimeType: string): Promise<void>;
 }
 
 export interface SupabaseStorageConfig {
@@ -126,6 +131,19 @@ export function createSupabaseStorage(cfg: SupabaseStorageConfig): Storage {
         out.set(p, signed ? encodeURI(`${base}${signed}`) : null);
       });
       return out;
+    },
+
+    async putBytes(uploadUrl, bytes, mimeType) {
+      const res = await doFetch(uploadUrl, {
+        method: 'PUT',
+        headers: { ...headers, 'content-type': mimeType, 'x-upsert': 'false' },
+        // A copy on a plain ArrayBuffer: what fetch's BodyInit accepts under the DOM types.
+        body: new Uint8Array(bytes),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new StorageError(`Storage upload failed (${res.status}): ${text}`, res.status);
+      }
     },
 
     async stat(path) {

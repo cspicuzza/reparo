@@ -588,3 +588,27 @@ export const importLineSchema = z.object({
   source: cell,
 });
 export type ImportLine = z.infer<typeof importLineSchema>;
+
+/**
+ * One row of the image list (`import/spreadsheet-images.csv`, OD-61): a picture from the
+ * spreadsheet and the lines-file line it belongs to. `skip` rows (the heading-row pictures,
+ * until Chris places them) are read but not loaded.
+ */
+export const importImageSchema = z
+  .object({
+    id: cell.min(1),
+    action: z.enum(['import', 'skip']),
+    line_id: cell,
+    line: cell,
+    image: cell.regex(
+      /^[\w.-]+\.(png|jpe?g|webp)$/i,
+      'Name a .png, .jpg or .webp in import/images',
+    ),
+    source: cell,
+    note: cell,
+  })
+  .refine((r) => r.action === 'skip' || r.line_id !== '', {
+    error: 'Say which line (line_id) the picture belongs to',
+    path: ['line_id'],
+  });
+export type ImportImage = z.infer<typeof importImageSchema>;
