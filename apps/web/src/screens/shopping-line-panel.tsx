@@ -1,5 +1,10 @@
-import { Check, ExternalLink } from 'lucide-react';
-import { moneyInputSchema, shoppingLineCreateSchema } from '@reparo/shared';
+import { ExternalLink } from 'lucide-react';
+import {
+  moneyInputSchema,
+  SHOPPING_STATUSES,
+  shoppingLineCreateSchema,
+  type ShoppingStatusInput as ShoppingStatus,
+} from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AttachedFiles } from '@/components/attached-files';
@@ -11,16 +16,17 @@ import { FileSection } from '@/components/file-section';
 import { FormError, Input } from '@/components/form';
 import { ShoppingStatusBadge } from '@/components/money';
 import { FormPlaceholder } from '@/components/placeholder';
+import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { centsToInput, lineAmountText, money } from '@/lib/money';
+import { centsToInput, lineAmountText, money, SHOPPING_STATUS_LABEL } from '@/lib/money';
 import { problemWith } from '@/lib/problem';
 import { lineWhere, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { cn } from '@/lib/utils';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
-import { AmountForm } from './shopping-list';
 
 type LinePatch = Omit<Parameters<typeof trpcClient.shoppingLines.update.mutate>[0], 'id'>;
 
@@ -207,7 +213,7 @@ function EditBody({
         line={line}
       />
 
-      <StatusStep line={line} />
+      <PurchaseStatus line={line} />
 
       {line.status !== 'to_buy' ? (
         <MoneyField
@@ -390,99 +396,109 @@ function EditBody({
 }
 
 /**
- * The status and its one next step. Buying and returning ask for the amount first, with a
- * button, because they change the line's status (Q48). "Back to To buy" clears the amounts.
+ * Purchase status as a three-way switch (OD-85, Q67): To buy, Purchased, Returned. Picking one
+ * saves straight away and offers Undo for 10 seconds. Purchased takes the price as what was
+ * paid and Returned takes what was paid as what came back; the amounts then show below to
+ * correct. Returned can only follow Purchased.
  */
-function StatusStep({ line }: { line: ShoppingLine }) {
-  const trpc = useTRPC();
-  const invalidate = useInvalidateShopping();
+function PurchaseStatus({ line }: { line: ShoppingLine }) {
+  const save = useSaveLine(line.id);
   const toasts = useToasts();
-  const [step, setStep] = useState<'view' | 'purchase' | 'return'>('view');
-  const update = useMutation(trpc.shoppingLines.update.mutationOptions());
-  const back = () => setStep('view');
+  const change = useMutation({
+    mutationFn: async (next: ShoppingStatus) => {
+      const before = line;
+      const patch: LinePatch =
+        next === 'purchased'
+          ? before.status === 'to_buy'
+            ? { status: 'purchased', paidCents: centsToInput(before.priceCents) }
+            : { status: 'purchased' }
+          : next === 'returned'
+            ? { status: 'returned', refundCents: centsToInput(before.paidCents ?? 0) }
+            : { status: 'to_buy' };
+      const saved = await save(patch);
+      toasts.add({
+        title: `Marked as ${SHOPPING_STATUS_LABEL[next].toLowerCase()}`,
+        description:
+          next === 'purchased'
+            ? `${before.name}, ${money(saved.paidCents ?? 0)} paid`
+            : next === 'returned'
+              ? `${before.name}, ${money(saved.refundCents ?? 0)} back`
+              : before.name,
+        timeout: 10_000,
+        actionProps: {
+          children: 'Undo',
+          // Put back the status and the amounts it had.
+          onClick: () =>
+            void save({
+              status: before.status,
+              ...(before.paidCents !== null ? { paidCents: centsToInput(before.paidCents) } : {}),
+              ...(before.refundCents !== null
+                ? { refundCents: centsToInput(before.refundCents) }
+                : {}),
+            }).catch(() => undefined),
+        },
+      });
+    },
+  });
+  const shown = change.isPending && change.variables ? change.variables : line.status;
+  const index = SHOPPING_STATUSES.indexOf(shown);
+  const id = `line-${line.id}-status`;
+  const what = `Purchase status of ${line.name}`;
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <ShoppingStatusBadge status={line.status} />
-        {line.status !== 'to_buy' ? (
-          <span className="font-semibold tabular-nums">{lineAmountText(line)}</span>
-        ) : null}
+    <fieldset aria-describedby={line.status === 'to_buy' ? `${id}-hint` : undefined}>
+      {/* The legend is read out; the visible copy shares its line with the save state. */}
+      <legend className="sr-only">Purchase status</legend>
+      <div className="flex items-baseline justify-between gap-3">
+        <span aria-hidden className="text-sm font-semibold">
+          Purchase status
+        </span>
+        <SaveStatus mutation={change} what={what} />
       </div>
-      {step === 'purchase' ? (
-        <AmountForm
-          idPrefix={`panel-buy-${line.id}`}
-          label="What was paid"
-          hint={`The price was ${money(line.priceCents)}. Tax and delivery count too.`}
-          initial={line.priceCents}
-          submitLabel="Mark as purchased"
-          serverError={update.error?.message}
-          onCancel={back}
-          onSubmit={async (paidCents) => {
-            await update
-              .mutateAsync({ id: line.id, status: 'purchased', paidCents })
-              .then(async () => {
-                await invalidate();
-                back();
-                toasts.add({
-                  title: 'Marked as purchased',
-                  description: `${line.name}, ${money(paidCents)} paid`,
-                });
-              })
-              .catch(() => undefined);
-          }}
+      <div className="relative mt-1.5 flex rounded-lg border border-input bg-inset p-0.5">
+        <span
+          aria-hidden
+          className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md bg-card shadow-sm transition-transform duration-200 ease-out"
+          style={{ transform: `translateX(${index * 100}%)` }}
         />
-      ) : step === 'return' ? (
-        <AmountForm
-          idPrefix={`panel-return-${line.id}`}
-          label="How much came back"
-          hint={`${money(line.paidCents ?? 0)} was paid. Anything kept back, like a restocking fee, stays spent.`}
-          initial={line.paidCents ?? 0}
-          submitLabel="Mark as returned"
-          serverError={update.error?.message}
-          onCancel={back}
-          onSubmit={async (refundCents) => {
-            await update
-              .mutateAsync({ id: line.id, status: 'returned', refundCents })
-              .then(async () => {
-                await invalidate();
-                back();
-              })
-              .catch(() => undefined);
-          }}
-        />
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {line.status === 'to_buy' ? (
-            <Button type="button" variant="outline" onClick={() => setStep('purchase')}>
-              <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              Mark as purchased
-            </Button>
-          ) : null}
-          {line.status === 'purchased' ? (
-            <Button type="button" variant="outline" onClick={() => setStep('return')}>
-              Mark as returned
-            </Button>
-          ) : null}
-          {line.status !== 'to_buy' ? (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={update.isPending}
-              onClick={() =>
-                void update
-                  .mutateAsync({ id: line.id, status: 'to_buy' })
-                  .then(invalidate)
-                  .catch(() => undefined)
-              }
+        {SHOPPING_STATUSES.map((st) => {
+          const off = st === 'returned' && line.status === 'to_buy';
+          return (
+            <label
+              key={st}
+              className={cn(
+                'relative z-10 flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-base transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
+                shown === st ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-foreground',
+              )}
             >
-              Back to To buy
-            </Button>
-          ) : null}
-        </div>
-      )}
-      {step === 'view' && update.error ? <FormError>{update.error.message}</FormError> : null}
-    </div>
+              <input
+                type="radio"
+                name={id}
+                value={st}
+                checked={shown === st}
+                disabled={off || change.isPending}
+                onChange={() => change.mutate(st)}
+                className="sr-only"
+              />
+              {SHOPPING_STATUS_LABEL[st]}
+            </label>
+          );
+        })}
+      </div>
+      {change.status === 'error' ? (
+        <SaveProblem
+          mutation={change}
+          onRetry={() => {
+            if (change.variables) change.mutate(change.variables);
+          }}
+        />
+      ) : line.status === 'to_buy' ? (
+        <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted-foreground">
+          Returned opens up once it&apos;s purchased.
+        </p>
+      ) : null}
+    </fieldset>
   );
 }
 
