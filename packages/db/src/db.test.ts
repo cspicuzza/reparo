@@ -3,17 +3,23 @@ import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDb, withRollback, type Db } from './client';
-import { FILE_KINDS, FILE_OWNER_TYPES, WORK_STATUSES } from '@reparo/shared';
+import { FILE_KINDS, FILE_OWNER_TYPES, SHOPPING_STATUSES, WORK_STATUSES } from '@reparo/shared';
 import {
+  budget,
+  budgetAdjustments,
   categories,
+  costLines,
   fileKind,
   fileOwnerType,
   files,
   jobRooms,
   jobs,
   members,
+  payments,
   phases,
   rooms,
+  shoppingLines,
+  shoppingStatus,
   vendors,
   workStatus,
 } from './schema';
@@ -245,15 +251,20 @@ describe('@reparo/db', () => {
 
   // --- Model fix (OD-33) ---
 
-  it('keeps the six seeded categories until M3 reshapes them', async () => {
+  it('seeds the shopping categories (M3 replaced the six Model fix ones)', async () => {
     const cats = await db.select().from(categories).orderBy(categories.sortOrder);
     expect(cats.map((c) => c.name)).toEqual([
-      'Remodel',
-      'Furnishing',
-      'Tech',
+      'Furniture',
+      'Rugs',
+      'Decor',
+      'Lighting',
+      'Ceiling fans',
+      'Window treatments',
+      'Wallpaper & paneling',
+      'TV & tech',
+      'Network & security',
       'Appliances',
-      'Moving',
-      'Misc',
+      'Other',
     ]);
   });
 
@@ -261,6 +272,7 @@ describe('@reparo/db', () => {
     expect(workStatus.enumValues).toEqual([...WORK_STATUSES]);
     expect(fileKind.enumValues).toEqual([...FILE_KINDS]);
     expect(fileOwnerType.enumValues).toEqual([...FILE_OWNER_TYPES]);
+    expect(shoppingStatus.enumValues).toEqual([...SHOPPING_STATUSES]);
   });
 
   it('a job covers each room once; a removed room can be added back', () =>
@@ -374,18 +386,155 @@ describe('@reparo/db', () => {
       await tx.insert(vendors).values({ name: 'Brian' });
     }));
 
+  // --- M3 (OD-49) ---
+
+  it('a shopping line moves To buy → Purchased → Returned with the amounts each needs', () =>
+    withRollback(db, async (tx) => {
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [rugs] = await tx.select().from(categories).where(eq(categories.name, 'Rugs'));
+      if (!phase || !rugs) throw new Error('seed missing');
+      const [line] = await tx
+        .insert(shoppingLines)
+        .values({
+          phaseId: phase.id,
+          categoryId: rugs.id,
+          name: 'Living room rug',
+          priceCents: 90000,
+        })
+        .returning();
+      if (!line) throw new Error('insert failed');
+      expect([line.status, line.roomId, line.quantity, line.paidCents]).toEqual([
+        'to_buy',
+        null,
+        1,
+        null,
+      ]);
+      // Purchased needs what was paid; Returned needs what came back, no more than was paid.
+      await expectDbErrorIn(tx, /shopping_lines_status_ck/, (sp) =>
+        sp.update(shoppingLines).set({ status: 'purchased' }).where(eq(shoppingLines.id, line.id)),
+      );
+      await tx
+        .update(shoppingLines)
+        .set({ status: 'purchased', paidCents: 85000 })
+        .where(eq(shoppingLines.id, line.id));
+      await expectDbErrorIn(tx, /shopping_lines_refund_ck/, (sp) =>
+        sp
+          .update(shoppingLines)
+          .set({ status: 'returned', refundCents: 90000 })
+          .where(eq(shoppingLines.id, line.id)),
+      );
+      await tx
+        .update(shoppingLines)
+        .set({ status: 'returned', refundCents: 80000 })
+        .where(eq(shoppingLines.id, line.id));
+      // A To-buy line can't carry a paid amount; prices and quantities stay sensible.
+      await expectDbErrorIn(tx, /shopping_lines_status_ck/, (sp) =>
+        sp.insert(shoppingLines).values({
+          phaseId: phase.id,
+          categoryId: rugs.id,
+          name: 'x',
+          paidCents: 1,
+        }),
+      );
+      await expectDbErrorIn(tx, /shopping_lines_amounts_ck/, (sp) =>
+        sp
+          .insert(shoppingLines)
+          .values({ phaseId: phase.id, categoryId: rugs.id, name: 'x', priceCents: -1 }),
+      );
+      await expectDbErrorIn(tx, /shopping_lines_quantity_ck/, (sp) =>
+        sp
+          .insert(shoppingLines)
+          .values({ phaseId: phase.id, categoryId: rugs.id, name: 'x', quantity: 0 }),
+      );
+    }));
+
+  it('shopping lines need a real phase, category and, if set, room and job', () =>
+    withRollback(db, async (tx) => {
+      const none = '00000000-0000-0000-0000-000000000000';
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [other] = await tx.select().from(categories).where(eq(categories.name, 'Other'));
+      if (!phase || !other) throw new Error('seed missing');
+      const base = { phaseId: phase.id, categoryId: other.id, name: 'x' };
+      await expectDbErrorIn(tx, /shopping_lines_phase_id_phases_id_fk/, (sp) =>
+        sp.insert(shoppingLines).values({ ...base, phaseId: none }),
+      );
+      await expectDbErrorIn(tx, /shopping_lines_category_id_categories_id_fk/, (sp) =>
+        sp.insert(shoppingLines).values({ ...base, categoryId: none }),
+      );
+      await expectDbErrorIn(tx, /shopping_lines_room_id_rooms_id_fk/, (sp) =>
+        sp.insert(shoppingLines).values({ ...base, roomId: none }),
+      );
+      await expectDbErrorIn(tx, /shopping_lines_job_id_jobs_id_fk/, (sp) =>
+        sp.insert(shoppingLines).values({ ...base, jobId: none }),
+      );
+      // A category in use can't be hard-deleted (merges soft-delete it after moving the lines).
+      await tx.insert(shoppingLines).values(base);
+      await expectDbErrorIn(tx, /shopping_lines_category_id_categories_id_fk/, (sp) =>
+        sp.delete(categories).where(eq(categories.id, other.id)),
+      );
+    }));
+
+  it('cost lines and payments belong to a job; amounts are checked', () =>
+    withRollback(db, async (tx) => {
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      if (!phase) throw new Error('seed missing');
+      const [job] = await tx.insert(jobs).values({ phaseId: phase.id, name: 'Paint' }).returning();
+      if (!job) throw new Error('insert failed');
+      await tx
+        .insert(costLines)
+        .values({ jobId: job.id, description: 'Quote', amountCents: 3500000 });
+      await tx
+        .insert(payments)
+        .values({ jobId: job.id, amountCents: 1000000, paidOn: '2026-10-01' });
+      await expectDbErrorIn(tx, /cost_lines_amount_ck/, (sp) =>
+        sp.insert(costLines).values({ jobId: job.id, description: 'x', amountCents: -1 }),
+      );
+      await expectDbErrorIn(tx, /payments_amount_ck/, (sp) =>
+        sp.insert(payments).values({ jobId: job.id, amountCents: 0, paidOn: '2026-10-01' }),
+      );
+      await expectDbErrorIn(tx, /payments_job_id_jobs_id_fk/, (sp) =>
+        sp.insert(payments).values({
+          jobId: '00000000-0000-0000-0000-000000000000',
+          amountCents: 1,
+          paidOn: '2026-10-01',
+        }),
+      );
+    }));
+
+  it('there is exactly one budget row; adjustments are signed', () =>
+    withRollback(db, async (tx) => {
+      const rows = await tx.select().from(budget);
+      expect(rows.map((r) => [r.startingCents, r.asOf])).toEqual([[0, null]]);
+      await expectDbErrorIn(tx, /budget_singleton_uidx/, (sp) =>
+        sp.insert(budget).values({ startingCents: 1 }),
+      );
+      await expectDbErrorIn(tx, /budget_singleton_ck/, (sp) =>
+        sp.insert(budget).values({ singleton: false }),
+      );
+      const [adj] = await tx
+        .insert(budgetAdjustments)
+        .values({ amountCents: -500000, on: '2026-09-15', note: '401K loan' })
+        .returning();
+      expect(adj?.amountCents).toBe(-500000);
+    }));
+
   it('has row level security enabled on every table, with no policies', async () => {
     const rows = await client<{ relname: string; relrowsecurity: boolean }[]>`
       SELECT relname, relrowsecurity FROM pg_class
       WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' ORDER BY relname`;
     expect(rows.map((r) => [r.relname, r.relrowsecurity])).toEqual([
+      ['budget', true],
+      ['budget_adjustments', true],
       ['categories', true],
+      ['cost_lines', true],
       ['files', true],
       ['job_rooms', true],
       ['jobs', true],
       ['members', true],
+      ['payments', true],
       ['phases', true],
       ['rooms', true],
+      ['shopping_lines', true],
       ['vendors', true],
     ]);
     const policies = await client<{ n: number }[]>`

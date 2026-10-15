@@ -19,6 +19,10 @@ export const WORK_STATUSES = [
 ] as const;
 export type WorkStatusInput = (typeof WORK_STATUSES)[number];
 
+/** Mirrors `shopping_status` in `@reparo/db`: To buy → Purchased → Returned (M3). */
+export const SHOPPING_STATUSES = ['to_buy', 'purchased', 'returned'] as const;
+export type ShoppingStatusInput = (typeof SHOPPING_STATUSES)[number];
+
 export const idSchema = z.uuid({ error: 'id must be a UUID' });
 // Messages are shown to the household as they are, so they say what to do (Design system → Writing).
 export const nameSchema = z

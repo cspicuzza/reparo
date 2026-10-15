@@ -85,6 +85,20 @@
       "when": 1792036863605,
       "tag": "0011_vendors_trigger_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792038181797,
+      "tag": "0012_money",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792038195895,
+      "tag": "0013_money_seed_and_rls",
+      "breakpoints": true
     }
   ]
 }

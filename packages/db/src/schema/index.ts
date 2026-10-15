@@ -7,3 +7,4 @@ export * from './categories';
 export * from './vendors';
 export * from './work-status';
 export * from './jobs';
+export * from './money';
