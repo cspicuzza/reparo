@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
 import { Route as AppJobsJobIdRouteImport } from './routes/_app/jobs/$jobId'
+import { Route as AppManageIndexRouteImport } from './routes/_app/manage/index'
 import { Route as AppMoneyIndexRouteImport } from './routes/_app/money/index'
 import { Route as AppPhasesIndexRouteImport } from './routes/_app/phases/index'
 import { Route as AppRoomsIndexRouteImport } from './routes/_app/rooms/index'
@@ -43,6 +44,11 @@ const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
 const AppJobsJobIdRoute = AppJobsJobIdRouteImport.update({
   id: '/jobs/$jobId',
   path: '/jobs/$jobId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppManageIndexRoute = AppManageIndexRouteImport.update({
+  id: '/manage/',
+  path: '/manage/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMoneyIndexRoute = AppMoneyIndexRouteImport.update({
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/jobs/': typeof AppJobsIndexRoute
+  '/manage/': typeof AppManageIndexRoute
   '/money/': typeof AppMoneyIndexRoute
   '/phases/': typeof AppPhasesIndexRoute
   '/rooms/': typeof AppRoomsIndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/jobs': typeof AppJobsIndexRoute
+  '/manage': typeof AppManageIndexRoute
   '/money': typeof AppMoneyIndexRoute
   '/phases': typeof AppPhasesIndexRoute
   '/rooms': typeof AppRoomsIndexRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/_app/jobs/': typeof AppJobsIndexRoute
+  '/_app/manage/': typeof AppManageIndexRoute
   '/_app/money/': typeof AppMoneyIndexRoute
   '/_app/phases/': typeof AppPhasesIndexRoute
   '/_app/rooms/': typeof AppRoomsIndexRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/rooms/$roomId'
     | '/jobs/'
+    | '/manage/'
     | '/money/'
     | '/phases/'
     | '/rooms/'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/rooms/$roomId'
     | '/jobs'
+    | '/manage'
     | '/money'
     | '/phases'
     | '/rooms'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/_app/jobs/$jobId'
     | '/_app/rooms/$roomId'
     | '/_app/jobs/'
+    | '/_app/manage/'
     | '/_app/money/'
     | '/_app/phases/'
     | '/_app/rooms/'
@@ -194,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/jobs/$jobId'
       fullPath: '/jobs/$jobId'
       preLoaderRoute: typeof AppJobsJobIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/manage/': {
+      id: '/_app/manage/'
+      path: '/manage'
+      fullPath: '/manage/'
+      preLoaderRoute: typeof AppManageIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/money/': {
@@ -246,6 +265,7 @@ interface AppRouteChildren {
   AppJobsJobIdRoute: typeof AppJobsJobIdRoute
   AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
   AppJobsIndexRoute: typeof AppJobsIndexRoute
+  AppManageIndexRoute: typeof AppManageIndexRoute
   AppMoneyIndexRoute: typeof AppMoneyIndexRoute
   AppPhasesIndexRoute: typeof AppPhasesIndexRoute
   AppRoomsIndexRoute: typeof AppRoomsIndexRoute
@@ -258,6 +278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppJobsJobIdRoute: AppJobsJobIdRoute,
   AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
   AppJobsIndexRoute: AppJobsIndexRoute,
+  AppManageIndexRoute: AppManageIndexRoute,
   AppMoneyIndexRoute: AppMoneyIndexRoute,
   AppPhasesIndexRoute: AppPhasesIndexRoute,
   AppRoomsIndexRoute: AppRoomsIndexRoute,

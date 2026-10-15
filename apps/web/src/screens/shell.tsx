@@ -6,6 +6,7 @@ import {
   Hammer,
   House,
   LayoutGrid,
+  ListChecks,
   LogOut,
   Menu as MenuIcon,
   ShoppingBag,
@@ -118,6 +119,12 @@ export function Shell() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
+                {me.data.member.role === 'admin' ? (
+                  <DropdownMenuItem onClick={() => void navigate({ to: '/manage' })}>
+                    <ListChecks aria-hidden />
+                    Manage lists
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={() => void onSignOut()}>
                   <LogOut aria-hidden />
                   Sign out
@@ -218,6 +225,16 @@ function MenuPanel({
             <p className="text-sm text-muted-foreground">Signed in as</p>
             <p className="font-semibold">{member.displayName}</p>
             <p className="text-sm text-muted-foreground">{ROLE_LABEL[member.role]}</p>
+            {member.role === 'admin' ? (
+              <Link
+                to="/manage"
+                onClick={() => setOpen(false)}
+                className={buttonVariants({ variant: 'outline', className: 'mt-3 w-full' })}
+              >
+                <ListChecks aria-hidden className="size-5" />
+                Manage lists
+              </Link>
+            ) : null}
             <Button
               type="button"
               variant="outline"

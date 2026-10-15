@@ -12,7 +12,6 @@ import { SHOPPING_STATUS_LABEL } from '@/lib/money';
 import { shoppingFilter, type ShoppingSearch } from '@/lib/shopping';
 import { useTRPC } from '@/lib/trpc';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
-import { CategoriesAdmin } from './categories-admin';
 import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingList } from './shopping-list';
 
@@ -26,7 +25,7 @@ export function Shopping() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const search = route.useSearch();
-  const { canEdit, isAdmin } = useMe();
+  const { canEdit } = useMe();
   const lines = useQuery(trpc.shoppingLines.list.queryOptions(shoppingFilter(search)));
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const categories = useQuery(trpc.categories.list.queryOptions());
@@ -174,8 +173,6 @@ export function Shopping() {
           <ShoppingList lines={lines.data} canEdit={canEdit} showRoom={search.room === undefined} />
         </Panel>
       ) : null}
-
-      {isAdmin ? <CategoriesAdmin /> : null}
     </section>
   );
 }
