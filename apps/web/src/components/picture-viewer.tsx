@@ -1,6 +1,6 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { FormError, Input } from '@/components/form';
@@ -9,7 +9,8 @@ import { useTRPC } from '@/lib/trpc';
 import { formatSize, type FileView } from '@/lib/upload';
 
 /**
- * A picture full size (M4, OD-56; Q24). Previous and Next buttons, the arrow keys, and a swipe
+ * A picture full size (M4, OD-56; Q24). A PDF shows a button that opens it in a new tab, so
+ * its caption can be changed and it can be removed here too. Previous and Next buttons, the arrow keys, and a swipe
  * on a phone move between pictures. Built on Base UI's Dialog, which traps focus, closes on
  * Escape and hands focus back to the picture that opened it. Editors change the caption and
  * remove the picture here; screens can add their own details and actions (a progress photo's
@@ -64,7 +65,7 @@ export function PictureViewer({
             <ViewerBody
               key={picture.id}
               picture={picture}
-              position={`Picture ${index + 1} of ${count}`}
+              position={`${index + 1} of ${count}`}
               canMove={count > 1}
               go={go}
               canEdit={canEdit}
@@ -144,7 +145,21 @@ function ViewerBody({
           if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
         }}
       >
-        {picture.url ? (
+        {!picture.isPicture ? (
+          picture.url ? (
+            <a
+              href={picture.url}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: 'outline' })}
+            >
+              <FileText aria-hidden className="size-4" />
+              Open the PDF
+            </a>
+          ) : (
+            <p className="text-muted-foreground">This file is missing from storage.</p>
+          )
+        ) : picture.url ? (
           <img
             src={picture.url}
             alt={picture.caption || picture.originalName}

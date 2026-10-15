@@ -50,7 +50,6 @@ export function FileSection({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<number | null>(null);
-  const pictures = files.filter((f) => f.isPicture);
   const Heading = headingLevel;
   const refresh = async () => {
     await Promise.all([
@@ -68,7 +67,7 @@ export function FileSection({
         {description ? <p className="mt-1 text-muted-foreground">{description}</p> : null}
       </div>
       {files.length > 0 ? (
-        <FileGrid files={files} label={title} onOpen={setOpen} badge={badge} />
+        <FileGrid files={files} label={title} onOpen={setOpen} canEdit={canEdit} badge={badge} />
       ) : (
         <PlanGrid className="h-32 rounded-xl">{emptyText}</PlanGrid>
       )}
@@ -79,7 +78,7 @@ export function FileSection({
         </div>
       ) : null}
       <PictureViewer
-        pictures={pictures}
+        pictures={files}
         index={open}
         onIndexChange={setOpen}
         canEdit={canEdit}

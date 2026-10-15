@@ -1,6 +1,7 @@
 import { formatIsoDate, isIsoDate } from '@reparo/shared';
 import { FileText, ImageOff } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 import { formatSize, type FileView } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
@@ -13,20 +14,23 @@ import { cn } from '@/lib/utils';
 export function FileGrid({
   files,
   onOpen,
+  canEdit = false,
   badge,
   label,
   className,
 }: {
   files: FileView[];
   /** Open the viewer on a picture, by its index among the pictures. */
-  onOpen: (pictureIndex: number) => void;
+  /** Open the viewer on a file, by its index in `files`. PDFs open there only for details. */
+  onOpen: (index: number) => void;
+  /** Show a "Caption or remove" button under PDFs (editors), since a PDF opens in a new tab. */
+  canEdit?: boolean;
   /** A short tag on a tile ("Cover"), drawn as a chip with words. */
   badge?: ((file: FileView) => ReactNode) | undefined;
   /** The list's accessible name. */
   label: string;
   className?: string;
 }) {
-  const pictures = files.filter((f) => f.isPicture);
   return (
     <ul
       aria-label={label}
@@ -40,7 +44,7 @@ export function FileGrid({
             {f.isPicture ? (
               <button
                 type="button"
-                onClick={() => onOpen(pictures.indexOf(f))}
+                onClick={() => onOpen(files.indexOf(f))}
                 className="group block w-full rounded-lg text-left"
                 aria-label={`Open ${caption}`}
               >
@@ -84,6 +88,17 @@ export function FileGrid({
                 <Caption file={f} />
               </a>
             )}
+            {!f.isPicture && canEdit ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="-ml-3"
+                onClick={() => onOpen(files.indexOf(f))}
+              >
+                Caption or remove
+                <span className="sr-only"> {f.caption || f.originalName}</span>
+              </Button>
+            ) : null}
           </li>
         );
       })}

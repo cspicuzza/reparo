@@ -3,9 +3,10 @@ import type { RouterOutputs } from '@reparo/api';
 import { vendorCreateSchema, type VendorCreate, type VendorCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Mail, Phone } from 'lucide-react';
+import { FileText, Mail, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { FileSection } from '@/components/file-section';
 import { Field, FormError, Input, Textarea } from '@/components/form';
 import { PageHeader } from '@/components/page-header';
 import { Panel, PanelList } from '@/components/panel';
@@ -13,6 +14,7 @@ import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
+import type { FileView } from '@/lib/upload';
 import { jobCountText, telHref } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
 
@@ -32,6 +34,13 @@ export function Vendors() {
     enabled: isAdmin,
   });
   const jobs = useQuery(trpc.jobs.list.queryOptions());
+  const docs = useQuery({
+    ...trpc.files.listMany.queryOptions({
+      ownerType: 'vendor',
+      ownerIds: (vendors.data ?? []).map((v) => v.id),
+    }),
+    enabled: (vendors.data?.length ?? 0) > 0,
+  });
   const [adding, setAdding] = useState(false);
   const invalidate = () => queryClient.invalidateQueries(trpc.vendors.pathFilter());
   const create = useMutation(
@@ -102,6 +111,7 @@ export function Vendors() {
               <VendorRow
                 vendor={v}
                 jobs={jobs.data?.filter((j) => j.vendorId === v.id) ?? []}
+                documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
                 canEdit={canEdit}
                 isAdmin={isAdmin}
               />
@@ -151,14 +161,17 @@ export function Vendors() {
 function VendorRow({
   vendor,
   jobs,
+  documents,
   canEdit,
   isAdmin,
 }: {
   vendor: Vendor;
   jobs: Job[];
+  documents: FileView[];
   canEdit: boolean;
   isAdmin: boolean;
 }) {
+  const [showDocs, setShowDocs] = useState(false);
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -274,6 +287,39 @@ function VendorRow({
 
       {vendor.notes ? (
         <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">{vendor.notes}</p>
+      ) : null}
+
+      {canEdit || documents.length > 0 ? (
+        <div className="-ml-3">
+          <Button
+            type="button"
+            variant="ghost"
+            aria-expanded={showDocs}
+            onClick={() => setShowDocs((v) => !v)}
+          >
+            <FileText aria-hidden className="size-4" />
+            {showDocs
+              ? 'Hide documents'
+              : documents.length > 0
+                ? `Documents (${documents.length})`
+                : 'Add documents'}
+            <span className="sr-only"> for {vendor.name}</span>
+          </Button>
+        </div>
+      ) : null}
+      {showDocs ? (
+        <div className="rounded-xl border border-border bg-background p-4">
+          <FileSection
+            id={`vendor-docs-${vendor.id}`}
+            title={`Documents for ${vendor.name}`}
+            description="Insurance certificate, license, W-9. Add a caption to say which is which."
+            files={documents}
+            target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
+            uploadLabel="Add documents"
+            emptyText="No documents yet"
+            canEdit={canEdit}
+          />
+        </div>
       ) : null}
 
       {confirming ? (
