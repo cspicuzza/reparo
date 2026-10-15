@@ -119,7 +119,12 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
       vendor: vendor ? vendorSummary(vendor) : null,
       phase,
       /** What the job costs and what's been paid (M3); derived here, not in the browser. */
-      money: { ...totals, payment: paymentStatus(totals.costCents, totals.paidCents) },
+      money: {
+        ...totals,
+        /** Still to pay: cost lines less payments, never below zero. */
+        owedCents: Math.max(totals.costCents - totals.paidCents, 0),
+        payment: paymentStatus(totals.costCents, totals.paidCents),
+      },
       rooms: mine,
       progress: rollUp(
         mine.map((r) => r.status),

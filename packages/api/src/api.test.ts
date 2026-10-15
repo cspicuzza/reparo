@@ -951,7 +951,12 @@ describe('@reparo/api', () => {
       const money = async () =>
         (row(await query(h, 'viewer', 'jobs.get', { id: paint.id })) as Row & { money: Money })
           .money;
-      expect(await money()).toEqual({ costCents: 0, paidCents: 0, payment: { kind: 'no_price' } });
+      expect(await money()).toEqual({
+        costCents: 0,
+        paidCents: 0,
+        owedCents: 0,
+        payment: { kind: 'no_price' },
+      });
 
       const quote = row(
         await mutate(h, 'editor', 'costLines.create', {
@@ -979,6 +984,7 @@ describe('@reparo/api', () => {
       expect(await money()).toEqual({
         costCents: 3525000,
         paidCents: 1000000,
+        owedCents: 2525000,
         payment: { kind: 'deposit', percent: 28 },
       });
       const lines = rows(await query(h, 'viewer', 'costLines.list', { jobId: paint.id }));
@@ -996,6 +1002,7 @@ describe('@reparo/api', () => {
       expect(await money()).toEqual({
         costCents: 3400000,
         paidCents: 3400000,
+        owedCents: 0,
         payment: { kind: 'paid' },
       });
       expect(rows(await query(h, 'viewer', 'payments.list', { jobId: paint.id })).length).toBe(2);

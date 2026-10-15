@@ -9,6 +9,7 @@ import { PhaseStatusBadge, StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
 import { Button } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
+import { money } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import { groupByPhase, progressText, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
@@ -113,6 +114,11 @@ function JobRow({ job }: { job: Job }) {
         <span className="block text-sm text-muted-foreground">
           {job.vendor ? job.vendor.name : 'No vendor yet'}
         </span>
+        {job.money.costCents > 0 ? (
+          <span className="block text-sm text-muted-foreground tabular-nums">
+            Paid {money(job.money.paidCents)} of {money(job.money.costCents)}
+          </span>
+        ) : null}
       </span>
       <span className="flex w-28 shrink-0 flex-col items-end gap-1 sm:w-56">
         {job.rooms.length > 0 ? (

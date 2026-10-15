@@ -14,6 +14,7 @@ import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
+import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
 
 /**
@@ -197,6 +198,8 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
           ) : null}
         </Panel>
       </div>
+
+      <JobMoney job={job} canEdit={canEdit} />
 
       <Panel aria-labelledby="job-rooms">
         <h2 id="job-rooms" className="text-2xl">
