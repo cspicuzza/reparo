@@ -8,13 +8,17 @@
  * This file is the as-built source of truth for colour, type, radius and spacing values.
  *
  * shadcn's variable names (background, primary, …) are mapped to ours. shadcn's `accent` is a
- * hover background, never the tape yellow; tape has its own tokens. Dark mode follows the
- * device (prefers-color-scheme) with no toggle, so there is no `.dark` class and Tailwind's
- * default media-based `dark:` variant applies (https://tailwindcss.com/docs/dark-mode).
+ * hover background, never the tape yellow; tape has its own tokens. Light or dark is chosen
+ * in the account menu (Device, Light or Dark; OD-83) and set as `data-theme` on <html> before
+ * the app loads (index.html, src/lib/theme.ts). Device resolves to the device's own setting.
+ * Tailwind's `dark:` variant follows `data-theme` too
+ * (https://tailwindcss.com/docs/dark-mode#using-a-data-attribute).
  */
 
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 
   /* Plaster (light). Contrast checked 2026-10-14: text 13.8:1 on page, secondary text 5.8:1,
      field borders 3.6:1, focus ring 5.6:1. */
@@ -56,44 +60,43 @@
   --radius: 0.375rem; /* 6px: buttons, fields, chips */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Warm charcoal (dark), checked separately: text 14.5:1, secondary text 7.0:1,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  /* Warm charcoal (dark), checked separately: text 14.5:1, secondary text 7.0:1,
        field borders 3.4:1 on panels, focus ring 7.1:1 on panels. */
-    --background: #1c1b19;
-    --foreground: #edebe6;
-    --card: #262522;
-    --card-foreground: #edebe6;
-    --popover: #262522;
-    --popover-foreground: #edebe6;
-    --primary: #edebe6;
-    --primary-foreground: #1c1b19;
-    --secondary: #2e2d29;
-    --secondary-foreground: #edebe6;
-    --muted: #2e2d29;
-    --muted-foreground: #a9a59c;
-    --accent: #34332f;
-    --accent-foreground: #edebe6;
-    --destructive: #e58a75;
-    --border: #3a3934;
-    --input: #7a776f;
-    --ring: #8db4e0;
+  --background: #1c1b19;
+  --foreground: #edebe6;
+  --card: #262522;
+  --card-foreground: #edebe6;
+  --popover: #262522;
+  --popover-foreground: #edebe6;
+  --primary: #edebe6;
+  --primary-foreground: #1c1b19;
+  --secondary: #2e2d29;
+  --secondary-foreground: #edebe6;
+  --muted: #2e2d29;
+  --muted-foreground: #a9a59c;
+  --accent: #34332f;
+  --accent-foreground: #edebe6;
+  --destructive: #e58a75;
+  --border: #3a3934;
+  --input: #7a776f;
+  --ring: #8db4e0;
 
-    --bar: #21201d;
-    --inset: #2e2d29;
-    --grid: rgb(237 235 230 / 0.06);
-    --float-shadow: rgb(0 0 0 / 0.4);
-    --scrim: rgb(0 0 0 / 0.55);
-    --tape: #f2c23a;
-    --tape-ink: #1e1d1a;
-    --tape-edge: var(--tape); /* dark mode: a yellow outline keeps the dark fill visible */
-    --status-idle: #a9a59c;
-    --status-idle-tint: #34332f;
-    --status-progress: #8db4e0;
-    --status-progress-tint: #22303d;
-    --status-done: #8ccb9f;
-    --status-done-tint: #1f3127;
-  }
+  --bar: #21201d;
+  --inset: #2e2d29;
+  --grid: rgb(237 235 230 / 0.06);
+  --float-shadow: rgb(0 0 0 / 0.4);
+  --scrim: rgb(0 0 0 / 0.55);
+  --tape: #f2c23a;
+  --tape-ink: #1e1d1a;
+  --tape-edge: var(--tape); /* dark mode: a yellow outline keeps the dark fill visible */
+  --status-idle: #a9a59c;
+  --status-idle-tint: #34332f;
+  --status-progress: #8db4e0;
+  --status-progress-tint: #22303d;
+  --status-done: #8ccb9f;
+  --status-done-tint: #1f3127;
 }
 
 @theme inline {

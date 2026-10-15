@@ -4,6 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Reparo</title>
+    <script>
+      // Light or dark before the app loads, so the page never flashes the wrong one (OD-83).
+      // The key and the rules match src/lib/theme.ts.
+      (function () {
+        var choice = null;
+        try {
+          choice = localStorage.getItem('reparo-theme');
+        } catch (e) {}
+        var dark =
+          choice === 'dark' ||
+          (choice !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
