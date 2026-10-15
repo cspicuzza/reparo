@@ -1,6 +1,15 @@
 import { sql } from 'drizzle-orm';
-import { integer, numeric, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  integer,
+  numeric,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+  type AnyPgColumn,
+} from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './columns';
+import { files } from './files';
 
 /**
  * A space in the house. Measurements are inches as numeric(10,4), snapped to 1/16" by
@@ -17,6 +26,13 @@ export const rooms = pgTable(
     widthIn: numeric('width_in', { precision: 10, scale: 4, mode: 'number' }),
     ceilingHeightIn: numeric('ceiling_height_in', { precision: 10, scale: 4, mode: 'number' }),
     notes: text('notes').notNull().default(''),
+    /**
+     * The rendering shown on the Rooms list and at the top of the room page (M4, OD-54).
+     * Cleared if that file row is ever hard-deleted; a soft-deleted cover is ignored by the API.
+     */
+    coverFileId: uuid('cover_file_id').references((): AnyPgColumn => files.id, {
+      onDelete: 'set null',
+    }),
     ...timestamps(),
     ...softDelete(),
   },

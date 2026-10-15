@@ -518,6 +518,112 @@ describe('@reparo/db', () => {
       expect(adj?.amountCents).toBe(-500000);
     }));
 
+  // --- M4 (OD-54) ---
+
+  it('progress photos can name a job; other kinds cannot; a room can have a cover', () =>
+    withRollback(db, async (tx) => {
+      const none = '00000000-0000-0000-0000-000000000000';
+      const [m] = await tx
+        .insert(members)
+        .values({ email: 'photos@example.com', displayName: 'p' })
+        .returning();
+      const [phase] = await tx.select().from(phases).where(eq(phases.name, 'Phase 1'));
+      const [room] = await tx.insert(rooms).values({ name: 'Test Bath' }).returning();
+      if (!m || !phase || !room) throw new Error('fixture missing');
+      const [job] = await tx.insert(jobs).values({ phaseId: phase.id, name: 'Tile' }).returning();
+      if (!job) throw new Error('insert failed');
+      const photo = {
+        bucket: 'files',
+        mimeType: 'image/jpeg',
+        sizeBytes: 2048,
+        originalName: 'tile.jpg',
+        ownerType: 'room' as const,
+        ownerId: room.id,
+        uploadedBy: m.id,
+      };
+
+      const [progress] = await tx
+        .insert(files)
+        .values({
+          ...photo,
+          kind: 'progress_photo',
+          path: 'room/a.jpg',
+          jobId: job.id,
+          takenOn: '2026-10-15',
+          caption: 'Tile going in',
+        })
+        .returning();
+      expect(progress?.takenOn).toBe('2026-10-15');
+      expect(progress?.caption).toBe('Tile going in');
+
+      await expectDbErrorIn(tx, /files_job_ck/, (sp) =>
+        sp.insert(files).values({ ...photo, kind: 'rendering', path: 'room/b.jpg', jobId: job.id }),
+      );
+      await expectDbErrorIn(tx, /files_job_id_jobs_id_fk/, (sp) =>
+        sp
+          .insert(files)
+          .values({ ...photo, kind: 'progress_photo', path: 'room/c.jpg', jobId: none }),
+      );
+
+      const [rendering] = await tx
+        .insert(files)
+        .values({ ...photo, kind: 'rendering', path: 'room/d.jpg' })
+        .returning();
+      if (!rendering) throw new Error('insert failed');
+      expect(rendering.caption).toBe('');
+      const [covered] = await tx
+        .update(rooms)
+        .set({ coverFileId: rendering.id })
+        .where(eq(rooms.id, room.id))
+        .returning();
+      expect(covered?.coverFileId).toBe(rendering.id);
+      await expectDbErrorIn(tx, /rooms_cover_file_id_files_id_fk/, (sp) =>
+        sp.update(rooms).set({ coverFileId: none }).where(eq(rooms.id, room.id)),
+      );
+
+      // Hard-deleting the file (admin only, never from the app) clears the cover.
+      await tx.delete(files).where(eq(files.id, rendering.id));
+      const [after] = await tx.select().from(rooms).where(eq(rooms.id, room.id));
+      expect(after?.coverFileId).toBeNull();
+    }));
+
+  it('files take the M4 owners and the paperwork kind', () =>
+    withRollback(db, async (tx) => {
+      const [m] = await tx
+        .insert(members)
+        .values({ email: 'owners@example.com', displayName: 'o' })
+        .returning();
+      if (!m) throw new Error('insert failed');
+      for (const ownerType of ['shopping_line', 'payment', 'estimate'] as const) {
+        await tx.insert(files).values({
+          kind: ownerType === 'estimate' ? 'quote' : 'receipt',
+          bucket: 'files',
+          path: `${ownerType}/x.pdf`,
+          mimeType: 'application/pdf',
+          sizeBytes: 10,
+          originalName: 'x.pdf',
+          ownerType,
+          ownerId: m.id,
+          uploadedBy: m.id,
+        });
+      }
+      const [paper] = await tx
+        .insert(files)
+        .values({
+          kind: 'paperwork',
+          bucket: 'files',
+          path: 'job/contract.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 10,
+          originalName: 'contract.pdf',
+          ownerType: 'job',
+          ownerId: m.id,
+          uploadedBy: m.id,
+        })
+        .returning();
+      expect(paper?.kind).toBe('paperwork');
+    }));
+
   it('has row level security enabled on every table, with no policies', async () => {
     const rows = await client<{ relname: string; relrowsecurity: boolean }[]>`
       SELECT relname, relrowsecurity FROM pg_class

@@ -168,8 +168,24 @@ export const FILE_KINDS = [
   'inspiration',
   'progress_photo',
   'product_image',
+  // M4 (OD-54): a job's contract, permit, invoices and lien waivers.
+  'paperwork',
 ] as const;
-export const FILE_OWNER_TYPES = ['job', 'cost', 'vendor', 'quote', 'room', 'purchase'] as const;
+export type FileKindInput = (typeof FILE_KINDS)[number];
+export const FILE_OWNER_TYPES = [
+  'job',
+  'cost',
+  'vendor',
+  'quote',
+  'room',
+  'purchase',
+  // M4 (OD-54). `cost`, `quote` and `purchase` were placeholders before those tables existed;
+  // enum values are never removed (db.md), so they stay unused.
+  'shopping_line',
+  'payment',
+  'estimate',
+] as const;
+export type FileOwnerTypeInput = (typeof FILE_OWNER_TYPES)[number];
 
 const jobFields = {
   phaseId: idSchema,
