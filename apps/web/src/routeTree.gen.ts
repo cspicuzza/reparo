@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppItemsIndexRouteImport } from './routes/_app/items/index'
-import { Route as AppItemsItemIdRouteImport } from './routes/_app/items/$itemId'
+import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
+import { Route as AppJobsJobIdRouteImport } from './routes/_app/jobs/$jobId'
 import { Route as AppPhasesIndexRouteImport } from './routes/_app/phases/index'
 import { Route as AppRoomsIndexRouteImport } from './routes/_app/rooms/index'
 import { Route as AppRoomsRoomIdRouteImport } from './routes/_app/rooms/$roomId'
@@ -32,14 +32,14 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppItemsIndexRoute = AppItemsIndexRouteImport.update({
-  id: '/items/',
-  path: '/items/',
+const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
+  id: '/jobs/',
+  path: '/jobs/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppItemsItemIdRoute = AppItemsItemIdRouteImport.update({
-  id: '/items/$itemId',
-  path: '/items/$itemId',
+const AppJobsJobIdRoute = AppJobsJobIdRouteImport.update({
+  id: '/jobs/$jobId',
+  path: '/jobs/$jobId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPhasesIndexRoute = AppPhasesIndexRouteImport.update({
@@ -61,18 +61,18 @@ const AppRoomsRoomIdRoute = AppRoomsRoomIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
-  '/items/$itemId': typeof AppItemsItemIdRoute
+  '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
-  '/items/': typeof AppItemsIndexRoute
+  '/jobs/': typeof AppJobsIndexRoute
   '/phases/': typeof AppPhasesIndexRoute
   '/rooms/': typeof AppRoomsIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/': typeof AppIndexRoute
-  '/items/$itemId': typeof AppItemsItemIdRoute
+  '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
-  '/items': typeof AppItemsIndexRoute
+  '/jobs': typeof AppJobsIndexRoute
   '/phases': typeof AppPhasesIndexRoute
   '/rooms': typeof AppRoomsIndexRoute
 }
@@ -81,9 +81,9 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/items/$itemId': typeof AppItemsItemIdRoute
+  '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/rooms/$roomId': typeof AppRoomsRoomIdRoute
-  '/_app/items/': typeof AppItemsIndexRoute
+  '/_app/jobs/': typeof AppJobsIndexRoute
   '/_app/phases/': typeof AppPhasesIndexRoute
   '/_app/rooms/': typeof AppRoomsIndexRoute
 }
@@ -92,18 +92,18 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/sign-in'
-    | '/items/$itemId'
+    | '/jobs/$jobId'
     | '/rooms/$roomId'
-    | '/items/'
+    | '/jobs/'
     | '/phases/'
     | '/rooms/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
     | '/'
-    | '/items/$itemId'
+    | '/jobs/$jobId'
     | '/rooms/$roomId'
-    | '/items'
+    | '/jobs'
     | '/phases'
     | '/rooms'
   id:
@@ -111,9 +111,9 @@ export interface FileRouteTypes {
     | '/_app'
     | '/sign-in'
     | '/_app/'
-    | '/_app/items/$itemId'
+    | '/_app/jobs/$jobId'
     | '/_app/rooms/$roomId'
-    | '/_app/items/'
+    | '/_app/jobs/'
     | '/_app/phases/'
     | '/_app/rooms/'
   fileRoutesById: FileRoutesById
@@ -146,18 +146,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/items/': {
-      id: '/_app/items/'
-      path: '/items'
-      fullPath: '/items/'
-      preLoaderRoute: typeof AppItemsIndexRouteImport
+    '/_app/jobs/': {
+      id: '/_app/jobs/'
+      path: '/jobs'
+      fullPath: '/jobs/'
+      preLoaderRoute: typeof AppJobsIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/items/$itemId': {
-      id: '/_app/items/$itemId'
-      path: '/items/$itemId'
-      fullPath: '/items/$itemId'
-      preLoaderRoute: typeof AppItemsItemIdRouteImport
+    '/_app/jobs/$jobId': {
+      id: '/_app/jobs/$jobId'
+      path: '/jobs/$jobId'
+      fullPath: '/jobs/$jobId'
+      preLoaderRoute: typeof AppJobsJobIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/phases/': {
@@ -186,18 +186,18 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
-  AppItemsItemIdRoute: typeof AppItemsItemIdRoute
+  AppJobsJobIdRoute: typeof AppJobsJobIdRoute
   AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
-  AppItemsIndexRoute: typeof AppItemsIndexRoute
+  AppJobsIndexRoute: typeof AppJobsIndexRoute
   AppPhasesIndexRoute: typeof AppPhasesIndexRoute
   AppRoomsIndexRoute: typeof AppRoomsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
-  AppItemsItemIdRoute: AppItemsItemIdRoute,
+  AppJobsJobIdRoute: AppJobsJobIdRoute,
   AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
-  AppItemsIndexRoute: AppItemsIndexRoute,
+  AppJobsIndexRoute: AppJobsIndexRoute,
   AppPhasesIndexRoute: AppPhasesIndexRoute,
   AppRoomsIndexRoute: AppRoomsIndexRoute,
 }

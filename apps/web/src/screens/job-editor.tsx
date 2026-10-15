@@ -9,33 +9,43 @@ import { Button } from '@/components/ui/button';
 
 type Props = {
   idPrefix: string;
-  item: { id: string; name: string };
-  /** The job to edit; omitted → a new job for `item`. */
+  /** The job to edit; omitted → a new job. */
   job?: Job;
-  onDone: () => void;
+  /** After saving: the job's id (new or edited). */
+  onSaved: (jobId: string) => void;
+  onCancel: () => void;
 };
 
 /**
- * Name, phase, house-wide spec, notes, and the rooms the job covers (checkboxes, with All
- * rooms / None). Unchecking a room takes it off the job; checking it again brings it back as
+ * Name, phase, vendor, house-wide spec, notes, and the rooms the job covers (checkboxes, with
+ * All rooms / None). Unchecking a room takes it off the job; checking it again brings it back as
  * Unstarted. A job's status comes from its rooms, so it isn't edited here.
  */
-export function JobEditor({ idPrefix, item, job, onDone }: Props) {
+export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const phases = useQuery(trpc.phases.list.queryOptions());
   const rooms = useQuery(trpc.rooms.list.queryOptions());
+  const vendors = useQuery(trpc.vendors.list.queryOptions());
 
-  const invalidate = () => queryClient.invalidateQueries(trpc.jobs.pathFilter());
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
+      queryClient.invalidateQueries(trpc.home.pathFilter()),
+    ]);
   const create = useMutation(trpc.jobs.create.mutationOptions());
   const update = useMutation(trpc.jobs.update.mutationOptions());
   const addRoom = useMutation(trpc.jobRooms.create.mutationOptions());
   const removeRoom = useMutation(trpc.jobRooms.remove.mutationOptions());
   const error = create.error ?? update.error ?? addRoom.error ?? removeRoom.error;
 
-  if (phases.isPending || rooms.isPending) return <p className="text-muted-foreground">Loading…</p>;
-  if (phases.error || rooms.error) {
-    return <p role="alert">Couldn&apos;t load: {(phases.error ?? rooms.error)?.message}</p>;
+  if (phases.isPending || rooms.isPending || vendors.isPending) {
+    return <p className="text-muted-foreground">Loading…</p>;
+  }
+  if (phases.error || rooms.error || vendors.error) {
+    const message = (phases.error ?? rooms.error ?? vendors.error)?.message;
+    return <p role="alert">Couldn&apos;t load: {message}</p>;
   }
   if (phases.data.length === 0) {
     return <p role="alert">Add a phase first. Every job belongs to one.</p>;
@@ -45,14 +55,17 @@ export function JobEditor({ idPrefix, item, job, onDone }: Props) {
 
   async function save(values: JobCreate) {
     try {
+      let savedId: string;
       if (!job) {
-        await create.mutateAsync({ ...values, itemId: item.id });
+        savedId = (await create.mutateAsync(values)).id;
       } else {
-        const phaseName = phases.data?.find((p) => p.id === values.phaseId)?.name ?? '';
+        savedId = job.id;
         await update.mutateAsync({
           id: job.id,
-          name: values.name === '' ? `${item.name} — ${phaseName}` : values.name,
+          name: values.name,
           phaseId: values.phaseId,
+          // Leave an archived vendor in place unless someone picks another.
+          ...(values.vendorId !== job.vendorId ? { vendorId: values.vendorId } : {}),
           spec: values.spec,
           notes: values.notes,
         });
@@ -66,7 +79,7 @@ export function JobEditor({ idPrefix, item, job, onDone }: Props) {
         }
       }
       await invalidate();
-      onDone();
+      onSaved(savedId);
     } catch {
       await invalidate(); // shown via `error`; refresh in case part of an edit went through
     }
@@ -77,29 +90,37 @@ export function JobEditor({ idPrefix, item, job, onDone }: Props) {
       idPrefix={idPrefix}
       phases={phases.data}
       rooms={rooms.data}
+      vendors={vendorOptions(vendors.data, job?.vendor ?? null)}
       defaults={{
-        itemId: item.id,
         name: job?.name ?? '',
         phaseId: job?.phaseId ?? active?.id ?? '',
+        vendorId: job?.vendorId ?? null,
         spec: job?.spec ?? '',
         notes: job?.notes ?? '',
         roomIds: job?.rooms.map((r) => r.roomId) ?? [],
       }}
-      namePlaceholder={`${item.name} — ${active?.name ?? 'Phase'}`}
       submitLabel={job ? 'Save job' : 'Add job'}
       serverError={error?.message}
       onSubmit={save}
-      onCancel={onDone}
+      onCancel={onCancel}
     />
   );
+}
+
+type VendorOption = { id: string; name: string; trade: string; archived: boolean };
+
+/** Live vendors, plus the job's own vendor if it has been archived since it was picked. */
+function vendorOptions(live: VendorOption[], current: VendorOption | null): VendorOption[] {
+  if (!current || live.some((v) => v.id === current.id)) return live;
+  return [...live, current];
 }
 
 function JobForm({
   idPrefix,
   phases,
   rooms,
+  vendors,
   defaults,
-  namePlaceholder,
   submitLabel,
   serverError,
   onSubmit,
@@ -108,8 +129,8 @@ function JobForm({
   idPrefix: string;
   phases: { id: string; name: string; status: 'planned' | 'active' | 'complete' }[];
   rooms: { id: string; name: string }[];
+  vendors: VendorOption[];
   defaults: JobCreateInput;
-  namePlaceholder: string;
   submitLabel: string;
   serverError: string | undefined;
   onSubmit: (values: JobCreate) => Promise<void>;
@@ -145,15 +166,10 @@ function JobForm({
         <Field
           label="Name"
           htmlFor={id('name')}
-          hint="Leave blank to name it after the item and phase."
+          hint="What the work is, like Interior paint or Demo week."
           error={errors.name?.message}
         >
-          <Input
-            id={id('name')}
-            autoComplete="off"
-            placeholder={namePlaceholder}
-            {...register('name')}
-          />
+          <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
         <Field label="Phase" htmlFor={id('phase')} error={errors.phaseId?.message}>
           <Select id={id('phase')} {...register('phaseId')}>
@@ -167,9 +183,30 @@ function JobForm({
       </div>
 
       <Field
+        label="Vendor"
+        htmlFor={id('vendor')}
+        hint="Who's doing it. Leave as Nobody yet for work you do yourselves."
+        error={errors.vendorId?.message}
+      >
+        <Select
+          id={id('vendor')}
+          {...register('vendorId', { setValueAs: (v: unknown) => (v === '' ? null : v) })}
+        >
+          <option value="">Nobody yet</option>
+          {vendors.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+              {v.trade ? ` (${v.trade})` : ''}
+              {v.archived ? ', archived' : ''}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field
         label="Spec"
         htmlFor={id('spec')}
-        hint="What's being done or bought, the same in every room unless a room says otherwise: product, colour, finish, size."
+        hint="What's being done, the same in every room unless a room says otherwise: product, colour, finish, size."
         error={errors.spec?.message}
       >
         <Textarea id={id('spec')} rows={4} {...register('spec')} />

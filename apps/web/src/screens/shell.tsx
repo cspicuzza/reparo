@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { House, LayoutGrid, List, LogOut } from 'lucide-react';
+import { Hammer, House, LayoutGrid, LogOut } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { LogoMark } from '@/components/logo';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 
 type Section = {
   name: string;
-  to: '/' | '/rooms' | '/items' | '/phases';
+  to: '/' | '/rooms' | '/jobs' | '/phases';
   icon?: ComponentType<{ 'aria-hidden'?: boolean }>;
   /** Phones reach Phases from Home; the bottom bar keeps to the places used every day. */
   phone: boolean;
@@ -28,7 +28,7 @@ type Section = {
 const sections: Section[] = [
   { name: 'Home', to: '/', icon: House, phone: true },
   { name: 'Rooms', to: '/rooms', icon: LayoutGrid, phone: true },
-  { name: 'Items', to: '/items', icon: List, phone: true },
+  { name: 'Jobs', to: '/jobs', icon: Hammer, phone: true },
   { name: 'Phases', to: '/phases', phone: false },
 ];
 

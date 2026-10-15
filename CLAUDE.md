@@ -56,7 +56,7 @@ Home-renovation app for Chris's household, acting as its own general contractor 
 - **Lengths** are inches, `numeric(10,4)`, snapped to 1/16". Shown as ft/in with fractions (`7' 3 1/2"`).
 - **Dates** without a time are `date` (ISO strings), not `timestamptz`.
 - All unit math goes through `@reparo/shared` (`cents`, `formatMoney`, `sumCents`, `parseLength`, `inches`, `formatLength`, `area`, `IsoDate`). If you're writing `/ 100`, `* 12`, or `new Date()` arithmetic anywhere else, stop.
-- Every tRPC procedure is `memberProcedure`, `editorProcedure`, or `adminProcedure`. There is no public procedure. Roles: admin (Chris: members, item list, phases, hard deletes), editor (everything else), viewer (read-only).
+- Every tRPC procedure is `memberProcedure`, `editorProcedure`, or `adminProcedure`. There is no public procedure. Roles: admin (Chris: members, phases, archiving vendors, hard deletes), editor (everything else), viewer (read-only).
 - Schema changes only through Drizzle migrations in the repo. Never alter a database by hand.
 - Secrets only in `.env` (gitignored) and hosting dashboards. `.env.example` lists every variable.
 - Don't build what isn't in the Linear issue. If it needs something out of scope, say so on the issue.

@@ -49,4 +49,4 @@ Decisions and reasons: Linear → *Design system* doc. Values: `src/index.css` (
 
 ## Identity
 
-Reparo is a tool for one house, not a generic project manager. Clear enough for someone non-technical: every action is a visible, labelled control (nothing hover-only or shortcut-only). Borrow Linear's feel (speed, calm, list → detail, instant feedback), not its look or power-user patterns. Use household words in the UI, not database terms. Design each screen for what it is: a room, an item across rooms, a phase, the money. The name is the mending charm; nod to it lightly. Chris reviews UI in the browser before it's committed.
+Reparo is a tool for one house, not a generic project manager. Clear enough for someone non-technical: every action is a visible, labelled control (nothing hover-only or shortcut-only). Borrow Linear's feel (speed, calm, list → detail, instant feedback), not its look or power-user patterns. Use household words in the UI, not database terms. Design each screen for what it is: a room, a job, a phase, the money. The name is the mending charm; nod to it lightly. Chris reviews UI in the browser before it's committed.

@@ -140,7 +140,7 @@ export function RoomDetail() {
               Jobs in this room
             </h2>
             <p className="mt-1 text-muted-foreground">
-              Set each job&apos;s status here. Jobs are planned on each item&apos;s page.
+              Set each job&apos;s status here. Jobs are planned on the Jobs page.
             </p>
             <div className="mt-4">
               <RoomWork roomId={r.id} roomName={r.name} />

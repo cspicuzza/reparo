@@ -12,7 +12,7 @@ import { FormError } from '@/components/form';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
- * job itself (its rooms, house-wide spec, phase) is edited on its item's page.
+ * job itself (its rooms, house-wide spec, phase, vendor) is edited on the job's page.
  */
 export function RoomWork({ roomId, roomName }: { roomId: string; roomName: string }) {
   const trpc = useTRPC();
@@ -35,11 +35,11 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
   if (jobs.data.length === 0) {
     return (
       <p className="text-muted-foreground">
-        No jobs cover this room yet. Jobs are set up on an item&apos;s page —{' '}
-        <Link to="/items" className="text-foreground underline underline-offset-4">
-          pick an item
+        No jobs cover this room yet. Add one on the{' '}
+        <Link to="/jobs" className="text-foreground underline underline-offset-4">
+          Jobs page
         </Link>{' '}
-        (Paint, Flooring…) and add a job that includes {roomName}.
+        and tick {roomName}.
       </p>
     );
   }
@@ -91,13 +91,15 @@ function JobRow({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <Link
-            to="/items/$itemId"
-            params={{ itemId: j.item.id }}
+            to="/jobs/$jobId"
+            params={{ jobId: j.job.id }}
             className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
           >
             {j.job.name}
           </Link>
-          <span className="text-sm text-muted-foreground">{j.phase.name}</span>
+          <span className="text-sm text-muted-foreground">
+            {j.vendor ? `${j.phase.name}, ${j.vendor.name}` : j.phase.name}
+          </span>
           {j.specSource === 'room' ? (
             <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
               Different here

@@ -7,7 +7,7 @@ paths:
 # Database (packages/db, supabase)
 
 - Every table: `id uuid default gen_random_uuid()`, `created_at`, `updated_at` — use `id()`, `timestamps()`, `softDelete()` from `src/schema/columns.ts`. Attach the `set_updated_at()` trigger in the table's migration.
-- Soft delete (`deleted_at`) on anything a person would regret losing: phases, rooms, work items, cost lines, vendors, files. Uniqueness on soft-deletable tables uses partial unique indexes that ignore deleted rows.
+- Soft delete (`deleted_at`) on anything a person would regret losing: phases, rooms, jobs, cost lines, vendors, files. For vendors the soft delete is shown as Archive. Uniqueness on soft-deletable tables uses partial unique indexes that ignore deleted rows.
 - Every new table enables RLS in its migration, with no policies (the browser holds the publishable key; the API bypasses RLS).
 - Foreign keys always, with explicit `on delete`. Default `restrict`; `cascade` only for true owned children.
 - Enums are `pgEnum`, mirrored by `z.enum` in `@reparo/shared`. Add values by migration; never remove one.

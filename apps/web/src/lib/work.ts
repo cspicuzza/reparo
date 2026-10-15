@@ -2,7 +2,7 @@ import type { RouterOutputs } from '@reparo/api';
 import { formatIsoDate, isIsoDate } from '@reparo/shared';
 import type { PhaseStatusInput, WorkStatusInput } from '@reparo/shared';
 
-/** A job as the API returns it: item, phase, the rooms it covers, and progress. */
+/** A job as the API returns it: phase, vendor, the rooms it covers, and progress. */
 export type Job = RouterOutputs['jobs']['list'][number];
 /** One room on a job, with the spec that applies there and where it comes from. */
 export type JobRoom = Job['rooms'][number];
@@ -64,4 +64,17 @@ export function phaseDates(p: { startsOn: string | null; endsOn: string | null }
   if (start) return `Starts ${start}`;
   if (end) return `Ends ${end}`;
   return '';
+}
+
+/**
+ * Jobs under their phase, in the phases' order; phases with no jobs are left out. The API
+ * already returns jobs in phase order; this only splits the list for headings.
+ */
+export function groupByPhase<P extends { id: string }, J extends { phaseId: string }>(
+  phases: P[],
+  jobs: J[],
+): { phase: P; jobs: J[] }[] {
+  return phases
+    .map((phase) => ({ phase, jobs: jobs.filter((j) => j.phaseId === phase.id) }))
+    .filter((g) => g.jobs.length > 0);
 }

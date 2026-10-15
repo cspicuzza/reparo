@@ -88,8 +88,8 @@ function NeedsYou({ items }: { items: Summary['needsYou'] }) {
                   </Link>
                 ) : (
                   <Link
-                    to="/items/$itemId"
-                    params={{ itemId: n.itemId }}
+                    to="/jobs/$jobId"
+                    params={{ jobId: n.jobId }}
                     className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
                   >
                     Check it
@@ -125,7 +125,7 @@ function PhasePanel({ summary }: { summary: Summary }) {
       </div>
       {phase == null ? null : phaseJobs.length === 0 ? (
         <p className="mt-3 text-muted-foreground">
-          No jobs in {phase.name} yet. Jobs are planned on each item&apos;s page.
+          No jobs in {phase.name} yet. Add them on the Jobs page.
         </p>
       ) : (
         <ul className="mt-4 flex flex-col gap-4">
@@ -137,8 +137,8 @@ function PhasePanel({ summary }: { summary: Summary }) {
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_minmax(0,11rem)]"
               >
                 <Link
-                  to="/items/$itemId"
-                  params={{ itemId: j.itemId }}
+                  to="/jobs/$jobId"
+                  params={{ jobId: j.id }}
                   className="truncate font-semibold underline-offset-4 hover:underline"
                 >
                   {j.name}

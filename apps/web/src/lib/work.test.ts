@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   WORK_STATUS_LABEL,
+  groupByPhase,
   phaseDates,
   phaseProgressText,
   progressText,
@@ -46,5 +47,21 @@ describe('phaseDates', () => {
     expect(phaseDates({ startsOn: '2026-10-01', endsOn: null })).toBe('Starts Oct 1, 2026');
     expect(phaseDates({ startsOn: null, endsOn: '2026-12-15' })).toBe('Ends Dec 15, 2026');
     expect(phaseDates({ startsOn: null, endsOn: null })).toBe('');
+  });
+});
+
+describe('groupByPhase', () => {
+  it('keeps phase order, drops empty phases, keeps job order within a phase', () => {
+    const phases = [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }];
+    const jobs = [
+      { id: 'a', phaseId: 'p1' },
+      { id: 'b', phaseId: 'p3' },
+      { id: 'c', phaseId: 'p1' },
+    ];
+    expect(groupByPhase(phases, jobs).map((g) => [g.phase.id, g.jobs.map((j) => j.id)])).toEqual([
+      ['p1', ['a', 'c']],
+      ['p3', ['b']],
+    ]);
+    expect(groupByPhase(phases, [])).toEqual([]);
   });
 });
