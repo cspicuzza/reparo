@@ -11,6 +11,9 @@ build/
 # source material from Chris — never committed, never modified (see CLAUDE.md)
 raw/
 
+# the spreadsheet import's lines file: household budget data, reviewed locally (OD-36)
+/import/
+
 # env & secrets
 .env
 .env.*

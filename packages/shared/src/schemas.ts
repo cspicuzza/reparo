@@ -273,11 +273,11 @@ export const positiveMoneyInputSchema = z
   .union([z.string(), z.number()])
   .transform(parseDollars)
   .refine((c) => c > 0, { error: 'Enter an amount above 0' });
-/** Typed dollars → cents, either sign, not 0 (money added to or taken from the pool). */
-export const signedMoneyInputSchema = z
-  .union([z.string(), z.number()])
-  .transform(parseDollars)
-  .refine((c) => c !== 0, { error: 'Enter an amount, with a minus sign to take money out' });
+/**
+ * Typed dollars → cents, either sign (money added to or taken from the pool). 0 is allowed: a
+ * known adjustment can be entered before its amount is (the 401K loan, Q29).
+ */
+export const signedMoneyInputSchema = z.union([z.string(), z.number()]).transform(parseDollars);
 
 const urlishSchema = z.string().trim().max(2000, 'Keep the link under 2,000 characters');
 const shortText = (max: number, what: string) =>

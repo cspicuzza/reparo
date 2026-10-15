@@ -190,7 +190,7 @@ describe('money inputs', () => {
     expect(msg(moneyInputSchema.safeParse('-5'))).toBe('Enter 0 or more');
     expect(msg(positiveMoneyInputSchema.safeParse('0'))).toBe('Enter an amount above 0');
     expect(signedMoneyInputSchema.parse('-5,000')).toBe(-500000);
-    expect(signedMoneyInputSchema.safeParse('0').success).toBe(false);
+    expect(signedMoneyInputSchema.parse('0')).toBe(0); // a placeholder adjustment (Q29)
   });
 });
 
