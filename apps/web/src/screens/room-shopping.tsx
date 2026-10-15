@@ -7,7 +7,9 @@ import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { ShoppingLineForm } from './shopping-line-form';
-import { ShoppingList } from './shopping-list';
+import { ShoppingLinePanel } from './shopping-line-panel';
+import { ShoppingRows } from './shopping-list';
+import { useLineFiles } from '@/lib/use-line-files';
 
 /** A room's "What we're buying" (M3, OD-52): its shopping lines, and adding one for this room. */
 export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: string }) {
@@ -16,6 +18,8 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
   const lines = useQuery(trpc.shoppingLines.list.queryOptions({ roomId }));
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
+  const files = useLineFiles(lines.data);
+  const [openId, setOpenId] = useState<string | null>(null);
   useReturnFocus(adding ? `add-line-${roomId}` : null);
   const create = useMutation(
     trpc.shoppingLines.create.mutationOptions({
@@ -34,7 +38,13 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
         <p className="text-muted-foreground">Nothing on the list for {roomName} yet.</p>
       ) : null}
       {lines.data && lines.data.length > 0 ? (
-        <ShoppingList lines={lines.data} canEdit={canEdit} showRoom={false} />
+        <ShoppingRows
+          lines={lines.data}
+          files={files.data ?? []}
+          canEdit={canEdit}
+          onOpen={(l) => setOpenId(l.id)}
+          className="-mt-4"
+        />
       ) : null}
       {adding ? (
         <div className="mt-4 rounded-xl border border-border bg-background p-4">
@@ -73,6 +83,12 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
           </Link>
         </div>
       )}
+      <ShoppingLinePanel
+        line={lines.data?.find((l) => l.id === openId)}
+        files={files.data ?? []}
+        canEdit={canEdit}
+        onClose={() => setOpenId(null)}
+      />
     </div>
   );
 }

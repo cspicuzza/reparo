@@ -72,3 +72,18 @@ export function summaryText(count: number, cents: number, money: (c: number) => 
   if (count === 0) return 'Nothing left to buy.';
   return `${count} ${count === 1 ? 'thing' : 'things'} to buy, ${money(cents)} in all.`;
 }
+
+/** "Wayfair, 2 of them": the store and how many, the details you check while ordering (OD-78). */
+export function lineDetails(line: {
+  store: string;
+  quantity: number;
+  phase: { name: string; status: 'planned' | 'active' | 'complete' };
+}): string {
+  return [
+    line.store || null,
+    line.quantity > 1 ? `${line.quantity} of them` : null,
+    line.phase.status === 'planned' ? `${line.phase.name} (planned)` : null,
+  ]
+    .filter((d): d is string => d !== null)
+    .join(', ');
+}

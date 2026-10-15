@@ -29,7 +29,7 @@ export function FileGrid({
   badge?: ((file: FileView) => ReactNode) | undefined;
   /** The list's accessible name. */
   label: string;
-  className?: string;
+  className?: string | undefined;
 }) {
   return (
     <ul

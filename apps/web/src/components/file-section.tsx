@@ -27,6 +27,7 @@ export function FileSection({
   actions,
   beforeUpload,
   onChanged,
+  gridClassName,
 }: {
   /** Used for the heading's id. */
   id: string;
@@ -46,6 +47,8 @@ export function FileSection({
   beforeUpload?: ReactNode;
   /** Extra queries to refresh after a change (a room's cover on the Rooms list). */
   onChanged?: () => Promise<unknown>;
+  /** Columns for the tiles where the window's width is the wrong guide (inside a side panel). */
+  gridClassName?: string | undefined;
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -67,7 +70,14 @@ export function FileSection({
         {description ? <p className="mt-1 text-muted-foreground">{description}</p> : null}
       </div>
       {files.length > 0 ? (
-        <FileGrid files={files} label={title} onOpen={setOpen} canEdit={canEdit} badge={badge} />
+        <FileGrid
+          files={files}
+          label={title}
+          onOpen={setOpen}
+          canEdit={canEdit}
+          badge={badge}
+          className={gridClassName}
+        />
       ) : (
         <PlanGrid className="h-32 rounded-xl">{emptyText}</PlanGrid>
       )}

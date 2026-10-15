@@ -24,7 +24,9 @@ import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { cn } from '@/lib/utils';
 import { ShoppingLineForm } from './shopping-line-form';
+import { ShoppingLinePanel } from './shopping-line-panel';
 import { ShoppingRows } from './shopping-list';
+import { useLineFiles } from '@/lib/use-line-files';
 
 const route = getRouteApi('/_app/shopping/');
 
@@ -52,13 +54,10 @@ export function Shopping() {
   const lines = useQuery(trpc.shoppingLines.list.queryOptions(filter));
   const totals = useQuery(trpc.shoppingLines.totals.queryOptions(filter));
   // Every line's pictures and receipts in one request (M4, OD-59), shared by the room groups.
-  const files = useQuery({
-    ...trpc.files.listMany.queryOptions({
-      ownerType: 'shopping_line',
-      ownerIds: (lines.data ?? []).map((l) => l.id),
-    }),
-    enabled: (lines.data?.length ?? 0) > 0,
-  });
+  const files = useLineFiles(lines.data);
+  const [openId, setOpenId] = useState<string | null>(null);
+  useReturnFocus(openId);
+  const openLine = lines.data?.find((l) => l.id === openId);
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-line' : null);
@@ -163,10 +162,18 @@ export function Shopping() {
                 lines={lines.data.filter((l) => l.status === section.status)}
                 files={files.data ?? []}
                 canEdit={canEdit}
+                onOpen={(l) => setOpenId(l.id)}
               />
             ),
           )
         : null}
+
+      <ShoppingLinePanel
+        line={openLine}
+        files={files.data ?? []}
+        canEdit={canEdit}
+        onClose={() => setOpenId(null)}
+      />
     </section>
   );
 }
@@ -180,11 +187,13 @@ function ShoppingSection({
   lines,
   files,
   canEdit,
+  onOpen,
 }: {
   section: Section;
   lines: ShoppingLine[];
   files: FileView[];
   canEdit: boolean;
+  onOpen: (line: ShoppingLine) => void;
 }) {
   const foldable = section.status !== 'to_buy';
   const [open, setOpen] = useState(!foldable);
@@ -233,6 +242,7 @@ function ShoppingSection({
               lines={lines.filter((l) => (l.room?.id ?? null) === room.roomId)}
               files={files}
               canEdit={canEdit}
+              onOpen={onOpen}
               className="px-4 sm:px-5"
             />
           </Panel>

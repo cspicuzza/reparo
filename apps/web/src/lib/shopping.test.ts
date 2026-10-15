@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { money } from './money';
-import { groupText, lineWhere, parseShoppingSearch, shoppingFilter, summaryText } from './shopping';
+import {
+  groupText,
+  lineDetails,
+  lineWhere,
+  parseShoppingSearch,
+  shoppingFilter,
+  summaryText,
+} from './shopping';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 
@@ -46,5 +53,16 @@ describe('shopping words (OD-75)', () => {
     expect(summaryText(0, 0, money)).toBe('Nothing left to buy.');
     expect(summaryText(1, 999, money)).toBe('1 thing to buy, $9.99 in all.');
     expect(summaryText(38, 1420000, money)).toBe('38 things to buy, $14,200.00 in all.');
+  });
+});
+
+describe('lineDetails (OD-78)', () => {
+  const phase = { name: 'Phase 1', status: 'active' as const };
+  it('gives the store and how many, and a planned phase', () => {
+    expect(lineDetails({ store: 'Wayfair', quantity: 2, phase })).toBe('Wayfair, 2 of them');
+    expect(lineDetails({ store: '', quantity: 1, phase })).toBe('');
+    expect(
+      lineDetails({ store: 'IKEA', quantity: 1, phase: { name: 'Phase 2', status: 'planned' } }),
+    ).toBe('IKEA, Phase 2 (planned)');
   });
 });
