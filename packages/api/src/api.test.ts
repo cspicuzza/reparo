@@ -10,6 +10,7 @@ import { createContext } from './context';
 import { createFetchHandler, TRPC_ENDPOINT } from './handler';
 import { rollUp } from './services/jobs';
 import { editorProcedure, router } from './trpc';
+import { createFakeStorage } from './storage/fake';
 
 // Integration tests: real Postgres (DATABASE_URL), fake Supabase Auth. Tokens are minted with
 // a local ES256 key and verified through jose's local JWKS resolver — the same verification
@@ -41,6 +42,8 @@ type Body = { result?: { data: unknown }; error?: { message: string; data: { cod
 
 describe('@reparo/api', () => {
   const { db, client } = createDb(databaseUrl, { max: 2 });
+  /** Stands in for Supabase Storage; `storage.put` plays the browser's upload. */
+  const storage = createFakeStorage();
   let getKey: JWTVerifyGetKey;
   let verify: TokenVerifier;
   let sign: (claims: Record<string, unknown>, opts?: SignOpts) => Promise<string>;
@@ -82,7 +85,7 @@ describe('@reparo/api', () => {
         let response: Response | undefined;
         try {
           await tx.transaction(async (sp) => {
-            response = await createFetchHandler({ db: sp, verify })(req);
+            response = await createFetchHandler({ db: sp, verify, storage })(req);
             if (!response.ok) throw new Rollback();
           });
         } catch (e) {
@@ -1127,6 +1130,306 @@ describe('@reparo/api', () => {
       );
     }));
 
+  // --- M4 files (OD-55) -----------------------------------------------------------------------
+
+  type FileRow = {
+    id: string;
+    kind: string;
+    caption: string;
+    takenOn: string | null;
+    jobId: string | null;
+    jobName: string | null;
+    sizeBytes: number;
+    mimeType: string;
+    isCover: boolean;
+    isPicture: boolean;
+    url: string | null;
+  };
+
+  /** The web's three steps: ask for a link, PUT the bytes (here: storage.put), record it. */
+  async function upload(
+    h: Handler,
+    who: Who,
+    input: Record<string, unknown>,
+    arrived?: { sizeBytes: number; mimeType: string },
+  ) {
+    const start = await mutate(h, who, 'files.uploadLink', input);
+    if (start.status !== 200) return start;
+    const { path } = start.data as { path: string; uploadUrl: string };
+    const sent = input as { sizeBytes: number; mimeType: string };
+    storage.put(path, arrived?.sizeBytes ?? sent.sizeBytes, arrived?.mimeType ?? sent.mimeType);
+    return mutate(h, who, 'files.create', { ...input, path });
+  }
+
+  it('files: viewers look, editors upload; type, size and kind are checked', () =>
+    withSeeded(async (_tx, h) => {
+      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
+      const pic = {
+        ownerType: 'room',
+        ownerId: kitchen.id,
+        kind: 'rendering',
+        originalName: 'final.png',
+        mimeType: 'image/png',
+        sizeBytes: 4_000_000,
+      };
+
+      const v = await mutate(h, 'viewer', 'files.uploadLink', pic);
+      expect([v.status, v.message]).toEqual([403, 'Requires editor role']);
+
+      const heic = await mutate(h, 'editor', 'files.uploadLink', {
+        ...pic,
+        mimeType: 'image/heic',
+      });
+      expect([heic.status, heic.message]).toEqual([400, 'Pictures need to be JPEG, PNG or WebP']);
+      const pdfRendering = await mutate(h, 'editor', 'files.uploadLink', {
+        ...pic,
+        mimeType: 'application/pdf',
+      });
+      expect(pdfRendering.status).toBe(400);
+      const big = await mutate(h, 'editor', 'files.uploadLink', {
+        ...pic,
+        sizeBytes: 50 * 1024 * 1024 + 1,
+      });
+      expect([big.status, big.message]).toEqual([400, 'That file is over 50 MB']);
+      const wrongKind = await mutate(h, 'editor', 'files.uploadLink', { ...pic, kind: 'receipt' });
+      expect([wrongKind.status, wrongKind.message]).toEqual([
+        400,
+        "A room can't hold that kind of file",
+      ]);
+      const nowhere = await mutate(h, 'editor', 'files.uploadLink', {
+        ...pic,
+        ownerId: '00000000-0000-4000-8000-000000000000',
+      });
+      expect(nowhere.status).toBe(404);
+
+      const made = await upload(h, 'editor', { ...pic, caption: 'Option B' });
+      expect(made.status).toBe(200);
+      const file = made.data as FileRow;
+      expect(file).toMatchObject({ kind: 'rendering', caption: 'Option B', isPicture: true });
+      expect(file.url).toMatch(/^fake:\/\/files\/room\/.*\.png\?expires=3600$/);
+
+      const list = await query(h, 'viewer', 'files.list', {
+        ownerType: 'room',
+        ownerId: kitchen.id,
+      });
+      expect(list.status).toBe(200);
+      expect((list.data as FileRow[]).map((f) => f.id)).toEqual([file.id]);
+    }));
+
+  it('files: what storage holds wins; a missing upload or a borrowed path is refused', () =>
+    withSeeded(async (_tx, h) => {
+      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
+      const den = row(await mutate(h, 'editor', 'rooms.create', { name: 'Den' }));
+      const base = {
+        ownerType: 'room',
+        ownerId: kitchen.id,
+        kind: 'inspiration',
+        originalName: 'idea.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 1000,
+      };
+
+      // Storage says it's really a PDF: refused, whatever the browser claimed.
+      const lied = await upload(h, 'editor', base, {
+        sizeBytes: 1000,
+        mimeType: 'application/pdf',
+      });
+      expect([lied.status, lied.message]).toEqual([400, 'Pictures need to be JPEG, PNG or WebP']);
+
+      // Size is taken from storage.
+      const sized = await upload(h, 'editor', base, { sizeBytes: 2345, mimeType: 'image/jpeg' });
+      expect((sized.data as FileRow).sizeBytes).toBe(2345);
+
+      // Never uploaded.
+      const start = await mutate(h, 'editor', 'files.uploadLink', base);
+      const { path } = start.data as { path: string };
+      const missing = await mutate(h, 'editor', 'files.create', { ...base, path });
+      expect([missing.status, missing.message]).toEqual([
+        400,
+        'The file didn’t arrive. Try again.',
+      ]);
+
+      // A path made for the kitchen can't be recorded on the den, or twice.
+      storage.put(path, 1000, 'image/jpeg');
+      const borrowed = await mutate(h, 'editor', 'files.create', {
+        ...base,
+        ownerId: den.id,
+        path,
+      });
+      expect([borrowed.status, borrowed.message]).toEqual([400, 'That upload doesn’t belong here']);
+      expect((await mutate(h, 'editor', 'files.create', { ...base, path })).status).toBe(200);
+      expect((await mutate(h, 'editor', 'files.create', { ...base, path })).status).toBe(409);
+    }));
+
+  it('files: progress photos carry a date and a job that covers the room; captions change', () =>
+    withSeeded(async (_tx, h) => {
+      const phase = rows(await query(h, 'viewer', 'phases.list'))[0];
+      const bath = row(await mutate(h, 'editor', 'rooms.create', { name: 'Bath' }));
+      const den = row(await mutate(h, 'editor', 'rooms.create', { name: 'Den' }));
+      if (!phase) throw new Error('no phase');
+      const tile = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase.id,
+          name: 'Tile',
+          roomIds: [bath.id],
+        }),
+      );
+      const paint = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase.id,
+          name: 'Paint',
+          roomIds: [den.id],
+        }),
+      );
+      const photo = {
+        ownerType: 'room',
+        ownerId: bath.id,
+        kind: 'progress_photo',
+        originalName: 'IMG_1.jpg',
+        mimeType: 'image/jpeg',
+        sizeBytes: 3_000_000,
+      };
+
+      const notCovering = await upload(h, 'editor', { ...photo, jobId: paint.id });
+      expect([notCovering.status, notCovering.message]).toEqual([
+        400,
+        'That job doesn’t cover this room',
+      ]);
+      const made = await upload(h, 'editor', { ...photo, jobId: tile.id, takenOn: '2026-10-12' });
+      expect(made.data).toMatchObject({ takenOn: '2026-10-12', jobId: tile.id });
+      const undated = await upload(h, 'editor', photo);
+      expect((undated.data as FileRow).takenOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+      const id = (made.data as FileRow).id;
+      const list = async () =>
+        (await query(h, 'viewer', 'files.list', { ownerType: 'room', ownerId: bath.id }))
+          .data as FileRow[];
+      expect((await list()).find((f) => f.id === id)?.jobName).toBe('Tile');
+
+      const changed = await mutate(h, 'editor', 'files.update', {
+        id,
+        caption: 'Tile going in',
+        takenOn: '2026-10-13',
+        jobId: null,
+      });
+      expect(changed.data).toMatchObject({
+        caption: 'Tile going in',
+        takenOn: '2026-10-13',
+        jobId: null,
+      });
+
+      const rendering = await upload(h, 'editor', { ...photo, kind: 'rendering' });
+      const dated = await mutate(h, 'editor', 'files.update', {
+        id: (rendering.data as FileRow).id,
+        takenOn: '2026-10-13',
+      });
+      expect([dated.status, dated.message]).toEqual([
+        400,
+        'Only progress photos have a date and a job',
+      ]);
+    }));
+
+  it('files: a room cover is one of its renderings; removing it clears the cover', () =>
+    withSeeded(async (_tx, h) => {
+      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
+      const den = row(await mutate(h, 'editor', 'rooms.create', { name: 'Den' }));
+      const base = {
+        ownerType: 'room',
+        ownerId: kitchen.id,
+        originalName: 'a.webp',
+        mimeType: 'image/webp',
+        sizeBytes: 10,
+      };
+      const first = (await upload(h, 'editor', { ...base, kind: 'rendering' })).data as FileRow;
+      const second = (await upload(h, 'editor', { ...base, kind: 'rendering' })).data as FileRow;
+      const idea = (await upload(h, 'editor', { ...base, kind: 'inspiration' })).data as FileRow;
+      const denPic = (await upload(h, 'editor', { ...base, ownerId: den.id, kind: 'rendering' }))
+        .data as FileRow;
+
+      const list = async () =>
+        (await query(h, 'viewer', 'files.list', { ownerType: 'room', ownerId: kitchen.id }))
+          .data as FileRow[];
+      // All three; newest first is by upload time, which is one instant inside this test's
+      // transaction, so only the set is checked here.
+      expect((await list()).map((f) => f.id).sort()).toEqual([idea.id, second.id, first.id].sort());
+
+      const bad1 = await mutate(h, 'editor', 'rooms.setCover', {
+        roomId: kitchen.id,
+        fileId: idea.id,
+      });
+      const bad2 = await mutate(h, 'editor', 'rooms.setCover', {
+        roomId: kitchen.id,
+        fileId: denPic.id,
+      });
+      expect([bad1.status, bad2.status]).toEqual([400, 400]);
+      const v = await mutate(h, 'viewer', 'rooms.setCover', {
+        roomId: kitchen.id,
+        fileId: first.id,
+      });
+      expect(v.status).toBe(403);
+
+      await mutate(h, 'editor', 'rooms.setCover', { roomId: kitchen.id, fileId: first.id });
+      const covered = await list();
+      expect(covered[0]).toMatchObject({ id: first.id, isCover: true });
+
+      expect((await mutate(h, 'viewer', 'files.remove', { id: first.id })).status).toBe(403);
+      expect((await mutate(h, 'editor', 'files.remove', { id: first.id })).status).toBe(200);
+      const after = await list();
+      expect(after.map((f) => f.id).sort()).toEqual([idea.id, second.id].sort());
+      expect(after.every((f) => !f.isCover)).toBe(true);
+      expect((await mutate(h, 'editor', 'files.remove', { id: first.id })).status).toBe(404);
+    }));
+
+  it('files: every M4 owner takes its own kinds; PDFs where a document makes sense', () =>
+    withSeeded(async (_tx, h) => {
+      const phase = rows(await query(h, 'viewer', 'phases.list'))[0];
+      const cat = rows(await query(h, 'viewer', 'categories.list'))[0];
+      if (!phase || !cat) throw new Error('fixtures missing');
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase.id, name: 'Demo' }),
+      );
+      const vendor = row(await mutate(h, 'editor', 'vendors.create', { name: 'TJ' }));
+      const pay = row(
+        await mutate(h, 'editor', 'payments.create', {
+          jobId: job.id,
+          amountCents: '100',
+          paidOn: '2026-10-01',
+        }),
+      );
+      const line = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase.id,
+          categoryId: cat.id,
+          name: 'Rug',
+          priceCents: '100',
+        }),
+      );
+      const pdf = { originalName: 'x.pdf', mimeType: 'application/pdf', sizeBytes: 5 };
+      const ok = [
+        { ownerType: 'job', ownerId: job.id, kind: 'paperwork' },
+        { ownerType: 'job', ownerId: job.id, kind: 'spec_drawing' },
+        { ownerType: 'payment', ownerId: pay.id, kind: 'receipt' },
+        { ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' },
+        { ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' },
+      ];
+      for (const o of ok) expect((await upload(h, 'editor', { ...o, ...pdf })).status).toBe(200);
+
+      const productPdf = await upload(h, 'editor', {
+        ownerType: 'shopping_line',
+        ownerId: line.id,
+        kind: 'product_image',
+        ...pdf,
+      });
+      expect(productPdf.status).toBe(400);
+      const quoteEarly = await mutate(h, 'editor', 'files.uploadLink', {
+        ownerType: 'estimate',
+        ownerId: job.id,
+        kind: 'quote',
+        ...pdf,
+      });
+      expect(quoteEarly.status).toBe(400);
+    }));
+
   it('403 when a viewer calls an editor-only procedure; editor passes', () =>
     withSeeded(async (tx) => {
       const testRouter = router({ write: editorProcedure.mutation(() => 'ok') });
@@ -1143,7 +1446,7 @@ describe('@reparo/api', () => {
           endpoint: TRPC_ENDPOINT,
           req,
           router: testRouter,
-          createContext: ({ req }) => createContext({ db: tx, verify }, req),
+          createContext: ({ req }) => createContext({ db: tx, verify, storage }, req),
         });
       };
       const viewer = await call('viewer@example.com', SUB.viewer);

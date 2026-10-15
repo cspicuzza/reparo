@@ -187,6 +187,100 @@ export const FILE_OWNER_TYPES = [
 ] as const;
 export type FileOwnerTypeInput = (typeof FILE_OWNER_TYPES)[number];
 
+// --- files (M4, OD-55) -----------------------------------------------------------------------
+
+/** What can be uploaded (Q6). HEIC is left out on purpose: iPhones hand over a JPEG (Q8). */
+export const FILE_MIME_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+] as const;
+export type FileMimeType = (typeof FILE_MIME_TYPES)[number];
+export const IMAGE_MIME_TYPES: readonly FileMimeType[] = ['image/jpeg', 'image/png', 'image/webp'];
+/** 50 MB, the local Supabase limit (Q6). */
+export const FILE_MAX_BYTES = 50 * 1024 * 1024;
+
+/** The owners that take files in M4, and the kinds each one holds (Data model doc → M4). */
+export const FILE_KINDS_BY_OWNER = {
+  room: ['rendering', 'inspiration', 'progress_photo'],
+  job: ['mockup', 'spec_drawing', 'paperwork'],
+  payment: ['receipt'],
+  shopping_line: ['product_image', 'receipt'],
+  vendor: ['vendor_document'],
+  estimate: ['quote'],
+} as const satisfies Partial<Record<FileOwnerTypeInput, readonly FileKindInput[]>>;
+export type FileOwner = keyof typeof FILE_KINDS_BY_OWNER;
+export const FILE_OWNERS = Object.keys(FILE_KINDS_BY_OWNER) as FileOwner[];
+
+/** Kinds that are pictures only. Everything else also takes a PDF (a quote, a receipt scan). */
+export const PICTURE_KINDS: readonly FileKindInput[] = [
+  'rendering',
+  'inspiration',
+  'progress_photo',
+  'product_image',
+];
+
+/** The plain-words reason a file can't go here, or null when it can. */
+export function fileProblem(
+  kind: FileKindInput,
+  mimeType: string,
+  sizeBytes: number,
+): string | null {
+  const allowed: readonly string[] = PICTURE_KINDS.includes(kind)
+    ? IMAGE_MIME_TYPES
+    : FILE_MIME_TYPES;
+  if (!allowed.includes(mimeType)) {
+    return PICTURE_KINDS.includes(kind)
+      ? 'Pictures need to be JPEG, PNG or WebP'
+      : 'Files need to be a PDF, JPEG, PNG or WebP';
+  }
+  if (sizeBytes > FILE_MAX_BYTES) return 'That file is over 50 MB';
+  if (sizeBytes <= 0) return 'That file is empty';
+  return null;
+}
+
+const fileOwnerSchema = z.enum(FILE_OWNERS as [FileOwner, ...FileOwner[]]);
+export const captionSchema = z.string().trim().max(500, 'Keep the caption under 500 characters');
+
+export const fileListSchema = z.object({ ownerType: fileOwnerSchema, ownerId: idSchema });
+export type FileOwnerRef = z.infer<typeof fileListSchema>;
+
+/** Ask for a place to upload one file. The browser then sends the bytes straight to storage. */
+export const fileStartSchema = z.object({
+  ownerType: fileOwnerSchema,
+  ownerId: idSchema,
+  kind: z.enum(FILE_KINDS),
+  originalName: z.string().trim().min(1).max(255),
+  mimeType: z.string().min(1).max(100),
+  sizeBytes: z.number().int().min(0),
+});
+export type FileStart = z.infer<typeof fileStartSchema>;
+
+/** Record the file once its bytes are in storage. */
+export const fileFinishSchema = fileStartSchema.extend({
+  path: z.string().min(1).max(500),
+  caption: captionSchema.default(''),
+  /** Progress photos: the day taken. The browser sends its own today by default. */
+  takenOn: isoDateSchema.nullable().default(null),
+  /** Progress photos: the job the photo shows. */
+  jobId: idSchema.nullable().default(null),
+});
+export type FileFinish = z.infer<typeof fileFinishSchema>;
+export type FileFinishInput = z.input<typeof fileFinishSchema>;
+
+export const fileUpdateSchema = z.object({
+  id: idSchema,
+  caption: captionSchema.optional(),
+  takenOn: isoDateSchema.optional(),
+  jobId: idSchema.nullable().optional(),
+});
+export type FileUpdate = z.infer<typeof fileUpdateSchema>;
+
+/** A room's cover: one of its renderings, or null for none. */
+export const roomCoverSchema = z.object({ roomId: idSchema, fileId: idSchema.nullable() });
+export type RoomCover = z.infer<typeof roomCoverSchema>;
+
 const jobFields = {
   phaseId: idSchema,
   /** Who's doing it; null for work we do ourselves or haven't given out yet (M2). */

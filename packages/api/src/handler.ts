@@ -1,9 +1,13 @@
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { createDb } from '@reparo/db';
-import { serverEnv } from '@reparo/shared';
+import { FILE_MAX_BYTES, FILE_MIME_TYPES, serverEnv } from '@reparo/shared';
 import { createTokenVerifier, supabaseIssuer } from './auth';
 import { createContext, type ContextDeps } from './context';
 import { appRouter } from './routers';
+import { createSupabaseStorage } from './storage/storage';
+
+/** The one private bucket every upload goes in (Q5). */
+export const FILES_BUCKET = 'files';
 
 export const TRPC_ENDPOINT = '/api/trpc';
 
@@ -15,7 +19,14 @@ export function createDeps(env: NodeJS.ProcessEnv = process.env): ContextDeps {
     jwksUrl: cfg.SUPABASE_JWKS_URL,
     issuer: supabaseIssuer(cfg.SUPABASE_URL),
   });
-  return { db, verify };
+  const storage = createSupabaseStorage({
+    url: cfg.SUPABASE_URL,
+    secretKey: cfg.SUPABASE_SECRET_KEY,
+    bucket: FILES_BUCKET,
+    fileSizeLimit: FILE_MAX_BYTES,
+    allowedMimeTypes: FILE_MIME_TYPES,
+  });
+  return { db, verify, storage };
 }
 
 /**

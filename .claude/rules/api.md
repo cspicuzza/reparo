@@ -14,3 +14,4 @@ paths:
 - Every write declares its minimum role (`editorProcedure` / `adminProcedure`).
 - Two entry points share one router: `apps/web/api/index.ts` (Vercel, `export default { fetch }`, `/api/trpc/*` rewritten to it) and `src/dev.ts` (local, port `API_PORT`, default 3001). Nothing under `apps/web/api/` uses the `@/` alias — Vercel doesn't support tsconfig paths there; it has its own `tsconfig.api.json`.
 - Tests: integration tests against local Postgres, each in a rolled-back transaction. A bug fix comes with the test that would have caught it.
+- Files: bytes never pass through the API (Vercel caps a request at 4.5 MB). `files.uploadLink` hands the browser a signed upload link, the browser PUTs to storage, `files.create` records what storage actually holds. Only `src/storage/storage.ts` talks to Supabase Storage; services get it as `ctx.storage`, tests use `createFakeStorage()`.

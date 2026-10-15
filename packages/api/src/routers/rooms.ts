@@ -1,4 +1,4 @@
-import { idSchema, roomCreateSchema, roomUpdateSchema } from '@reparo/shared';
+import { idSchema, roomCoverSchema, roomCreateSchema, roomUpdateSchema } from '@reparo/shared';
 import { z } from 'zod';
 import { editorProcedure, memberProcedure, router } from '../trpc';
 import {
@@ -8,6 +8,7 @@ import {
   removeRoom,
   updateRoom,
 } from '../services/rooms';
+import { setRoomCover } from '../services/files';
 
 export const roomsRouter = router({
   list: memberProcedure.query(({ ctx }) => listRoomsWithProgress(ctx.db)),
@@ -23,4 +24,8 @@ export const roomsRouter = router({
   remove: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removeRoom(ctx.db, input.id)),
+  /** One of the room's renderings as its cover, or none (M4, Q16). */
+  setCover: editorProcedure
+    .input(roomCoverSchema)
+    .mutation(({ ctx, input }) => setRoomCover(ctx.db, input)),
 });

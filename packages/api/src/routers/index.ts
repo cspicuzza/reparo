@@ -1,5 +1,6 @@
 import type { inferRouterInputs, inferRouterOutputs } from '@trpc/server';
 import { router } from '../trpc';
+import { filesRouter } from './files';
 import { healthRouter } from './health';
 import { homeRouter } from './home';
 import { jobRoomsRouter, jobsRouter } from './jobs';
@@ -31,6 +32,7 @@ export const appRouter = router({
   budget: budgetRouter,
   budgetAdjustments: budgetAdjustmentsRouter,
   money: moneyRouter,
+  files: filesRouter,
 });
 
 export type AppRouter = typeof appRouter;
