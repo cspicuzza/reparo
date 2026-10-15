@@ -178,37 +178,6 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
         )}
       </Panel>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel aria-labelledby="job-vendor">
-          <h2 id="job-vendor" className="text-2xl">
-            Who&apos;s doing it
-          </h2>
-          <VendorBlock vendor={job.vendor} />
-        </Panel>
-        <Panel aria-labelledby="job-spec">
-          <h2 id="job-spec" className="text-2xl">
-            Spec
-          </h2>
-          {job.spec ? (
-            <p className="mt-3 max-w-prose whitespace-pre-wrap">{job.spec}</p>
-          ) : (
-            <p className="mt-3 text-muted-foreground">No spec yet.</p>
-          )}
-          {job.notes ? (
-            <>
-              <h3 className="mt-5 text-base font-semibold">Notes</h3>
-              <p className="mt-1 max-w-prose text-muted-foreground whitespace-pre-wrap">
-                {job.notes}
-              </p>
-            </>
-          ) : null}
-        </Panel>
-      </div>
-
-      <JobEstimates job={job} canEdit={canEdit} />
-
-      <JobMoney job={job} canEdit={canEdit} />
-
       <Panel aria-labelledby="job-rooms">
         <h2 id="job-rooms" className="text-2xl">
           Rooms
@@ -292,6 +261,37 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
           </ul>
         )}
       </Panel>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel aria-labelledby="job-vendor">
+          <h2 id="job-vendor" className="text-2xl">
+            Who&apos;s doing it
+          </h2>
+          <VendorBlock vendor={job.vendor} />
+        </Panel>
+        <Panel aria-labelledby="job-spec">
+          <h2 id="job-spec" className="text-2xl">
+            Spec
+          </h2>
+          {job.spec ? (
+            <p className="mt-3 max-w-prose whitespace-pre-wrap">{job.spec}</p>
+          ) : (
+            <p className="mt-3 text-muted-foreground">No spec yet.</p>
+          )}
+          {job.notes ? (
+            <>
+              <h3 className="mt-5 text-base font-semibold">Notes</h3>
+              <p className="mt-1 max-w-prose text-muted-foreground whitespace-pre-wrap">
+                {job.notes}
+              </p>
+            </>
+          ) : null}
+        </Panel>
+      </div>
+
+      <JobEstimates job={job} canEdit={canEdit} />
+
+      <JobMoney job={job} canEdit={canEdit} />
 
       <JobFiles jobId={job.id} canEdit={canEdit} />
 
