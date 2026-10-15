@@ -1,5 +1,4 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
-import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /*
@@ -85,33 +84,6 @@ function DropdownMenuItem({
   );
 }
 
-/** A set of choices where one is picked, such as Appearance (OD-83). */
-function DropdownMenuRadioGroup(props: MenuPrimitive.RadioGroup.Props) {
-  return <MenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
-}
-
-/**
- * One choice in a radio group, the same size as an item, with a check on the picked one (Nova
- * puts it on the left; here it's on the right so labels line up with the other items).
- */
-function DropdownMenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioItem.Props) {
-  return (
-    <MenuPrimitive.RadioItem
-      data-slot="dropdown-menu-radio-item"
-      className={cn(
-        'relative flex min-h-11 cursor-default items-center gap-2 rounded-lg pr-10 pl-3 text-base outline-none select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-highlighted:bg-accent data-highlighted:text-accent-foreground data-highlighted:outline-2 data-highlighted:-outline-offset-2 data-highlighted:outline-solid data-highlighted:outline-ring',
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <MenuPrimitive.RadioItemIndicator className="absolute right-3 flex items-center">
-        <Check aria-hidden className="size-5" />
-      </MenuPrimitive.RadioItemIndicator>
-    </MenuPrimitive.RadioItem>
-  );
-}
-
 function DropdownMenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
@@ -129,7 +101,5 @@ export {
   DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 };

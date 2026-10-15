@@ -21,8 +21,6 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -30,13 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { signOut } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
-import { ThemeChoice } from '@/components/theme-choice';
-import {
-  saveThemeChoice,
-  THEME_CHOICES,
-  useThemeChoice,
-  type ThemeChoice as ThemeChoiceValue,
-} from '@/lib/theme';
+import { ThemeSwitch, ThemeSwitchMenu } from '@/components/theme-switch';
 
 type Path = '/' | '/rooms' | '/jobs' | '/shopping' | '/money' | '/phases' | '/vendors';
 type Section = { name: string; to: Path; icon: ComponentType<{ 'aria-hidden'?: boolean }> };
@@ -69,7 +61,6 @@ export function Shell() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const me = useQuery(trpc.health.ping.queryOptions());
-  const theme = useThemeChoice();
 
   async function onSignOut() {
     await signOut();
@@ -129,19 +120,7 @@ export function Shell() {
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Appearance</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={theme}
-                    onValueChange={(v: ThemeChoiceValue) => saveThemeChoice(v)}
-                  >
-                    {THEME_CHOICES.map((c) => (
-                      <DropdownMenuRadioItem key={c.value} value={c.value}>
-                        {c.label}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
+                <ThemeSwitchMenu />
                 <DropdownMenuSeparator />
                 {me.data.member.role === 'admin' ? (
                   <DropdownMenuItem onClick={() => void navigate({ to: '/manage' })}>
@@ -249,7 +228,7 @@ function MenuPanel({
             <p className="text-sm text-muted-foreground">Signed in as</p>
             <p className="font-semibold">{member.displayName}</p>
             <p className="text-sm text-muted-foreground">{ROLE_LABEL[member.role]}</p>
-            <ThemeChoice className="mt-4" />
+            <ThemeSwitch className="mt-4" />
             {member.role === 'admin' ? (
               <Link
                 to="/manage"
