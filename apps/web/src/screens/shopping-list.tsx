@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
 import { useMutation } from '@tanstack/react-query';
@@ -92,6 +93,7 @@ function ShoppingRow({
             onClick={() => setBuying(true)}
             data-return-focus={`line-purchase-${line.id}`}
           >
+            <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Mark as purchased
             <span className="sr-only"> {line.name}</span>
           </Button>

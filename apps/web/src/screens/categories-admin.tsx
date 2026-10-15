@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FormError, Input, Select } from '@/components/form';
@@ -68,6 +69,7 @@ export function CategoriesAdmin() {
           />
         </div>
         <Button type="submit" variant="outline" disabled={create.isPending || name.trim() === ''}>
+          <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
           Add category
         </Button>
         {create.error ? <FormError className="w-full">{create.error.message}</FormError> : null}

@@ -5,7 +5,7 @@ import type { RouterOutputs } from '@reparo/api';
 import { vendorCreateSchema, type VendorCreate, type VendorCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { FileText, Mail, Phone } from 'lucide-react';
+import { FileText, Mail, Pencil, Phone, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { EditPanel } from '@/components/edit-panel';
@@ -66,6 +66,7 @@ export function Vendors() {
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-vendor">
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add a vendor
             </Button>
           ) : null
@@ -108,6 +109,7 @@ export function Vendors() {
               onClick={() => setAdding(true)}
               data-return-focus="add-vendor"
             >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add the first vendor
             </Button>
           ) : null}
@@ -217,6 +219,7 @@ function VendorRow({
               onClick={() => setEditing(true)}
               data-return-focus={`vendor-${vendor.id}`}
             >
+              <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Edit
             </Button>
             {isAdmin ? (

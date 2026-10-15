@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -164,6 +165,7 @@ function JobRow({
                 variant="ghost"
                 className="px-0 sm:px-3"
               >
+                <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                 Edit spec &amp; notes
               </Button>
             </div>

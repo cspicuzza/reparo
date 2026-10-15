@@ -1,7 +1,7 @@
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronLeft, Mail, Phone } from 'lucide-react';
+import { ChevronLeft, Mail, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { EditPanel } from '@/components/edit-panel';
 import { FormError } from '@/components/form';
@@ -65,6 +65,7 @@ export function JobDetail() {
                   onClick={() => setEditing(true)}
                   data-return-focus="edit-job"
                 >
+                  <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                   Edit job
                 </Button>
               ) : null
@@ -251,6 +252,7 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
                         variant="ghost"
                         className="px-0 sm:px-3"
                       >
+                        <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                         Edit spec &amp; notes
                       </Button>
                     ) : null}

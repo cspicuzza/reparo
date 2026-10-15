@@ -215,7 +215,9 @@ function LineFields({
           onClick={() => setMore((v) => !v)}
         >
           {more || moreErrors ? 'Fewer details' : 'More details'}
-          <span className="text-muted-foreground">: how many, phase, job, model number</span>
+          <span className="font-normal text-muted-foreground">
+            (how many, phase, job, model number)
+          </span>
         </Button>
         <div
           id={id('more')}

@@ -1,3 +1,4 @@
+import { Pencil, Plus } from 'lucide-react';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -59,6 +60,7 @@ export function Phases() {
         action={
           isAdmin ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add a phase
             </Button>
           ) : null
@@ -141,6 +143,7 @@ export function Phases() {
                     data-return-focus={`phase-${phase.id}`}
                     variant="ghost"
                   >
+                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                     Edit
                   </Button>
                 ) : null}

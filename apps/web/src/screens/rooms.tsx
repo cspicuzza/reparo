@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { describeRoom, roomProgressText } from '@/lib/rooms';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { EditPanel } from '@/components/edit-panel';
 import { PanelList } from '@/components/panel';
@@ -44,6 +44,7 @@ export function Rooms() {
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add a room
             </Button>
           ) : null
@@ -84,6 +85,7 @@ export function Rooms() {
               onClick={() => setAdding(true)}
               data-return-focus="add-room"
             >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add the first room
             </Button>
           ) : null}

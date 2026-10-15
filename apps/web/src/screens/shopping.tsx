@@ -2,7 +2,7 @@ import type { RouterOutputs } from '@reparo/api';
 import type { ShoppingStatusInput } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Select } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
@@ -90,6 +90,7 @@ export function Shopping() {
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-line">
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add something
             </Button>
           ) : null
@@ -149,6 +150,7 @@ export function Shopping() {
               onClick={() => setAdding(true)}
               data-return-focus="add-line"
             >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add the first thing
             </Button>
           ) : null}

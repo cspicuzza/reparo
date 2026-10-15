@@ -1,3 +1,4 @@
+import { Pencil, Plus } from 'lucide-react';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -177,6 +178,7 @@ function Pool({ budget }: { budget: Budget }) {
             onClick={() => setEditing(true)}
             data-return-focus="edit-budget"
           >
+            <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Edit the starting balance
           </Button>
         ) : null}
@@ -261,6 +263,7 @@ function Pool({ budget }: { budget: Budget }) {
                         onClick={() => setEditingAdj(a.id)}
                         data-return-focus={`adj-${a.id}`}
                       >
+                        <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                         Edit
                       </Button>
                       <ConfirmRemove
@@ -315,6 +318,7 @@ function Pool({ budget }: { budget: Budget }) {
             onClick={() => setAdding(true)}
             data-return-focus="add-adjustment"
           >
+            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Add money in or out
           </Button>
         )

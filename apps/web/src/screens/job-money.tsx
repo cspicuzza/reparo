@@ -1,3 +1,4 @@
+import { Pencil, Plus } from 'lucide-react';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -217,6 +218,7 @@ function CostLines({
                       onClick={() => setEditing(l.id)}
                       data-return-focus={`cost-${l.id}`}
                     >
+                      <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                       Edit
                     </Button>
                     <ConfirmRemove
@@ -263,6 +265,7 @@ function CostLines({
             onClick={() => setAdding(true)}
             data-return-focus={`add-cost-${jobId}`}
           >
+            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
             {lines.length === 0 ? 'Add the price' : 'Add a cost'}
           </Button>
         )
@@ -430,6 +433,7 @@ function Payments({
                       onClick={() => setEditing(p.id)}
                       data-return-focus={`pay-${p.id}`}
                     >
+                      <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                       Edit
                     </Button>
                     <ConfirmRemove

@@ -1,7 +1,7 @@
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { useMe } from '@/lib/me';
 import { trpcClient, trpcErrorCode, useTRPC } from '@/lib/trpc';
@@ -94,6 +94,7 @@ export function RoomDetail() {
             onClick={() => setEditing(true)}
             data-return-focus="edit-room"
           >
+            <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Edit room
           </Button>
         ) : null}

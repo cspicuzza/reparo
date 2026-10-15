@@ -1,3 +1,4 @@
+import { Check, Pencil } from 'lucide-react';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AttachedFiles } from '@/components/attached-files';
@@ -190,6 +191,7 @@ function LineBody({
           ) : null}
           {canEdit && line.status === 'to_buy' ? (
             <Button type="button" variant="outline" onClick={() => setStep('purchase')}>
+              <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Mark as purchased
             </Button>
           ) : null}
@@ -274,6 +276,7 @@ function LineBody({
       {canEdit ? (
         <div className="-ml-3 flex flex-wrap items-center gap-1 border-t border-border pt-4">
           <Button type="button" variant="ghost" onClick={() => setStep('edit')}>
+            <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Edit
             <span className="sr-only"> {line.name}</span>
           </Button>

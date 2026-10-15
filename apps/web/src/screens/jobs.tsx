@@ -1,7 +1,7 @@
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
@@ -46,6 +46,7 @@ export function Jobs() {
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-job">
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add a job
             </Button>
           ) : null
@@ -76,6 +77,7 @@ export function Jobs() {
               onClick={() => setAdding(true)}
               data-return-focus="add-job"
             >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add the first job
             </Button>
           ) : null}

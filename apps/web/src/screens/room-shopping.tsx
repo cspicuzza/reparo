@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -78,6 +79,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
               onClick={() => setAdding(true)}
               data-return-focus={`add-line-${roomId}`}
             >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
               Add something for {roomName}
             </Button>
           ) : null}

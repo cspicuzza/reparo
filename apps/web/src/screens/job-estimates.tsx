@@ -1,3 +1,5 @@
+import { Pencil } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -82,6 +84,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
             onClick={() => setAdding(true)}
             data-return-focus={`add-estimate-${job.id}`}
           >
+            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
             Add an estimate
           </Button>
         ) : null}
@@ -306,6 +309,9 @@ function EstimateCard({
               onClick={onEdit}
               data-return-focus={`estimate-${e.id}`}
             >
+              {e.status === 'requested' ? null : (
+                <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+              )}
               {e.status === 'requested' ? 'Add the amount' : 'Edit'}
               <span className="sr-only"> for {e.vendor.name}</span>
             </Button>
