@@ -160,7 +160,7 @@ function JobForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @lg:grid-cols-2">
         <Field
           label="Name"
           htmlFor={id('name')}
@@ -236,7 +236,7 @@ function JobForm({
                 None
               </Button>
             </div>
-            <ul className="mt-3 grid gap-x-6 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-x-6 @lg:grid-cols-2">
               {rooms.map((r) => (
                 <li key={r.id}>
                   <label className="flex min-h-11 items-center gap-3 text-base">

@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
-import { Panel, PanelList } from '@/components/panel';
+import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { PhaseStatusBadge, StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
@@ -43,7 +44,7 @@ export function Jobs() {
           </>
         }
         action={
-          canEdit && !adding ? (
+          canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-job">
               Add a job
             </Button>
@@ -51,20 +52,13 @@ export function Jobs() {
         }
       />
 
-      {adding ? (
-        <Panel aria-labelledby="new-job">
-          <h2 id="new-job" className="text-2xl">
-            New job
-          </h2>
-          <div className="mt-4">
-            <JobEditor
-              idPrefix="new-job"
-              onCancel={() => setAdding(false)}
-              onSaved={(jobId) => void navigate({ to: '/jobs/$jobId', params: { jobId } })}
-            />
-          </div>
-        </Panel>
-      ) : null}
+      <EditPanel open={adding} title="New job" onClose={() => setAdding(false)}>
+        <JobEditor
+          idPrefix="new-job"
+          onCancel={() => setAdding(false)}
+          onSaved={(jobId) => void navigate({ to: '/jobs/$jobId', params: { jobId } })}
+        />
+      </EditPanel>
 
       {jobs.isPending || phases.isPending ? (
         <p className="text-muted-foreground">Loading jobs…</p>
@@ -72,7 +66,7 @@ export function Jobs() {
       {jobs.error || phases.error ? (
         <p role="alert">Couldn&apos;t load jobs: {(jobs.error ?? phases.error)?.message}</p>
       ) : null}
-      {groups && groups.length === 0 && !adding ? (
+      {groups && groups.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No jobs yet.</span>
           {canEdit ? (

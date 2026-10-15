@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, Mail, Phone } from 'lucide-react';
 import { useState } from 'react';
+import { EditPanel } from '@/components/edit-panel';
 import { FormError } from '@/components/form';
 import { SaveState } from '@/components/save-state';
 import { PageHeader } from '@/components/page-header';
@@ -57,7 +58,7 @@ export function JobDetail() {
             title={j.name}
             description={j.phase.name}
             action={
-              canEdit && !editing ? (
+              canEdit ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -72,23 +73,16 @@ export function JobDetail() {
         </div>
       </div>
 
-      {editing ? (
-        <Panel aria-labelledby="edit-job">
-          <h2 id="edit-job" className="text-2xl">
-            Edit {j.name}
-          </h2>
-          <div className="mt-4">
-            <JobEditor
-              idPrefix={`job-${j.id}`}
-              job={j}
-              onSaved={() => setEditing(false)}
-              onCancel={() => setEditing(false)}
-            />
-          </div>
-        </Panel>
-      ) : (
-        <JobBody job={j} canEdit={canEdit} />
-      )}
+      <JobBody job={j} canEdit={canEdit} />
+
+      <EditPanel open={editing} title={`Edit ${j.name}`} onClose={() => setEditing(false)}>
+        <JobEditor
+          idPrefix={`job-${j.id}`}
+          job={j}
+          onSaved={() => setEditing(false)}
+          onCancel={() => setEditing(false)}
+        />
+      </EditPanel>
     </section>
   );
 }

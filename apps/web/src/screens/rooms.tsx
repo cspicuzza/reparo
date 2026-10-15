@@ -7,7 +7,8 @@ import { useTRPC } from '@/lib/trpc';
 import { describeRoom, roomProgressText } from '@/lib/rooms';
 import { ChevronRight } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { Panel, PanelList } from '@/components/panel';
+import { EditPanel } from '@/components/edit-panel';
+import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
@@ -41,7 +42,7 @@ export function Rooms() {
             : 'The spaces being worked on.'
         }
         action={
-          canEdit && !adding ? (
+          canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">
               Add a room
             </Button>
@@ -49,31 +50,31 @@ export function Rooms() {
         }
       />
 
-      {adding ? (
-        <Panel aria-labelledby="new-room">
-          <h2 id="new-room" className="text-2xl">
-            New room
-          </h2>
-          <div className="mt-4">
-            <RoomForm
-              idPrefix="new-room"
-              submitLabel="Add room"
-              serverError={create.error?.message}
-              onCancel={() => {
-                create.reset();
-                setAdding(false);
-              }}
-              onSubmit={async (values) => {
-                await create.mutateAsync(values).catch(() => undefined);
-              }}
-            />
-          </div>
-        </Panel>
-      ) : null}
+      <EditPanel
+        open={adding}
+        title="New room"
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <RoomForm
+          idPrefix="new-room"
+          submitLabel="Add room"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (values) => {
+            await create.mutateAsync(values).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
 
       {rooms.isPending ? <p className="text-muted-foreground">Loading rooms…</p> : null}
       {rooms.error ? <p role="alert">Couldn&apos;t load rooms: {rooms.error.message}</p> : null}
-      {rooms.data && rooms.data.length === 0 && !adding ? (
+      {rooms.data && rooms.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No rooms yet.</span>
           {canEdit ? (

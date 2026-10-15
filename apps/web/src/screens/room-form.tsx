@@ -62,7 +62,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
         <Input id={id('name')} autoComplete="off" {...register('name')} />
       </Field>
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 @lg:grid-cols-3">
         <Field label="Length" htmlFor={id('length')} error={errors.lengthIn?.message}>
           <Input
             id={id('length')}
@@ -107,7 +107,7 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
           type="number"
           min={0}
           step={1}
-          className="sm:w-32"
+          className="@lg:w-32"
           {...register('sortOrder', { valueAsNumber: true })}
         />
       </Field>

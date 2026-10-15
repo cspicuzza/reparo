@@ -8,10 +8,11 @@ import { Link } from '@tanstack/react-router';
 import { FileText, Mail, Phone } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { EditPanel } from '@/components/edit-panel';
 import { FileSection } from '@/components/file-section';
 import { Field, FormError, Input, Textarea } from '@/components/form';
 import { PageHeader } from '@/components/page-header';
-import { Panel, PanelList } from '@/components/panel';
+import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
@@ -63,7 +64,7 @@ export function Vendors() {
         title="Vendors"
         description="The people you hire. Add them here or right from a job."
         action={
-          canEdit && !adding ? (
+          canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-vendor">
               Add a vendor
             </Button>
@@ -71,33 +72,33 @@ export function Vendors() {
         }
       />
 
-      {adding ? (
-        <Panel aria-labelledby="new-vendor">
-          <h2 id="new-vendor" className="text-2xl">
-            New vendor
-          </h2>
-          <div className="mt-4">
-            <VendorForm
-              idPrefix="new-vendor"
-              submitLabel="Add vendor"
-              serverError={create.error?.message}
-              onCancel={() => {
-                create.reset();
-                setAdding(false);
-              }}
-              onSubmit={async (values) => {
-                await create.mutateAsync(values).catch(() => undefined);
-              }}
-            />
-          </div>
-        </Panel>
-      ) : null}
+      <EditPanel
+        open={adding}
+        title="New vendor"
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <VendorForm
+          idPrefix="new-vendor"
+          submitLabel="Add vendor"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (values) => {
+            await create.mutateAsync(values).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
 
       {vendors.isPending ? <p className="text-muted-foreground">Loading vendors…</p> : null}
       {vendors.error ? (
         <p role="alert">Couldn&apos;t load vendors: {vendors.error.message}</p>
       ) : null}
-      {vendors.data && vendors.data.length === 0 && !adding ? (
+      {vendors.data && vendors.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No vendors yet.</span>
           {canEdit ? (
@@ -199,29 +200,6 @@ function VendorRow({
     }),
   );
   const archive = useMutation(trpc.vendors.remove.mutationOptions({ onSuccess: invalidate }));
-
-  if (editing) {
-    return (
-      <div>
-        <h2 className="text-xl font-semibold">Edit {vendor.name}</h2>
-        <div className="mt-4">
-          <VendorForm
-            idPrefix={`vendor-${vendor.id}`}
-            vendor={vendor}
-            submitLabel="Save vendor"
-            serverError={update.error?.message}
-            onCancel={() => {
-              update.reset();
-              setEditing(false);
-            }}
-            onSubmit={async (values) => {
-              await update.mutateAsync({ id: vendor.id, ...values }).catch(() => undefined);
-            }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -351,6 +329,29 @@ function VendorRow({
         </div>
       ) : null}
       {archive.error ? <FormError>{archive.error.message}</FormError> : null}
+
+      <EditPanel
+        open={editing}
+        title={`Edit ${vendor.name}`}
+        onClose={() => {
+          update.reset();
+          setEditing(false);
+        }}
+      >
+        <VendorForm
+          idPrefix={`vendor-${vendor.id}`}
+          vendor={vendor}
+          submitLabel="Save vendor"
+          serverError={update.error?.message}
+          onCancel={() => {
+            update.reset();
+            setEditing(false);
+          }}
+          onSubmit={async (values) => {
+            await update.mutateAsync({ id: vendor.id, ...values }).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
     </div>
   );
 }
@@ -386,7 +387,7 @@ function VendorForm({
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @lg:grid-cols-2">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>

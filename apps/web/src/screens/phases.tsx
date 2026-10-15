@@ -16,7 +16,8 @@ import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, phaseDates, phaseProgressText, type Phase } from '@/lib/work';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
-import { Panel, PanelList } from '@/components/panel';
+import { EditPanel } from '@/components/edit-panel';
+import { PanelList } from '@/components/panel';
 import { PhaseStatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
 
@@ -47,13 +48,15 @@ export function Phases() {
     }),
   );
 
+  const editingPhase = phases.data?.find((p) => p.id === editingId);
+
   return (
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Phases"
         description="The renovation in stages. Work and money belong to a phase."
         action={
-          isAdmin && !adding ? (
+          isAdmin ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">
               Add a phase
             </Button>
@@ -61,100 +64,106 @@ export function Phases() {
         }
       />
 
-      {adding ? (
-        <Panel aria-labelledby="new-phase">
-          <h2 id="new-phase" className="text-2xl">
-            New phase
-          </h2>
-          <div className="mt-4">
-            <PhaseForm
-              idPrefix="new-phase"
-              submitLabel="Add phase"
-              serverError={create.error?.message}
-              onCancel={() => {
-                create.reset();
-                setAdding(false);
-              }}
-              onSubmit={async (values) => {
-                await create.mutateAsync(values).catch(() => undefined);
-              }}
-            />
-          </div>
-        </Panel>
-      ) : null}
+      <EditPanel
+        open={adding}
+        title="New phase"
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <PhaseForm
+          idPrefix="new-phase"
+          submitLabel="Add phase"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (values) => {
+            await create.mutateAsync(values).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
+      <EditPanel
+        open={editingPhase !== undefined}
+        title={editingPhase ? `Edit ${editingPhase.name}` : 'Edit phase'}
+        onClose={() => {
+          update.reset();
+          setEditingId(null);
+        }}
+      >
+        {editingPhase ? (
+          <PhaseForm
+            idPrefix={`phase-${editingPhase.id}`}
+            phase={editingPhase}
+            submitLabel="Save phase"
+            serverError={update.error?.message}
+            onCancel={() => {
+              update.reset();
+              setEditingId(null);
+            }}
+            onSubmit={async (values) => {
+              await update.mutateAsync({ id: editingPhase.id, ...values }).catch(() => undefined);
+            }}
+          />
+        ) : null}
+      </EditPanel>
 
       {phases.isPending ? <p className="text-muted-foreground">Loading phases…</p> : null}
       {phases.error ? <p role="alert">Couldn&apos;t load phases: {phases.error.message}</p> : null}
-      {phases.data && phases.data.length === 0 && !adding ? (
+      {phases.data && phases.data.length === 0 ? (
         <p className="text-muted-foreground">
           No phases yet.{isAdmin ? ' Add the first one above.' : ''}
         </p>
       ) : null}
       {phases.data && phases.data.length > 0 ? (
         <PanelList>
-          {phases.data.map((phase) =>
-            editingId === phase.id ? (
-              <li key={phase.id} className="p-4 sm:p-5">
-                <PhaseForm
-                  idPrefix={`phase-${phase.id}`}
-                  phase={phase}
-                  submitLabel="Save phase"
-                  serverError={update.error?.message}
-                  onCancel={() => {
-                    update.reset();
-                    setEditingId(null);
-                  }}
-                  onSubmit={async (values) => {
-                    await update.mutateAsync({ id: phase.id, ...values }).catch(() => undefined);
-                  }}
-                />
-              </li>
-            ) : (
-              <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-3">
-                    <h2 className="text-2xl">{phase.name}</h2>
-                    <PhaseStatusBadge status={phase.status} />
-                  </div>
-                  {isAdmin ? (
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        update.reset();
-                        setEditingId(phase.id);
-                      }}
-                      data-return-focus={`phase-${phase.id}`}
-                      variant="ghost"
-                    >
-                      Edit
-                    </Button>
-                  ) : null}
+          {phases.data.map((phase) => (
+            <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-3">
+                  <h2 className="text-2xl">{phase.name}</h2>
+                  <PhaseStatusBadge status={phase.status} />
                 </div>
-                {phase.startsOn || phase.endsOn ? (
-                  <p className="text-sm text-muted-foreground">{phaseDates(phase)}</p>
+                {isAdmin ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      update.reset();
+                      setEditingId(phase.id);
+                    }}
+                    data-return-focus={`phase-${phase.id}`}
+                    variant="ghost"
+                  >
+                    Edit
+                  </Button>
                 ) : null}
-                <div className="grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem]">
-                  {phase.progress.total > 0 ? (
-                    <TapeStrip
-                      mode="progress"
-                      size="sm"
-                      done={phase.progress.done}
-                      total={phase.progress.total}
-                      label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
-                    />
-                  ) : null}
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {phaseProgressText(phase.progress)}
-                  </span>
-                </div>
-                {phase.notes ? (
-                  <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
-                    {phase.notes}
-                  </p>
+              </div>
+              {phase.startsOn || phase.endsOn ? (
+                <p className="text-sm text-muted-foreground">{phaseDates(phase)}</p>
+              ) : null}
+              <div className="grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                {phase.progress.total > 0 ? (
+                  <TapeStrip
+                    mode="progress"
+                    size="sm"
+                    done={phase.progress.done}
+                    total={phase.progress.total}
+                    label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
+                  />
                 ) : null}
-              </li>
-            ),
-          )}
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {phaseProgressText(phase.progress)}
+                </span>
+              </div>
+              {phase.notes ? (
+                <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
+                  {phase.notes}
+                </p>
+              ) : null}
+            </li>
+          ))}
         </PanelList>
       ) : null}
     </section>
@@ -191,7 +200,7 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
-      <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
+      <div className="grid gap-5 @lg:grid-cols-[1fr_12rem]">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
         </Field>
@@ -205,7 +214,7 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
           </Select>
         </Field>
       </div>
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 @lg:grid-cols-3">
         <Field label="Starts" htmlFor={id('starts')} error={errors.startsOn?.message}>
           <Input id={id('starts')} type="date" {...date('startsOn')} />
         </Field>

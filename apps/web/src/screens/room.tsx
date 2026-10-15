@@ -7,6 +7,7 @@ import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { describeRoom, roomProgressText } from '@/lib/rooms';
 import { DimensionLine } from '@/components/dimension';
+import { EditPanel } from '@/components/edit-panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { RoomForm } from './room-form';
 import { RoomPictures } from './room-pictures';
@@ -69,148 +70,147 @@ export function RoomDetail() {
         All rooms
       </Link>
 
-      {editing ? (
-        <div className="mt-4">
-          <h1 className="text-3xl">Edit {r.name}</h1>
-          <div className="mt-6">
-            <RoomForm
-              idPrefix="edit-room"
-              room={r}
-              submitLabel="Save room"
-              serverError={update.error?.message}
-              onCancel={() => {
-                update.reset();
-                setEditing(false);
-              }}
-              onSubmit={async (values) => {
-                await update.mutateAsync({ id: r.id, ...values }).catch(() => undefined);
-              }}
-            />
-          </div>
-        </div>
-      ) : (
-        <>
-          <RoomCover roomId={r.id} roomName={r.name} />
+      <RoomCover roomId={r.id} roomName={r.name} />
 
-          <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-            <div className="min-w-0">
-              <h1 className="text-4xl">{r.name}</h1>
-              <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
-            </div>
-            {canEdit ? (
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-4xl">{r.name}</h1>
+          <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
+        </div>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setEditing(true)}
+            data-return-focus="edit-room"
+          >
+            Edit room
+          </Button>
+        ) : null}
+      </div>
+
+      <section
+        aria-label="Size"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <dl className="flex flex-wrap gap-x-8 gap-y-5">
+          <DimensionLine label="Length" inches={r.lengthIn} className="flex-1" />
+          <DimensionLine label="Width" inches={r.widthIn} className="flex-1" />
+          <DimensionLine label="Ceiling" inches={r.ceilingHeightIn} className="flex-1" />
+          <div className="min-w-36">
+            <dt className="text-sm text-muted-foreground">Floor area</dt>
+            <dd className="mt-1 text-xl font-semibold tabular-nums">
+              {sqft != null ? (
+                `${sqft} sq ft`
+              ) : (
+                <span className="text-base font-normal text-muted-foreground">
+                  {dims ? 'Needs both sides' : 'Not measured'}
+                </span>
+              )}
+            </dd>
+          </div>
+        </dl>
+        {r.notes ? (
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="text-sm text-muted-foreground">Notes</p>
+            <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section
+        aria-labelledby="room-pictures"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-pictures" className="text-2xl">
+          Pictures
+        </h2>
+        <div className="mt-4">
+          <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="room-jobs"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-jobs" className="text-2xl">
+          Jobs in this room
+        </h2>
+        <p className="mt-1 text-muted-foreground">
+          Set each job&apos;s status here. Jobs are planned on the Jobs page.
+        </p>
+        <div className="mt-4">
+          <RoomWork roomId={r.id} roomName={r.name} />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="room-buying"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-buying" className="text-2xl">
+          What we&apos;re buying
+        </h2>
+        <div className="mt-4">
+          <RoomShopping roomId={r.id} roomName={r.name} />
+        </div>
+      </section>
+
+      {canEdit ? (
+        <div className="mt-12 border-t border-border pt-6">
+          {confirmingDelete ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <span>Remove {r.name} from the house?</span>
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => setEditing(true)}
-                data-return-focus="edit-room"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate({ id: r.id })}
+                variant="destructive"
               >
-                Edit room
+                Yes, remove it
               </Button>
-            ) : null}
-          </div>
-
-          <section
-            aria-label="Size"
-            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-          >
-            <dl className="flex flex-wrap gap-x-8 gap-y-5">
-              <DimensionLine label="Length" inches={r.lengthIn} className="flex-1" />
-              <DimensionLine label="Width" inches={r.widthIn} className="flex-1" />
-              <DimensionLine label="Ceiling" inches={r.ceilingHeightIn} className="flex-1" />
-              <div className="min-w-36">
-                <dt className="text-sm text-muted-foreground">Floor area</dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums">
-                  {sqft != null ? (
-                    `${sqft} sq ft`
-                  ) : (
-                    <span className="text-base font-normal text-muted-foreground">
-                      {dims ? 'Needs both sides' : 'Not measured'}
-                    </span>
-                  )}
-                </dd>
-              </div>
-            </dl>
-            {r.notes ? (
-              <div className="mt-5 border-t border-border pt-4">
-                <p className="text-sm text-muted-foreground">Notes</p>
-                <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
-              </div>
-            ) : null}
-          </section>
-
-          <section
-            aria-labelledby="room-pictures"
-            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-          >
-            <h2 id="room-pictures" className="text-2xl">
-              Pictures
-            </h2>
-            <div className="mt-4">
-              <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
+              <Button type="button" onClick={() => setConfirmingDelete(false)} variant="ghost">
+                Keep it
+              </Button>
+              {remove.error ? (
+                <FormError className="w-full">{remove.error.message}</FormError>
+              ) : null}
             </div>
-          </section>
-
-          <section
-            aria-labelledby="room-jobs"
-            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-          >
-            <h2 id="room-jobs" className="text-2xl">
-              Jobs in this room
-            </h2>
-            <p className="mt-1 text-muted-foreground">
-              Set each job&apos;s status here. Jobs are planned on the Jobs page.
-            </p>
-            <div className="mt-4">
-              <RoomWork roomId={r.id} roomName={r.name} />
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="room-buying"
-            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-          >
-            <h2 id="room-buying" className="text-2xl">
-              What we&apos;re buying
-            </h2>
-            <div className="mt-4">
-              <RoomShopping roomId={r.id} roomName={r.name} />
-            </div>
-          </section>
-
-          {canEdit ? (
-            <div className="mt-12 border-t border-border pt-6">
-              {confirmingDelete ? (
-                <div className="flex flex-wrap items-center gap-3">
-                  <span>Remove {r.name} from the house?</span>
-                  <Button
-                    type="button"
-                    disabled={remove.isPending}
-                    onClick={() => remove.mutate({ id: r.id })}
-                    variant="destructive"
-                  >
-                    Yes, remove it
-                  </Button>
-                  <Button type="button" onClick={() => setConfirmingDelete(false)} variant="ghost">
-                    Keep it
-                  </Button>
-                  {remove.error ? (
-                    <FormError className="w-full">{remove.error.message}</FormError>
-                  ) : null}
-                </div>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={() => setConfirmingDelete(true)}
-                  variant="ghost"
-                  className="px-0 text-muted-foreground"
-                >
-                  Remove this room
-                </Button>
-              )}
-            </div>
-          ) : null}
-        </>
-      )}
+          ) : (
+            <Button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              variant="ghost"
+              className="px-0 text-muted-foreground"
+            >
+              Remove this room
+            </Button>
+          )}
+        </div>
+      ) : null}
+      <EditPanel
+        open={editing}
+        title={`Edit ${r.name}`}
+        onClose={() => {
+          update.reset();
+          setEditing(false);
+        }}
+      >
+        <RoomForm
+          idPrefix="edit-room"
+          room={r}
+          submitLabel="Save room"
+          serverError={update.error?.message}
+          onCancel={() => {
+            update.reset();
+            setEditing(false);
+          }}
+          onSubmit={async (values) => {
+            await update.mutateAsync({ id: r.id, ...values }).catch(() => undefined);
+          }}
+        />
+      </EditPanel>
     </section>
   );
 }
