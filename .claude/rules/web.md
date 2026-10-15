@@ -39,11 +39,15 @@ Decisions and reasons: Linear → *Design system* doc. Values: `src/index.css` (
 
 **Components.** shadcn/ui on Base UI, Nova style, in `src/components/ui/`; `cn` from `@/lib/utils`. Add a component when an issue needs it — the CLI (`pnpm exec shadcn add <name>`) or, if it can't reach the registry, by hand from shadcn's source with the source commit noted in the file. Then adapt it to these rules before use: Nova's defaults are compact (32px controls, 14px text, faint outline borders, a 50% focus ring), which break the 44px, 16px, 3:1 and focus rules here. Use `<Button>` for every button (`variant`: default, outline, ghost, destructive, link); `buttonVariants()` to style a link as a button.
 
-**Icons.** Lucide (`lucide-react`), outline, one stroke weight, always next to a text label. No icon-only buttons; no emoji as icons.
+**Icons.** Lucide (`lucide-react`), outline, one stroke weight, always next to a text label. No icon-only buttons; no emoji as icons. On action buttons, only four get an icon (Workflow polish, Q8): Plus on "Add …", Check on "Mark as purchased", Pencil on Edit, and a check on "Saved". Those use `absoluteStrokeWidth` so the stroke matches the label's weight. Every other button stays text-only.
 
 **Light and dark** follow the device (`prefers-color-scheme`). There is no toggle and no `.dark` class; Tailwind's `dark:` variant is media-based. Every new colour gets a light and a dark value in `index.css`, each contrast-checked on its own (text ≥ 4.5:1, control edges and focus ≥ 3:1). Check new UI in both modes.
 
-**Motion** only answers something the person did (a status changing, a section opening). No page-load or scroll-driven animation. Reduced motion is respected globally in `index.css`.
+**Motion** only answers something the person did (a status changing, a section opening, a save confirming, a row leaving a list). No page-load or scroll-driven animation. Reduced motion is respected globally in `index.css`: it keeps opacity fades of 150ms or less and drops movement, scale and blur (Workflow polish, Q6). Transitions name their properties (no `transition-all`). Button press is the 1px downward shift, not a scale.
+
+**Saving.** One-value edits on something that already exists save when you leave the field, with no Save button: a picture's caption, a progress photo's date and job, a room's notes and size, a job room's spec and notes, a phase's status, any status dropdown (Workflow polish, Q2). Adding something, anything involving money, and the job editor (unticking a room deletes its status and spec) keep a labelled button. Every save shows its state beside the control (Saving…, Saved, or Couldn't save with Try again) and announces it to screen readers; an error shows under the row or control that failed, and only that row locks while it saves. The last save wins; there is no edit-conflict check (Q4).
+
+**Editing.** Multi-field edits and adding things open in the side panel (`Sheet`): from the bottom and nearly full height on a phone, from the right at about a third of the width on a laptop, with the page visible behind (Q16). Nothing swaps out a whole page to edit. Opening a panel or editor focuses its first field; closing it returns focus to the control that opened it; leaving with unsaved changes asks first.
 
 **Words on screen.** Household words, not database terms. Labels say what happens ("Mark as checked", "Record payment", not "Submit"). Avoid template habits: no "A · B" middle-dot strings, no "Word — fragment" labels, no "→" on buttons.
 
