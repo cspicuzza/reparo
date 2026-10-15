@@ -54,6 +54,37 @@ export function ShoppingList({
   );
 }
 
+/**
+ * Rows for one group of lines (a room under a status on the Shopping page). The page fetches
+ * every line's files once and passes them down, so a long list makes one files request.
+ */
+export function ShoppingRows({
+  lines,
+  files,
+  canEdit,
+  className,
+}: {
+  lines: ShoppingLine[];
+  files: FileView[];
+  canEdit: boolean;
+  className?: string;
+}) {
+  return (
+    <ul className={cn('divide-y divide-border', className)}>
+      {lines.map((l) => (
+        <li key={l.id} className="py-4">
+          <LineRow
+            line={l}
+            canEdit={canEdit}
+            showRoom={false}
+            files={files.filter((f) => f.ownerId === l.id)}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 type Mode = 'view' | 'edit' | 'purchase' | 'return';
 
 function LineRow({

@@ -44,6 +44,9 @@ export async function listShoppingLines(db: Db, filter: ShoppingLineList & { id?
   if (filter.categoryId !== undefined) conds.push(eq(shoppingLines.categoryId, filter.categoryId));
   if (filter.jobId !== undefined) conds.push(eq(shoppingLines.jobId, filter.jobId));
   if (filter.status !== undefined) conds.push(eq(shoppingLines.status, filter.status));
+  if (filter.store !== undefined) {
+    conds.push(sql`lower(trim(${shoppingLines.store})) = ${filter.store.toLowerCase()}`);
+  }
 
   const rows = await db
     .select({

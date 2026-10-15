@@ -1,36 +1,64 @@
-import { useReturnFocus } from '@/lib/editor-focus';
+import type { RouterOutputs } from '@reparo/api';
+import type { ShoppingStatusInput } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { X } from 'lucide-react';
+import { useId, useState } from 'react';
 import { Select } from '@/components/form';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Button } from '@/components/ui/button';
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMe } from '@/lib/me';
-import { SHOPPING_STATUS_LABEL } from '@/lib/money';
-import { shoppingFilter, type ShoppingSearch } from '@/lib/shopping';
+import { money } from '@/lib/money';
+import {
+  groupText,
+  shoppingFilter,
+  summaryText,
+  type ShoppingLine,
+  type ShoppingSearch,
+} from '@/lib/shopping';
 import { useTRPC } from '@/lib/trpc';
+import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { cn } from '@/lib/utils';
 import { ShoppingLineForm } from './shopping-line-form';
-import { ShoppingList } from './shopping-list';
+import { ShoppingRows } from './shopping-list';
 
 const route = getRouteApi('/_app/shopping/');
 
+type Section = RouterOutputs['shoppingLines']['totals'][number];
+
+const SECTION_TITLE: Record<ShoppingStatusInput, string> = {
+  to_buy: 'To buy',
+  purchased: 'Purchased',
+  returned: 'Returned',
+};
+
 /**
- * The shopping list (M3, OD-52; Q23): every line, To buy first, filtered by room, category,
- * phase and status. Filters live in the URL so a filtered list can be shared.
+ * The shopping list (M3, OD-52; reshaped in Workflow polish, OD-75). Built first for "what's
+ * left to buy, and where it goes": a sentence saying what's left, then To buy grouped by room
+ * with counts and totals, then Purchased and Returned folded away. Filters sit behind one
+ * button and show as chips while in use; they live in the URL so a filtered list can be shared.
+ * Every count and total comes from `shoppingLines.totals`.
  */
 export function Shopping() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const search = route.useSearch();
   const { canEdit } = useMe();
-  const lines = useQuery(trpc.shoppingLines.list.queryOptions(shoppingFilter(search)));
-  const rooms = useQuery(trpc.rooms.list.queryOptions());
-  const categories = useQuery(trpc.categories.list.queryOptions());
-  const phases = useQuery(trpc.phases.list.queryOptions());
-  const jobs = useQuery(trpc.jobs.list.queryOptions());
+  const filter = shoppingFilter(search);
+  const lines = useQuery(trpc.shoppingLines.list.queryOptions(filter));
+  const totals = useQuery(trpc.shoppingLines.totals.queryOptions(filter));
+  // Every line's pictures and receipts in one request (M4, OD-59), shared by the room groups.
+  const files = useQuery({
+    ...trpc.files.listMany.queryOptions({
+      ownerType: 'shopping_line',
+      ownerIds: (lines.data ?? []).map((l) => l.id),
+    }),
+    enabled: (lines.data?.length ?? 0) > 0,
+  });
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-line' : null);
@@ -43,20 +71,22 @@ export function Shopping() {
     }),
   );
 
-  const setFilter = (key: keyof ShoppingSearch, value: string) =>
-    void navigate({
-      to: '/shopping',
-      search: (prev: ShoppingSearch) => ({ ...prev, [key]: value === '' ? undefined : value }),
-      replace: true,
-    });
   const filtered = Object.keys(search).length > 0;
-  const forJob = search.job ? jobs.data?.find((j) => j.id === search.job) : undefined;
+  const toBuy = totals.data?.find((s) => s.status === 'to_buy');
 
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-col gap-6">
       <PageHeader
         title="Shopping"
-        description="Everything to buy, To buy first. Planned phases' lines don't count against the money until the phase starts."
+        description={
+          toBuy ? (
+            <span className="text-xl text-foreground tabular-nums">
+              {summaryText(toBuy.count, toBuy.totalCents, money)}
+            </span>
+          ) : (
+            'What we still need to buy, room by room.'
+          )
+        }
         action={
           canEdit && !adding ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-line">
@@ -93,70 +123,26 @@ export function Shopping() {
         </Panel>
       ) : null}
 
-      <div role="group" aria-label="Show only" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <FilterSelect
-          id="filter-room"
-          label="Room"
-          value={search.room ?? ''}
-          onChange={(v) => setFilter('room', v)}
-          options={[
-            ['', 'All rooms'],
-            ['house', 'Whole house'],
-            ...(rooms.data ?? []).map((r) => [r.id, r.name] as const),
-          ]}
-        />
-        <FilterSelect
-          id="filter-category"
-          label="Category"
-          value={search.category ?? ''}
-          onChange={(v) => setFilter('category', v)}
-          options={[
-            ['', 'All categories'],
-            ...(categories.data ?? []).map((c) => [c.id, c.name] as const),
-          ]}
-        />
-        <FilterSelect
-          id="filter-phase"
-          label="Phase"
-          value={search.phase ?? ''}
-          onChange={(v) => setFilter('phase', v)}
-          options={[['', 'All phases'], ...(phases.data ?? []).map((p) => [p.id, p.name] as const)]}
-        />
-        <FilterSelect
-          id="filter-status"
-          label="Status"
-          value={search.status ?? ''}
-          onChange={(v) => setFilter('status', v)}
-          options={[
-            ['', 'Any status'],
-            ...(['to_buy', 'purchased', 'returned'] as const).map(
-              (s) => [s, SHOPPING_STATUS_LABEL[s]] as const,
-            ),
-          ]}
-        />
-      </div>
-      {forJob || filtered ? (
-        <div className="-mt-4 flex flex-wrap items-center gap-3">
-          {forJob ? <p className="text-muted-foreground">Bought for {forJob.name}.</p> : null}
+      <Filters search={search} />
+
+      {lines.isPending || totals.isPending ? (
+        <p className="text-muted-foreground">Loading the list…</p>
+      ) : null}
+      {lines.error || totals.error ? (
+        <p role="alert">Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}</p>
+      ) : null}
+      {lines.data && lines.data.length === 0 && !adding ? (
+        <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
+          <span>{filtered ? 'Nothing matches these filters.' : 'Nothing on the list yet.'}</span>
           {filtered ? (
             <Button
               type="button"
-              variant="ghost"
-              className="px-0 sm:px-3"
+              variant="outline"
               onClick={() => void navigate({ to: '/shopping', search: {}, replace: true })}
             >
               Show everything
             </Button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {lines.isPending ? <p className="text-muted-foreground">Loading the list…</p> : null}
-      {lines.error ? <p role="alert">Couldn&apos;t load the list: {lines.error.message}</p> : null}
-      {lines.data && lines.data.length === 0 && !adding ? (
-        <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
-          <span>{filtered ? 'Nothing matches these filters.' : 'Nothing on the list yet.'}</span>
-          {canEdit && !filtered ? (
+          ) : canEdit ? (
             <Button
               type="button"
               variant="outline"
@@ -168,12 +154,222 @@ export function Shopping() {
           ) : null}
         </PlanGrid>
       ) : null}
-      {lines.data && lines.data.length > 0 ? (
-        <Panel aria-label="Shopping list">
-          <ShoppingList lines={lines.data} canEdit={canEdit} showRoom={search.room === undefined} />
-        </Panel>
-      ) : null}
+      {lines.data && lines.data.length > 0 && totals.data
+        ? totals.data.map((section) =>
+            section.count === 0 ? null : (
+              <ShoppingSection
+                key={section.status}
+                section={section}
+                lines={lines.data.filter((l) => l.status === section.status)}
+                files={files.data ?? []}
+                canEdit={canEdit}
+              />
+            ),
+          )
+        : null}
     </section>
+  );
+}
+
+/**
+ * One status's lines under room headings. To buy is always open; Purchased and Returned start
+ * folded, since they're looked up rather than worked through.
+ */
+function ShoppingSection({
+  section,
+  lines,
+  files,
+  canEdit,
+}: {
+  section: Section;
+  lines: ShoppingLine[];
+  files: FileView[];
+  canEdit: boolean;
+}) {
+  const foldable = section.status !== 'to_buy';
+  const [open, setOpen] = useState(!foldable);
+  const bodyId = useId();
+  const headingId = `section-${section.status}`;
+  return (
+    <section aria-labelledby={headingId}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-3">
+          <h2 id={headingId} className="text-2xl">
+            {SECTION_TITLE[section.status]}
+          </h2>
+          <span className="text-muted-foreground tabular-nums">
+            {groupText(section.status, section.count, section.totalCents, money)}
+          </span>
+        </div>
+        {foldable ? (
+          <Button
+            type="button"
+            variant="ghost"
+            aria-expanded={open}
+            aria-controls={bodyId}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? 'Hide' : 'Show'}
+            <span className="sr-only"> {SECTION_TITLE[section.status].toLowerCase()}</span>
+          </Button>
+        ) : null}
+      </div>
+      <div id={bodyId} hidden={!open} className="mt-3 flex flex-col gap-4">
+        {section.rooms.map((room) => (
+          <Panel
+            key={room.roomId ?? 'house'}
+            aria-labelledby={`${headingId}-${room.roomId ?? 'house'}`}
+            className="p-0 sm:p-0"
+          >
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border px-4 py-3 sm:px-5">
+              <h3 id={`${headingId}-${room.roomId ?? 'house'}`} className="text-xl">
+                {room.name}
+              </h3>
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {groupText(section.status, room.count, room.totalCents, money)}
+              </span>
+            </div>
+            <ShoppingRows
+              lines={lines.filter((l) => (l.room?.id ?? null) === room.roomId)}
+              files={files}
+              canEdit={canEdit}
+              className="px-4 sm:px-5"
+            />
+          </Panel>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const FILTER_LABEL = { room: 'Room', category: 'Category', store: 'Store', phase: 'Phase' };
+
+/**
+ * One "Filter" button that opens the choices, and the filters in use as chips you can remove
+ * (OD-75, Q25). The Status filter is gone: the sections do that job.
+ */
+function Filters({ search }: { search: ShoppingSearch }) {
+  const trpc = useTRPC();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const rooms = useQuery(trpc.rooms.list.queryOptions());
+  const categories = useQuery(trpc.categories.list.queryOptions());
+  const phases = useQuery(trpc.phases.list.queryOptions());
+  const stores = useQuery(trpc.shoppingLines.stores.queryOptions());
+  const jobs = useQuery(trpc.jobs.list.queryOptions());
+
+  const setFilter = (key: keyof ShoppingSearch, value: string) =>
+    void navigate({
+      to: '/shopping',
+      search: (prev: ShoppingSearch) => ({ ...prev, [key]: value === '' ? undefined : value }),
+      replace: true,
+    });
+
+  const nameOf: Record<keyof ShoppingSearch, (v: string) => string | undefined> = {
+    room: (v) => (v === 'house' ? 'Whole house' : rooms.data?.find((r) => r.id === v)?.name),
+    category: (v) => categories.data?.find((c) => c.id === v)?.name,
+    phase: (v) => phases.data?.find((p) => p.id === v)?.name,
+    store: (v) => v,
+    job: (v) => jobs.data?.find((j) => j.id === v)?.name,
+    status: (v) => SECTION_TITLE[v as ShoppingStatusInput],
+  };
+  const chipLabel: Record<keyof ShoppingSearch, string> = {
+    ...FILTER_LABEL,
+    job: 'For',
+    status: 'Status',
+  };
+  const active = (Object.keys(search) as (keyof ShoppingSearch)[]).filter(
+    (k) => search[k] !== undefined,
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? 'Hide filters' : active.length > 0 ? `Filter (${active.length})` : 'Filter'}
+        </Button>
+        {active.map((key) => {
+          const value = search[key] ?? '';
+          const label = `${chipLabel[key]}: ${nameOf[key](value) ?? '…'}`;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key, '')}
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-input bg-card px-3 text-base hover:bg-accent"
+            >
+              {label}
+              <X aria-hidden className="size-4" />
+              <span className="sr-only">, remove this filter</span>
+            </button>
+          );
+        })}
+        {active.length > 1 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => void navigate({ to: '/shopping', search: {}, replace: true })}
+          >
+            Show everything
+          </Button>
+        ) : null}
+      </div>
+      <div
+        id={panelId}
+        hidden={!open}
+        role="group"
+        aria-label="Show only"
+        className={cn(
+          'grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4',
+        )}
+      >
+        <FilterSelect
+          id="filter-room"
+          label={FILTER_LABEL.room}
+          value={search.room ?? ''}
+          onChange={(v) => setFilter('room', v)}
+          options={[
+            ['', 'All rooms'],
+            ['house', 'Whole house'],
+            ...(rooms.data ?? []).map((r) => [r.id, r.name] as const),
+          ]}
+        />
+        <FilterSelect
+          id="filter-category"
+          label={FILTER_LABEL.category}
+          value={search.category ?? ''}
+          onChange={(v) => setFilter('category', v)}
+          options={[
+            ['', 'All categories'],
+            ...(categories.data ?? []).map((c) => [c.id, c.name] as const),
+          ]}
+        />
+        <FilterSelect
+          id="filter-store"
+          label={FILTER_LABEL.store}
+          value={search.store ?? ''}
+          onChange={(v) => setFilter('store', v)}
+          options={[
+            ['', 'All stores'],
+            ...(stores.data ?? []).map((st) => [st.name, st.name] as const),
+          ]}
+        />
+        <FilterSelect
+          id="filter-phase"
+          label={FILTER_LABEL.phase}
+          value={search.phase ?? ''}
+          onChange={(v) => setFilter('phase', v)}
+          options={[['', 'All phases'], ...(phases.data ?? []).map((p) => [p.id, p.name] as const)]}
+        />
+      </div>
+    </div>
   );
 }
 

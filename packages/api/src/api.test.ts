@@ -1736,6 +1736,11 @@ describe('@reparo/api', () => {
         ['Whole house', 1, 3000],
       ]);
 
+      const atStore = rows(
+        await query(h, 'viewer', 'shoppingLines.list', { store: 'nowhere in particular' }),
+      );
+      expect(atStore).toEqual([]);
+
       const onlyA = (await query(h, 'viewer', 'shoppingLines.totals', { roomId: a.id }))
         .data as Section[];
       expect(onlyA.map((x) => [x.status, x.count, x.totalCents])).toEqual([
@@ -1761,6 +1766,10 @@ describe('@reparo/api', () => {
       await add('Two', 'Storey Mart');
       const snapped = await add('Three', 'storey mart  ');
       expect(snapped.store).toBe('Storey Mart');
+      const atStorey = rows(
+        await query(h, 'viewer', 'shoppingLines.list', { store: 'STOREY MART' }),
+      );
+      expect(atStorey.map((l) => l.name).sort()).toEqual(['One', 'Three', 'Two']);
       await add('Four', 'Other Shop');
 
       type Store = { name: string; count: number };

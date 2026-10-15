@@ -487,6 +487,8 @@ export const shoppingLineListSchema = z
     categoryId: idSchema,
     jobId: idSchema,
     status: z.enum(SHOPPING_STATUSES),
+    /** A store, matched in any case (Workflow polish, OD-75). */
+    store: z.string().trim().min(1).max(120),
   })
   .partial();
 export type ShoppingLineCreate = z.infer<typeof shoppingLineCreateSchema>;
