@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "better-ui": {
+      "source": "jakubkrehel/skills",
+      "sourceType": "github",
+      "skillPath": "skills/better-ui/SKILL.md",
+      "computedHash": "6f69968c0d1ed034753d64aa22f2bf4332f1471164f110db720d05faf76c3551"
+    },
     "claude-handoff": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -72,6 +78,11 @@
       "sourceType": "github",
       "skillPath": "skills/supabase/SKILL.md",
       "computedHash": "211141fd078b4b3645803868528d54221bc7755d24d5c8af45a366785c151dba"
+    },
+    "ui-taste": {
+      "source": "uizze.sh",
+      "sourceType": "well-known",
+      "computedHash": "9b73951ae54b7d1eb81e69bb2f47d1622b3813bbefbd6c0aaa36dfcf938f1f27"
     },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
