@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   shoppingLineCreateSchema,
@@ -119,8 +121,9 @@ function LineFields({
   const phaseId = useWatch({ control, name: 'phaseId' });
   const phaseJobs = jobs.filter((j) => j.phaseId === phaseId);
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
       <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
         <Field label="What it is" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
@@ -223,6 +226,9 @@ function LineFields({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

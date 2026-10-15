@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import {
@@ -152,6 +154,9 @@ function Pool({ budget }: { budget: Budget }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editingAdj, setEditingAdj] = useState<string | null>(null);
+  useReturnFocus(
+    editing ? 'edit-budget' : adding ? 'add-adjustment' : editingAdj ? `adj-${editingAdj}` : null,
+  );
   const update = useMutation(trpc.budget.update.mutationOptions());
   const createAdj = useMutation(trpc.budgetAdjustments.create.mutationOptions());
   const updateAdj = useMutation(trpc.budgetAdjustments.update.mutationOptions());
@@ -166,7 +171,12 @@ function Pool({ budget }: { budget: Budget }) {
           The budget
         </h2>
         {isAdmin && !editing ? (
-          <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setEditing(true)}
+            data-return-focus="edit-budget"
+          >
             Edit the starting balance
           </Button>
         ) : null}
@@ -249,6 +259,7 @@ function Pool({ budget }: { budget: Budget }) {
                         variant="ghost"
                         aria-label={`Edit ${a.note || 'adjustment'}`}
                         onClick={() => setEditingAdj(a.id)}
+                        data-return-focus={`adj-${a.id}`}
                       >
                         Edit
                       </Button>
@@ -297,7 +308,13 @@ function Pool({ budget }: { budget: Budget }) {
             />
           </div>
         ) : (
-          <Button type="button" variant="outline" className="mt-4" onClick={() => setAdding(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            onClick={() => setAdding(true)}
+            data-return-focus="add-adjustment"
+          >
             Add money in or out
           </Button>
         )
@@ -326,8 +343,9 @@ function BudgetForm({
     },
   });
   const errors = formState.errors;
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Starting balance" htmlFor="pool-start" error={errors.startingCents?.message}>
           <Input
@@ -357,6 +375,9 @@ function BudgetForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }
@@ -390,8 +411,9 @@ function AdjustmentForm({
   });
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <Field
           label="Amount"
@@ -427,6 +449,9 @@ function AdjustmentForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft } from 'lucide-react';
@@ -22,6 +23,7 @@ export function RoomDetail() {
   const { canEdit } = useMe();
   const room = useQuery(trpc.rooms.get.queryOptions({ id: roomId }));
   const [editing, setEditing] = useState(false);
+  useReturnFocus(editing ? 'edit-room' : null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries(trpc.rooms.pathFilter());
@@ -96,7 +98,12 @@ export function RoomDetail() {
               <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
             </div>
             {canEdit ? (
-              <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditing(true)}
+                data-return-focus="edit-room"
+              >
                 Edit room
               </Button>
             ) : null}

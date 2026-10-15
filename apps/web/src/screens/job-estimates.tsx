@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import {
@@ -46,6 +48,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
   });
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  useReturnFocus(adding ? `add-estimate-${job.id}` : editing ? `estimate-${editing}` : null);
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries(trpc.estimates.pathFilter()),
@@ -73,7 +76,12 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
           </p>
         </div>
         {canEdit && !adding ? (
-          <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setAdding(true)}
+            data-return-focus={`add-estimate-${job.id}`}
+          >
             Add an estimate
           </Button>
         ) : null}
@@ -292,7 +300,12 @@ function EstimateCard({
                 Choose this one
               </Button>
             ) : null}
-            <Button type="button" variant="ghost" onClick={onEdit}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onEdit}
+              data-return-focus={`estimate-${e.id}`}
+            >
               {e.status === 'requested' ? 'Add the amount' : 'Edit'}
               <span className="sr-only"> for {e.vendor.name}</span>
             </Button>
@@ -372,8 +385,9 @@ function EstimateForm({
       : null,
   );
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <Field label="Vendor" htmlFor={id('vendor')} error={errors.vendorId?.message}>
         <Controller
           control={control}
@@ -444,6 +458,9 @@ function EstimateForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   formatLength,
@@ -48,8 +50,10 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form
+      ref={formRef}
       onSubmit={(e) => void handleSubmit(onSubmit)(e)}
       className="grid gap-5"
       aria-describedby={serverError ? id('server-error') : undefined}
@@ -120,6 +124,9 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
           </Button>
         ) : null}
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

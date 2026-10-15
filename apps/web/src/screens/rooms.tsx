@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -20,6 +21,7 @@ export function Rooms() {
   const covers = useQuery(trpc.files.roomCovers.queryOptions());
   const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
   const [adding, setAdding] = useState(false);
+  useReturnFocus(adding ? 'add-room' : null);
   const create = useMutation(
     trpc.rooms.create.mutationOptions({
       onSuccess: async () => {
@@ -40,7 +42,7 @@ export function Rooms() {
         }
         action={
           canEdit && !adding ? (
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">
               Add a room
             </Button>
           ) : null
@@ -75,7 +77,12 @@ export function Rooms() {
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No rooms yet.</span>
           {canEdit ? (
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus="add-room"
+            >
               Add the first room
             </Button>
           ) : null}

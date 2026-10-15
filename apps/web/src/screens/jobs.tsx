@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ChevronRight } from 'lucide-react';
@@ -25,6 +26,7 @@ export function Jobs() {
   const jobs = useQuery(trpc.jobs.list.queryOptions());
   const phases = useQuery(trpc.phases.list.queryOptions());
   const [adding, setAdding] = useState(false);
+  useReturnFocus(adding ? 'add-job' : null);
 
   const groups = jobs.data && phases.data ? groupByPhase(phases.data, jobs.data) : null;
 
@@ -42,7 +44,7 @@ export function Jobs() {
         }
         action={
           canEdit && !adding ? (
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-job">
               Add a job
             </Button>
           ) : null
@@ -74,7 +76,12 @@ export function Jobs() {
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No jobs yet.</span>
           {canEdit ? (
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus="add-job"
+            >
               Add the first job
             </Button>
           ) : null}

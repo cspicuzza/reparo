@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import {
@@ -163,6 +165,7 @@ function CostLines({
   const invalidate = useInvalidateMoney();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  useReturnFocus(adding ? `add-cost-${jobId}` : editing ? `cost-${editing}` : null);
   const create = useMutation(trpc.costLines.create.mutationOptions());
   const update = useMutation(trpc.costLines.update.mutationOptions());
   const remove = useMutation(trpc.costLines.remove.mutationOptions({ onSuccess: invalidate }));
@@ -212,6 +215,7 @@ function CostLines({
                       variant="ghost"
                       aria-label={`Edit ${l.description}`}
                       onClick={() => setEditing(l.id)}
+                      data-return-focus={`cost-${l.id}`}
                     >
                       Edit
                     </Button>
@@ -252,7 +256,13 @@ function CostLines({
             />
           </div>
         ) : (
-          <Button type="button" variant="outline" className="mt-3" onClick={() => setAdding(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => setAdding(true)}
+            data-return-focus={`add-cost-${jobId}`}
+          >
             {lines.length === 0 ? 'Add the price' : 'Add a cost'}
           </Button>
         )
@@ -293,8 +303,9 @@ function CostLineForm({
   });
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
         <Field
           label="What for"
@@ -322,6 +333,9 @@ function CostLineForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }
@@ -341,6 +355,7 @@ function Payments({
   const invalidate = useInvalidateMoney();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
+  useReturnFocus(adding ? `add-pay-${jobId}` : editing ? `pay-${editing}` : null);
   const create = useMutation(trpc.payments.create.mutationOptions());
   const update = useMutation(trpc.payments.update.mutationOptions());
   const remove = useMutation(trpc.payments.remove.mutationOptions({ onSuccess: invalidate }));
@@ -413,6 +428,7 @@ function Payments({
                       variant="ghost"
                       aria-label={`Edit the ${money(p.amountCents)} payment`}
                       onClick={() => setEditing(p.id)}
+                      data-return-focus={`pay-${p.id}`}
                     >
                       Edit
                     </Button>
@@ -453,7 +469,13 @@ function Payments({
             />
           </div>
         ) : (
-          <Button type="button" variant="outline" className="mt-3" onClick={() => setAdding(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => setAdding(true)}
+            data-return-focus={`add-pay-${jobId}`}
+          >
             Record a payment
           </Button>
         )
@@ -492,8 +514,9 @@ function PaymentForm({
   );
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
           <Input
@@ -524,6 +547,9 @@ function PaymentForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobRoomFormSchema, type JobRoomForm, type JobRoomFormInput } from '@reparo/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -39,8 +41,10 @@ export function JobRoomEditor({
   });
   const id = (f: string) => `${idPrefix}-${f}`;
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form
+      ref={formRef}
       onSubmit={(e) =>
         void handleSubmit(async (values) => {
           await update.mutateAsync({ id: jobRoom.id, ...values }).catch(() => undefined);
@@ -72,6 +76,9 @@ export function JobRoomEditor({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

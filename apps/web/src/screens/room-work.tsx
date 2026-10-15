@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -19,6 +20,7 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
   const { canEdit } = useMe();
   const jobs = useQuery(trpc.jobs.forRoom.queryOptions({ roomId }));
   const [editing, setEditing] = useState<string | null>(null);
+  useReturnFocus(editing ? `jr-${editing}` : null);
 
   if (jobs.isPending) return <p className="text-muted-foreground">Loading jobs…</p>;
   if (jobs.error) return <p role="alert">Couldn&apos;t load jobs: {jobs.error.message}</p>;
@@ -155,7 +157,13 @@ function JobRow({
           </div>
           {canEdit ? (
             <div className="sm:text-right">
-              <Button type="button" onClick={onEdit} variant="ghost" className="px-0 sm:px-3">
+              <Button
+                type="button"
+                onClick={onEdit}
+                data-return-focus={`jr-${j.id}`}
+                variant="ghost"
+                className="px-0 sm:px-3"
+              >
                 Edit spec &amp; notes
               </Button>
             </div>

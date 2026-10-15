@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -15,6 +16,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
   const lines = useQuery(trpc.shoppingLines.list.queryOptions({ roomId }));
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
+  useReturnFocus(adding ? `add-line-${roomId}` : null);
   const create = useMutation(
     trpc.shoppingLines.create.mutationOptions({
       onSuccess: async () => {
@@ -53,7 +55,12 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
       ) : (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {canEdit ? (
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus={`add-line-${roomId}`}
+            >
               Add something for {roomName}
             </Button>
           ) : null}

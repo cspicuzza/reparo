@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import { vendorCreateSchema, type VendorCreate, type VendorCreateInput } from '@reparo/shared';
@@ -42,6 +44,7 @@ export function Vendors() {
     enabled: (vendors.data?.length ?? 0) > 0,
   });
   const [adding, setAdding] = useState(false);
+  useReturnFocus(adding ? 'add-vendor' : null);
   const invalidate = () => queryClient.invalidateQueries(trpc.vendors.pathFilter());
   const create = useMutation(
     trpc.vendors.create.mutationOptions({
@@ -61,7 +64,7 @@ export function Vendors() {
         description="The people you hire. Add them here or right from a job."
         action={
           canEdit && !adding ? (
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-vendor">
               Add a vendor
             </Button>
           ) : null
@@ -98,7 +101,12 @@ export function Vendors() {
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No vendors yet.</span>
           {canEdit ? (
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus="add-vendor"
+            >
               Add the first vendor
             </Button>
           ) : null}
@@ -175,6 +183,7 @@ function VendorRow({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  useReturnFocus(editing ? `vendor-${vendor.id}` : null);
   const [confirming, setConfirming] = useState(false);
   const invalidate = () =>
     Promise.all([
@@ -228,6 +237,7 @@ function VendorRow({
               variant="ghost"
               aria-label={`Edit ${vendor.name}`}
               onClick={() => setEditing(true)}
+              data-return-focus={`vendor-${vendor.id}`}
             >
               Edit
             </Button>
@@ -373,8 +383,9 @@ function VendorForm({
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
@@ -406,6 +417,9 @@ function VendorForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

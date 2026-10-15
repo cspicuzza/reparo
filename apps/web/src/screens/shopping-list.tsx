@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -68,6 +70,7 @@ function LineRow({
   const trpc = useTRPC();
   const invalidate = useInvalidateShopping();
   const [mode, setMode] = useState<Mode>('view');
+  useReturnFocus(mode === 'view' ? null : `line-${mode}-${line.id}`);
   const [showPictures, setShowPictures] = useState(false);
   const pictures = files.filter((f) => f.kind === 'product_image');
   const receipts = files.filter((f) => f.kind === 'receipt');
@@ -225,12 +228,18 @@ function LineRow({
                   variant="outline"
                   className="ml-3"
                   onClick={() => setMode('purchase')}
+                  data-return-focus={`line-purchase-${line.id}`}
                 >
                   Mark as purchased
                 </Button>
               ) : null}
               {line.status === 'purchased' ? (
-                <Button type="button" variant="ghost" onClick={() => setMode('return')}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setMode('return')}
+                  data-return-focus={`line-return-${line.id}`}
+                >
                   Mark as returned
                 </Button>
               ) : null}
@@ -254,6 +263,7 @@ function LineRow({
                 variant="ghost"
                 aria-label={`Edit ${line.name}`}
                 onClick={() => setMode('edit')}
+                data-return-focus={`line-edit-${line.id}`}
               >
                 Edit
               </Button>
@@ -310,8 +320,10 @@ function AmountForm({
     resolver: zodResolver(amountFormSchema),
     defaultValues: { amount: centsToInput(initial) },
   });
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
     <form
+      ref={formRef}
       onSubmit={(e) => void handleSubmit((v) => onSubmit(v.amount))(e)}
       className="grid gap-3 rounded-xl border border-border bg-background p-4"
     >
@@ -338,6 +350,9 @@ function AmountForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

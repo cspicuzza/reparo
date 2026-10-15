@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobCreateSchema, type JobCreate, type JobCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -155,8 +157,9 @@ function JobForm({
     );
   };
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <Field
           label="Name"
@@ -265,6 +268,9 @@ function JobForm({
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }

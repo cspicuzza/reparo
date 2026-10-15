@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -33,6 +34,7 @@ export function Shopping() {
   const jobs = useQuery(trpc.jobs.list.queryOptions());
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
+  useReturnFocus(adding ? 'add-line' : null);
   const create = useMutation(
     trpc.shoppingLines.create.mutationOptions({
       onSuccess: async () => {
@@ -58,7 +60,7 @@ export function Shopping() {
         description="Everything to buy, To buy first. Planned phases' lines don't count against the money until the phase starts."
         action={
           canEdit && !adding ? (
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-line">
               Add something
             </Button>
           ) : null
@@ -156,7 +158,12 @@ export function Shopping() {
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>{filtered ? 'Nothing matches these filters.' : 'Nothing on the list yet.'}</span>
           {canEdit && !filtered ? (
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus="add-line"
+            >
               Add the first thing
             </Button>
           ) : null}

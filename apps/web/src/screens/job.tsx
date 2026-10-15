@@ -1,3 +1,4 @@
+import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, Mail, Phone } from 'lucide-react';
@@ -30,6 +31,7 @@ export function JobDetail() {
   const { canEdit } = useMe();
   const job = useQuery(trpc.jobs.get.queryOptions({ id: jobId }));
   const [editing, setEditing] = useState(false);
+  useReturnFocus(editing ? 'edit-job' : null);
 
   if (job.isPending) return <p className="text-muted-foreground">Loading…</p>;
   if (job.error) {
@@ -56,7 +58,12 @@ export function JobDetail() {
             description={j.phase.name}
             action={
               canEdit && !editing ? (
-                <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditing(true)}
+                  data-return-focus="edit-job"
+                >
                   Edit job
                 </Button>
               ) : null
@@ -103,6 +110,7 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
+  useReturnFocus(editingRoom ? `jr-${editingRoom}` : null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
   const invalidate = () =>
     Promise.all([
@@ -275,6 +283,7 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
                       <Button
                         type="button"
                         onClick={() => setEditingRoom(r.id)}
+                        data-return-focus={`jr-${r.id}`}
                         aria-label={`Edit spec and notes for ${r.room.name}`}
                         variant="ghost"
                         className="px-0 sm:px-3"

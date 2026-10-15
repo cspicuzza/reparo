@@ -1,3 +1,5 @@
+import { UnsavedGuard } from '@/components/unsaved-guard';
+import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   PHASE_STATUSES,
@@ -26,6 +28,7 @@ export function Phases() {
   const phases = useQuery(trpc.phases.list.queryOptions());
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  useReturnFocus(adding ? 'add-phase' : editingId ? `phase-${editingId}` : null);
   const invalidate = () => queryClient.invalidateQueries(trpc.phases.pathFilter());
   const create = useMutation(
     trpc.phases.create.mutationOptions({
@@ -51,7 +54,7 @@ export function Phases() {
         description="The renovation in stages. Work and money belong to a phase."
         action={
           isAdmin && !adding ? (
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">
               Add a phase
             </Button>
           ) : null
@@ -120,6 +123,7 @@ export function Phases() {
                         update.reset();
                         setEditingId(phase.id);
                       }}
+                      data-return-focus={`phase-${phase.id}`}
                       variant="ghost"
                     >
                       Edit
@@ -184,8 +188,9 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
   const date = (name: 'startsOn' | 'endsOn') =>
     register(name, { setValueAs: (v: unknown) => (v === '' ? null : v) });
 
+  const formRef = useFocusFirstField<HTMLFormElement>();
   return (
-    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
+    <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-5">
       <div className="grid gap-5 sm:grid-cols-[1fr_12rem]">
         <Field label="Name" htmlFor={id('name')} error={errors.name?.message}>
           <Input id={id('name')} autoComplete="off" {...register('name')} />
@@ -229,6 +234,9 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
           Cancel
         </Button>
       </div>
+      <UnsavedGuard
+        when={formState.isDirty && !formState.isSubmitting && !formState.isSubmitSuccessful}
+      />
     </form>
   );
 }
