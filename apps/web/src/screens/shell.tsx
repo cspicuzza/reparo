@@ -1,7 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate } from '@tanstack/react-router';
-import { Hammer, House, LayoutGrid, LogOut } from 'lucide-react';
-import type { ComponentType } from 'react';
+import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import {
+  CalendarRange,
+  Contact,
+  Hammer,
+  House,
+  LayoutGrid,
+  LogOut,
+  Menu as MenuIcon,
+} from 'lucide-react';
+import { useState, type ComponentType } from 'react';
 import { LogoMark } from '@/components/logo';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -13,24 +21,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { signOut } from '@/lib/supabase';
+import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 
-type Section = {
-  name: string;
-  to: '/' | '/rooms' | '/jobs' | '/phases';
-  icon?: ComponentType<{ 'aria-hidden'?: boolean }>;
-  /** Phones reach Phases from Home; the bottom bar keeps to the places used every day. */
-  phone: boolean;
-};
+type Path = '/' | '/rooms' | '/jobs' | '/phases' | '/vendors';
+type Section = { name: string; to: Path; icon: ComponentType<{ 'aria-hidden'?: boolean }> };
 
-/** Money joins both bars when M2 builds it; until then it isn't shown (no dead links). */
-const sections: Section[] = [
-  { name: 'Home', to: '/', icon: House, phone: true },
-  { name: 'Rooms', to: '/rooms', icon: LayoutGrid, phone: true },
-  { name: 'Jobs', to: '/jobs', icon: Hammer, phone: true },
-  { name: 'Phases', to: '/phases', phone: false },
-];
+/*
+ * Navigation (OD-48, Q25/Q27). Laptop: one top bar. Phone: the places used every day stay
+ * visible in the bottom bar, the rest sit in a slide-out Menu panel (hidden navigation is used
+ * less, so only the less-used sections go there). Shopping joins the bar and Money joins the
+ * panel in M3; nothing is shown before it exists (no dead links). Vendors is reached from the
+ * Jobs page on a laptop.
+ */
+const HOME: Section = { name: 'Home', to: '/', icon: House };
+const ROOMS: Section = { name: 'Rooms', to: '/rooms', icon: LayoutGrid };
+const JOBS: Section = { name: 'Jobs', to: '/jobs', icon: Hammer };
+const PHASES: Section = { name: 'Phases', to: '/phases', icon: CalendarRange };
+const VENDORS: Section = { name: 'Vendors', to: '/vendors', icon: Contact };
+
+const TOP_BAR = [HOME, ROOMS, JOBS, PHASES];
+const BOTTOM_BAR = [HOME, ROOMS, JOBS];
+const MENU_PANEL = [PHASES, VENDORS];
+
+/** Whether `pathname` is inside `to` (Home only matches itself). */
+const isIn = (pathname: string, to: Path) =>
+  to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`);
 
 const ROLE_LABEL = { admin: 'Admin', editor: 'Can edit', viewer: 'Can view' } as const;
 
@@ -61,7 +79,7 @@ export function Shell() {
           </Link>
           <nav aria-label="Sections" className="hidden sm:block">
             <ul className="flex items-center gap-1">
-              {sections.map(({ name, to }) => (
+              {TOP_BAR.map(({ name, to }) => (
                 <li key={name}>
                   <Link
                     to={to}
@@ -81,7 +99,12 @@ export function Shell() {
           </nav>
           {me.data ? (
             <DropdownMenu>
-              <DropdownMenuTrigger className={buttonVariants({ variant: 'outline' })}>
+              <DropdownMenuTrigger
+                className={buttonVariants({
+                  variant: 'outline',
+                  className: 'hidden sm:inline-flex',
+                })}
+              >
                 {me.data.member.displayName}
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -99,7 +122,7 @@ export function Shell() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <span className="min-h-11" aria-hidden="true" />
+            <span className="hidden min-h-11 sm:block" aria-hidden="true" />
           )}
         </div>
       </header>
@@ -113,27 +136,101 @@ export function Shell() {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_var(--float-shadow)] sm:hidden"
       >
         <ul className="flex">
-          {sections
-            .filter((s) => s.phone)
-            .map(({ name, to, icon: Icon }) => (
-              <li key={name} className="flex-1">
+          {BOTTOM_BAR.map(({ name, to, icon: Icon }) => (
+            <li key={name} className="flex-1">
+              <Link
+                to={to}
+                activeOptions={{ exact: to === '/' }}
+                className={TAB_CLASS}
+                activeProps={{
+                  className: TAB_ACTIVE_CLASS,
+                  'aria-current': 'page',
+                }}
+              >
+                <Icon aria-hidden />
+                {name}
+              </Link>
+            </li>
+          ))}
+          <li className="flex-1">
+            <MenuPanel member={me.data?.member} onSignOut={onSignOut} />
+          </li>
+        </ul>
+      </nav>
+    </div>
+  );
+}
+
+const TAB_CLASS =
+  'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-sm text-muted-foreground [&_svg]:size-6';
+const TAB_ACTIVE_CLASS = 'font-semibold text-foreground! shadow-[inset_0_3px_0_var(--tape)]';
+
+/**
+ * The phone's Menu tab and the panel it slides out: the less-used sections and the account.
+ * The tab carries the current-page marker while one of the panel's pages is open.
+ */
+function MenuPanel({
+  member,
+  onSignOut,
+}: {
+  member: { displayName: string; role: keyof typeof ROLE_LABEL } | undefined;
+  onSignOut: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
+  const here = MENU_PANEL.some((sec) => isIn(pathname, sec.to));
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger className={cn(TAB_CLASS, here && TAB_ACTIVE_CLASS)}>
+        <MenuIcon aria-hidden />
+        Menu
+      </SheetTrigger>
+      <SheetContent side="right">
+        <SheetHeader>
+          <SheetTitle>Menu</SheetTitle>
+        </SheetHeader>
+        <nav aria-label="More sections" className="px-2">
+          <ul>
+            {MENU_PANEL.map(({ name, to, icon: Icon }) => (
+              <li key={name}>
                 <Link
                   to={to}
-                  activeOptions={{ exact: to === '/' }}
-                  className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-sm text-muted-foreground [&_svg]:size-6"
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-lg text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-6"
                   activeProps={{
-                    className: 'font-semibold text-foreground! shadow-[inset_0_3px_0_var(--tape)]',
+                    className: 'font-semibold text-foreground! shadow-[inset_3px_0_0_var(--tape)]',
                     'aria-current': 'page',
                   }}
                 >
-                  {Icon ? <Icon aria-hidden /> : null}
+                  <Icon aria-hidden />
                   {name}
                 </Link>
               </li>
             ))}
-        </ul>
-      </nav>
-    </div>
+          </ul>
+        </nav>
+        {member ? (
+          <div className="mt-auto border-t border-border px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <p className="text-sm text-muted-foreground">Signed in as</p>
+            <p className="font-semibold">{member.displayName}</p>
+            <p className="text-sm text-muted-foreground">{ROLE_LABEL[member.role]}</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 w-full"
+              onClick={() => {
+                setOpen(false);
+                void onSignOut();
+              }}
+            >
+              <LogOut aria-hidden className="size-5" />
+              Sign out
+            </Button>
+          </div>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }
 
