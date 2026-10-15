@@ -8,6 +8,7 @@ import { describeRoom, roomProgressText } from '@/lib/rooms';
 import { DimensionLine } from '@/components/dimension';
 import { PlanGrid } from '@/components/plan-grid';
 import { RoomForm } from './room-form';
+import { RoomPictures } from './room-pictures';
 import { RoomShopping } from './room-shopping';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -87,10 +88,7 @@ export function RoomDetail() {
         </div>
       ) : (
         <>
-          {/* Renderings arrive with uploads (M3); until then a placeholder, and no picture buttons. */}
-          <PlanGrid className="mt-2 h-48 rounded-xl sm:h-80">
-            No picture of the {r.name} yet
-          </PlanGrid>
+          <RoomCover roomId={r.id} roomName={r.name} />
 
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
@@ -131,6 +129,18 @@ export function RoomDetail() {
                 <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
               </div>
             ) : null}
+          </section>
+
+          <section
+            aria-labelledby="room-pictures"
+            className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+          >
+            <h2 id="room-pictures" className="text-2xl">
+              Pictures
+            </h2>
+            <div className="mt-4">
+              <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
+            </div>
           </section>
 
           <section
@@ -195,5 +205,32 @@ export function RoomDetail() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * The room's cover rendering at the top of the page (M4, OD-57; Q16), or the plan-grid
+ * placeholder until one is chosen. Shares the room's files query with the Pictures section.
+ */
+function RoomCover({ roomId, roomName }: { roomId: string; roomName: string }) {
+  const trpc = useTRPC();
+  const files = useQuery(trpc.files.list.queryOptions({ ownerType: 'room', ownerId: roomId }));
+  const cover = files.data?.find((f) => f.isCover && f.url);
+  if (cover?.url) {
+    return (
+      <img
+        src={cover.url}
+        alt={cover.caption || `The ${roomName}, as it will look`}
+        className="mt-2 h-48 w-full rounded-xl border border-border bg-inset object-cover sm:h-80"
+      />
+    );
+  }
+  const hasRenderings = files.data?.some((f) => f.kind === 'rendering') ?? false;
+  return (
+    <PlanGrid className="mt-2 h-48 rounded-xl sm:h-80">
+      {hasRenderings
+        ? `No cover picture yet. Open a rendering below and make it the cover.`
+        : `No picture of the ${roomName} yet`}
+    </PlanGrid>
   );
 }

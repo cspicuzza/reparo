@@ -182,6 +182,7 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
     .returning();
   if (!row) throw new Error('insert returned no row');
   const [view] = await withUrls(storage, [{ file: row, jobName: null }], null);
+  if (!view) throw new Error('no view for the new file');
   return view;
 }
 
@@ -289,4 +290,21 @@ export async function setRoomCover(db: Db, { roomId, fileId }: RoomCover) {
     .where(eq(rooms.id, roomId))
     .returning();
   return row;
+}
+
+/** Each room's cover picture link, for the Rooms list (Q16). Rooms without one are absent. */
+export async function listRoomCovers(db: Db, storage: Storage) {
+  const rows = await db
+    .select({ roomId: rooms.id, path: files.path, caption: files.caption })
+    .from(rooms)
+    .innerJoin(files, and(eq(files.id, rooms.coverFileId), live()))
+    .where(isNull(rooms.deletedAt));
+  const urls = await storage.createViewUrls(
+    rows.map((r) => r.path),
+    VIEW_SECONDS,
+  );
+  return rows.flatMap((r) => {
+    const url = urls.get(r.path);
+    return url ? [{ roomId: r.roomId, url, caption: r.caption }] : [];
+  });
 }

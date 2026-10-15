@@ -1371,12 +1371,21 @@ describe('@reparo/api', () => {
       await mutate(h, 'editor', 'rooms.setCover', { roomId: kitchen.id, fileId: first.id });
       const covered = await list();
       expect(covered[0]).toMatchObject({ id: first.id, isCover: true });
+      const coversRes = await query(h, 'viewer', 'files.roomCovers');
+      expect(coversRes.message).toBeUndefined();
+      const covers = coversRes.data as {
+        roomId: string;
+        url: string;
+      }[];
+      expect(covers.map((c) => c.roomId)).toEqual([kitchen.id]);
+      expect(covers[0]?.url).toMatch(/^fake:\/\/files\/room\//);
 
       expect((await mutate(h, 'viewer', 'files.remove', { id: first.id })).status).toBe(403);
       expect((await mutate(h, 'editor', 'files.remove', { id: first.id })).status).toBe(200);
       const after = await list();
       expect(after.map((f) => f.id).sort()).toEqual([idea.id, second.id].sort());
       expect(after.every((f) => !f.isCover)).toBe(true);
+      expect((await query(h, 'viewer', 'files.roomCovers')).data).toEqual([]);
       expect((await mutate(h, 'editor', 'files.remove', { id: first.id })).status).toBe(404);
     }));
 

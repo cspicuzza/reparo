@@ -17,6 +17,8 @@ export function Rooms() {
   const queryClient = useQueryClient();
   const { canEdit } = useMe();
   const rooms = useQuery(trpc.rooms.list.queryOptions());
+  const covers = useQuery(trpc.files.roomCovers.queryOptions());
+  const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
   const [adding, setAdding] = useState(false);
   const create = useMutation(
     trpc.rooms.create.mutationOptions({
@@ -85,6 +87,7 @@ export function Rooms() {
             const { dims, sqft } = describeRoom(room);
             const size = dims ? (sqft != null ? `${dims}, ${sqft} sq ft` : dims) : 'Not measured';
             const progress = roomProgressText(room.progress);
+            const cover = coverOf.get(room.id);
             return (
               <li key={room.id}>
                 <Link
@@ -92,6 +95,17 @@ export function Rooms() {
                   params={{ roomId: room.id }}
                   className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
                 >
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-14 w-20 shrink-0 rounded-lg border border-border bg-inset object-cover"
+                    />
+                  ) : (
+                    <PlanGrid className="h-14 w-20 shrink-0 rounded-lg p-0" />
+                  )}
                   <span className="min-w-0 flex-1">
                     <span className="block text-xl font-semibold">{room.name}</span>
                     <span className="block text-sm text-muted-foreground tabular-nums">{size}</span>
