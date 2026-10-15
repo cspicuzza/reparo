@@ -67,6 +67,8 @@ function ShoppingRow({
   onOpen: () => void;
 }) {
   const [buying, setBuying] = useState(false);
+  // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
+  const [leaving, setLeaving] = useState(false);
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
   const receipts = files.filter((f) => f.kind === 'receipt');
@@ -111,7 +113,12 @@ function ShoppingRow({
   ) : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className={cn(
+        'flex flex-col gap-3 transition-[opacity,translate] duration-150 ease-out',
+        leaving && '-translate-y-3 opacity-0',
+      )}
+    >
       {/* Phone: picture, name and price, with the buttons underneath. Laptop: one line, so a
           long list stays short (OD-78). */}
       <div
@@ -147,7 +154,19 @@ function ShoppingRow({
         </span>
         {actions ? <div className="col-span-full sm:col-span-1">{actions}</div> : null}
       </div>
-      {buying ? <PurchaseForm line={line} onDone={() => setBuying(false)} /> : null}
+      {buying ? (
+        <PurchaseForm
+          line={line}
+          onDone={() => setBuying(false)}
+          onLeaving={async (refresh) => {
+            setLeaving(true);
+            await new Promise((done) => setTimeout(done, 150));
+            await refresh();
+            // Where the list shows every status, the row stays: bring it back.
+            setLeaving(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -156,7 +175,16 @@ function ShoppingRow({
  * "What was paid", prefilled with the price, then the line moves to Purchased and a message
  * offers Undo (Q28). Money keeps a labelled button (web.md → Saving).
  */
-function PurchaseForm({ line, onDone }: { line: ShoppingLine; onDone: () => void }) {
+function PurchaseForm({
+  line,
+  onDone,
+  onLeaving,
+}: {
+  line: ShoppingLine;
+  onDone: () => void;
+  /** Fade the row out, then refresh the list without it. */
+  onLeaving: (refresh: () => Promise<unknown>) => Promise<void>;
+}) {
   const trpc = useTRPC();
   const invalidate = useInvalidateShopping();
   const toasts = useToasts();
@@ -175,8 +203,8 @@ function PurchaseForm({ line, onDone }: { line: ShoppingLine; onDone: () => void
         await update
           .mutateAsync({ id: line.id, status: 'purchased', paidCents })
           .then(async () => {
-            await invalidate();
             onDone();
+            await onLeaving(invalidate);
             toasts.add({
               title: 'Marked as purchased',
               description: `${line.name}, ${money(paidCents)} paid`,

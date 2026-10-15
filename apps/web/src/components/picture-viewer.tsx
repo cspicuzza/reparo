@@ -173,7 +173,7 @@ function ViewerBody({
         )}
       </div>
 
-      <div className="flex max-h-[45%] flex-col gap-3 overflow-y-auto border-t border-border px-4 py-3">
+      <div className="flex max-h-[45%] flex-col gap-3 overflow-y-auto overscroll-contain border-t border-border px-4 py-3">
         {canMove ? (
           <div className="flex justify-between gap-2">
             <Button type="button" variant="outline" onClick={() => go(-1)}>

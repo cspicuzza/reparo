@@ -9,6 +9,7 @@ import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
+import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui/button';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMe } from '@/lib/me';
@@ -23,7 +24,6 @@ import {
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
-import { cn } from '@/lib/utils';
 import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingLinePanel } from './shopping-line-panel';
 import { ShoppingRows } from './shopping-list';
@@ -226,7 +226,7 @@ function ShoppingSection({
           </Button>
         ) : null}
       </div>
-      <div id={bodyId} hidden={!open} className="mt-3 flex flex-col gap-4">
+      <Reveal open={open} id={bodyId} className="mt-3 flex flex-col gap-4">
         {section.rooms.map((room) => (
           <Panel
             key={room.roomId ?? 'house'}
@@ -250,7 +250,7 @@ function ShoppingSection({
             />
           </Panel>
         ))}
-      </div>
+      </Reveal>
     </section>
   );
 }
@@ -334,54 +334,51 @@ function Filters({ search }: { search: ShoppingSearch }) {
           </Button>
         ) : null}
       </div>
-      <div
-        id={panelId}
-        hidden={!open}
-        role="group"
-        aria-label="Show only"
-        className={cn(
-          'grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4',
-        )}
-      >
-        <FilterSelect
-          id="filter-room"
-          label={FILTER_LABEL.room}
-          value={search.room ?? ''}
-          onChange={(v) => setFilter('room', v)}
-          options={[
-            ['', 'All rooms'],
-            ['house', 'Whole house'],
-            ...(rooms.data ?? []).map((r) => [r.id, r.name] as const),
-          ]}
-        />
-        <FilterSelect
-          id="filter-category"
-          label={FILTER_LABEL.category}
-          value={search.category ?? ''}
-          onChange={(v) => setFilter('category', v)}
-          options={[
-            ['', 'All categories'],
-            ...(categories.data ?? []).map((c) => [c.id, c.name] as const),
-          ]}
-        />
-        <FilterSelect
-          id="filter-store"
-          label={FILTER_LABEL.store}
-          value={search.store ?? ''}
-          onChange={(v) => setFilter('store', v)}
-          options={[
-            ['', 'All stores'],
-            ...(stores.data ?? []).map((st) => [st.name, st.name] as const),
-          ]}
-        />
-        <FilterSelect
-          id="filter-phase"
-          label={FILTER_LABEL.phase}
-          value={search.phase ?? ''}
-          onChange={(v) => setFilter('phase', v)}
-          options={[['', 'All phases'], ...(phases.data ?? []).map((p) => [p.id, p.name] as const)]}
-        />
-      </div>
+      <Reveal open={open} id={panelId} role="group" aria-label="Show only">
+        <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FilterSelect
+            id="filter-room"
+            label={FILTER_LABEL.room}
+            value={search.room ?? ''}
+            onChange={(v) => setFilter('room', v)}
+            options={[
+              ['', 'All rooms'],
+              ['house', 'Whole house'],
+              ...(rooms.data ?? []).map((r) => [r.id, r.name] as const),
+            ]}
+          />
+          <FilterSelect
+            id="filter-category"
+            label={FILTER_LABEL.category}
+            value={search.category ?? ''}
+            onChange={(v) => setFilter('category', v)}
+            options={[
+              ['', 'All categories'],
+              ...(categories.data ?? []).map((c) => [c.id, c.name] as const),
+            ]}
+          />
+          <FilterSelect
+            id="filter-store"
+            label={FILTER_LABEL.store}
+            value={search.store ?? ''}
+            onChange={(v) => setFilter('store', v)}
+            options={[
+              ['', 'All stores'],
+              ...(stores.data ?? []).map((st) => [st.name, st.name] as const),
+            ]}
+          />
+          <FilterSelect
+            id="filter-phase"
+            label={FILTER_LABEL.phase}
+            value={search.phase ?? ''}
+            onChange={(v) => setFilter('phase', v)}
+            options={[
+              ['', 'All phases'],
+              ...(phases.data ?? []).map((p) => [p.id, p.name] as const),
+            ]}
+          />
+        </div>
+      </Reveal>
     </div>
   );
 }

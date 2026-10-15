@@ -31,7 +31,7 @@ export function StatusBadge({ status }: { status: WorkStatusInput }) {
   return (
     <span
       className={cn(
-        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap',
+        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150',
         bg,
         fg,
       )}
@@ -73,7 +73,7 @@ export function StatusSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as WorkStatusInput)}
         className={cn(
-          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold disabled:opacity-50',
+          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
           bg,
           fg,
         )}
@@ -100,7 +100,7 @@ export function PhaseStatusBadge({ status }: { status: PhaseStatusInput }) {
   return (
     <span
       className={cn(
-        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap',
+        'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150',
         bg,
         fg,
       )}
@@ -141,7 +141,7 @@ export function PhaseStatusSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as PhaseStatusInput)}
         className={cn(
-          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold disabled:opacity-50',
+          'min-h-11 rounded-lg border border-input pr-3 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
           bg,
           fg,
         )}

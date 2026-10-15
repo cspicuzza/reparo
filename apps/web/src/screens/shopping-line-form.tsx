@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
+import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui/button';
 import { centsToInput } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
@@ -219,9 +220,9 @@ function LineFields({
             (how many, phase, job, model number)
           </span>
         </Button>
-        <div
+        <Reveal
+          open={more || moreErrors}
           id={id('more')}
-          hidden={!(more || moreErrors)}
           className="mt-3 grid gap-5 @lg:grid-cols-2"
         >
           <Field label="How many" htmlFor={id('qty')} error={errors.quantity?.message}>
@@ -265,7 +266,7 @@ function LineFields({
           <Field label="Model number" htmlFor={id('model')} error={errors.modelNumber?.message}>
             <Input id={id('model')} autoComplete="off" {...register('modelNumber')} />
           </Field>
-        </div>
+        </Reveal>
       </div>
 
       {serverError ? <FormError>{serverError}</FormError> : null}

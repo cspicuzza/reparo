@@ -150,6 +150,16 @@
   --text-4xl: 2.75rem;
   --text-4xl--line-height: 1.08;
 
+  /* A save landing: the check grows in from a quarter size and comes into focus (OD-81). */
+  --animate-saved-in: saved-in 300ms cubic-bezier(0.2, 0, 0, 1) both;
+  @keyframes saved-in {
+    from {
+      opacity: 0;
+      scale: 0.25;
+      filter: blur(4px);
+    }
+  }
+
   /* The one fun moment: the logo's stitch closes when a job is completed (lib/mended.ts). */
   --animate-mend: mend 900ms ease-in-out;
   @keyframes mend {
@@ -190,9 +200,14 @@
   }
 }
 
+/* Reduced motion keeps short opacity fades and drops movement, scale and blur (Workflow polish,
+   Q6; web.md → Motion): a fade still shows that something changed without moving anything. */
 @media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
+  *,
+  *::before,
+  *::after {
     animation: none !important;
+    transition-property: opacity !important;
+    transition-duration: 150ms !important;
   }
 }

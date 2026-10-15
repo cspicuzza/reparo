@@ -27,7 +27,12 @@ export function SaveState({
         {status === 'saving' ? <span className="text-muted-foreground">Saving…</span> : null}
         {status === 'saved' ? (
           <>
-            <Check aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
+            <Check
+              aria-hidden
+              absoluteStrokeWidth
+              strokeWidth={2}
+              className="size-4 animate-saved-in"
+            />
             <span>
               Saved<span className="sr-only">: {what}</span>
             </span>

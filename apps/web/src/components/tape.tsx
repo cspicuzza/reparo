@@ -45,7 +45,19 @@ export function TapeStrip(props: TapeProps) {
     >
       <rect x="0" y="0" width="1000" height={h} rx="3" className="fill-tape" />
       {filled > 0 ? (
-        <rect x="0" y={band} width={filled * 1000} height={h - band} className="fill-tape-ink" />
+        <rect
+          x="0"
+          y={band}
+          width="1000"
+          height={h - band}
+          // Scaled rather than resized, so a new value slides in (OD-81) without layout work.
+          style={{
+            transform: `scaleX(${filled})`,
+            transformBox: 'fill-box',
+            transformOrigin: 'left',
+          }}
+          className="fill-tape-ink transition-transform duration-300 ease-out"
+        />
       ) : null}
       {ticks.map((t) => (
         <line
