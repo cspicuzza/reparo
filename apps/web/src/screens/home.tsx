@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
 import { buttonVariants } from '@/components/ui/button';
 import { MoneyTape } from '@/components/money-tape';
-import { formatMoney } from '@reparo/shared';
+import { formatIsoDate, formatMoney, isIsoDate } from '@reparo/shared';
 import { headline, listText, plannedPhaseText } from '@/lib/money';
 import { greeting } from '@/lib/home';
 import { useMe } from '@/lib/me';
@@ -46,7 +46,7 @@ export function Home() {
         <>
           <div className="flex flex-wrap items-start gap-6">
             <MoneyHeadline greeting={hello} money={summary.data.money} />
-            <NeedsYou items={summary.data.needsYou} />
+            <NeedsYou items={summary.data.needsYou} quotes={summary.data.expiringQuotes} />
           </div>
           <PhasePanel summary={summary.data} />
           <Rooms rooms={summary.data.rooms} />
@@ -126,7 +126,14 @@ function MoneyHeadline({
   );
 }
 
-function NeedsYou({ items }: { items: Summary['needsYou'] }) {
+function NeedsYou({
+  items,
+  quotes,
+}: {
+  items: Summary['needsYou'];
+  quotes: Summary['expiringQuotes'];
+}) {
+  const count = items.length + quotes.length;
   return (
     <section
       aria-labelledby="needs-you"
@@ -136,13 +143,13 @@ function NeedsYou({ items }: { items: Summary['needsYou'] }) {
         <h2 id="needs-you" className="text-2xl">
           Needs you
         </h2>
-        {items.length > 0 ? (
+        {count > 0 ? (
           <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-tape px-2 font-bold text-tape-ink tabular-nums">
-            {items.length}
+            {count}
           </span>
         ) : null}
       </div>
-      {items.length === 0 ? (
+      {count === 0 ? (
         <p className="mt-3 text-muted-foreground">Nothing needs you right now.</p>
       ) : (
         <ul className="mt-2 divide-y divide-border">
@@ -175,6 +182,28 @@ function NeedsYou({ items }: { items: Summary['needsYou'] }) {
                     Check it
                   </Link>
                 )}
+              </div>
+            </li>
+          ))}
+          {quotes.map((q) => (
+            <li key={q.id} className="flex items-start gap-3 py-4 last:pb-0">
+              <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
+                <CircleAlert aria-hidden className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{q.jobName}</p>
+                <p className="text-sm text-muted-foreground">
+                  {q.vendorName}&apos;s quote
+                  {q.amountCents !== null ? ` of ${formatMoney(q.amountCents)}` : ''} is good until{' '}
+                  {q.validUntil && isIsoDate(q.validUntil) ? formatIsoDate(q.validUntil) : 'soon'}.
+                </p>
+                <Link
+                  to="/jobs/$jobId"
+                  params={{ jobId: q.jobId }}
+                  className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
+                >
+                  See the estimates
+                </Link>
               </div>
             </li>
           ))}

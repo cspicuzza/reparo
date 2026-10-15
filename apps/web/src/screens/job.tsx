@@ -14,6 +14,7 @@ import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
+import { JobEstimates } from './job-estimates';
 import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
@@ -199,6 +200,8 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
           ) : null}
         </Panel>
       </div>
+
+      <JobEstimates job={job} canEdit={canEdit} />
 
       <JobMoney job={job} canEdit={canEdit} />
 

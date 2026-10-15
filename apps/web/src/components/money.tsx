@@ -1,7 +1,12 @@
-import type { ShoppingStatusInput } from '@reparo/shared';
+import type { EstimateStatusInput, ShoppingStatusInput } from '@reparo/shared';
 import { Circle, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { paymentText, SHOPPING_STATUS_LABEL, type PaymentStatus } from '@/lib/money';
+import {
+  ESTIMATE_STATUS_LABEL,
+  paymentText,
+  SHOPPING_STATUS_LABEL,
+  type PaymentStatus,
+} from '@/lib/money';
 import { cn } from '@/lib/utils';
 
 type Look = {
@@ -45,4 +50,17 @@ export function PaymentBadge({ status }: { status: PaymentStatus }) {
 export function ShoppingStatusBadge({ status }: { status: ShoppingStatusInput }) {
   const look = status === 'purchased' ? DONE : status === 'returned' ? OFF : IDLE;
   return <Chip look={look}>{SHOPPING_STATUS_LABEL[status]}</Chip>;
+}
+
+/** Requested / Received / Chosen / Declined (M4). */
+export function EstimateStatusBadge({ status }: { status: EstimateStatusInput }) {
+  const look =
+    status === 'chosen'
+      ? DONE
+      : status === 'declined'
+        ? OFF
+        : status === 'received'
+          ? PROGRESS
+          : IDLE;
+  return <Chip look={look}>{ESTIMATE_STATUS_LABEL[status]}</Chip>;
 }

@@ -119,6 +119,12 @@ function JobRow({ job }: { job: Job }) {
             Paid {money(job.money.paidCents)} of {money(job.money.costCents)}
           </span>
         ) : null}
+        {job.estimates.total > 0 && !job.estimates.chosen ? (
+          <span className="block text-sm font-semibold">
+            {job.estimates.total === 1 ? '1 estimate' : `${job.estimates.total} estimates`}, none
+            chosen
+          </span>
+        ) : null}
       </span>
       <span className="flex w-28 shrink-0 flex-col items-end gap-1 sm:w-56">
         {job.rooms.length > 0 ? (

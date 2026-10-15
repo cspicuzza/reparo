@@ -636,20 +636,27 @@ const estimateFields = {
 };
 const AMOUNT_NEEDED = 'Enter the amount, or mark it as requested';
 
+const estimateBase = z.object({
+  ...estimateFields,
+  status: z.enum(['requested', 'received']).default('received'),
+  receivedOn: estimateFields.receivedOn.default(null),
+  validUntil: estimateFields.validUntil.default(null),
+  notes: notesSchema.default(''),
+});
+const amountUnlessRequested = <T extends { status: string; amountCents: number | null }>(e: T) =>
+  e.status === 'requested' || e.amountCents !== null;
+
+/** The estimate form (the job comes from the page). */
+export const estimateFormSchema = estimateBase.refine(amountUnlessRequested, {
+  error: AMOUNT_NEEDED,
+  path: ['amountCents'],
+});
+export type EstimateForm = z.infer<typeof estimateFormSchema>;
+
 /** A new estimate: Received with an amount, or Requested (asked for, no amount yet). */
-export const estimateCreateSchema = z
-  .object({
-    jobId: idSchema,
-    ...estimateFields,
-    status: z.enum(['requested', 'received']).default('received'),
-    receivedOn: estimateFields.receivedOn.default(null),
-    validUntil: estimateFields.validUntil.default(null),
-    notes: notesSchema.default(''),
-  })
-  .refine((e) => e.status === 'requested' || e.amountCents !== null, {
-    error: AMOUNT_NEEDED,
-    path: ['amountCents'],
-  });
+export const estimateCreateSchema = estimateBase
+  .extend({ jobId: idSchema })
+  .refine(amountUnlessRequested, { error: AMOUNT_NEEDED, path: ['amountCents'] });
 export type EstimateCreate = z.infer<typeof estimateCreateSchema>;
 export type EstimateCreateInput = z.input<typeof estimateCreateSchema>;
 
@@ -662,6 +669,4 @@ export const estimateUpdateSchema = z
   .partial()
   .extend({ id: idSchema, status: z.enum(['requested', 'received', 'declined']).optional() });
 export type EstimateUpdate = z.infer<typeof estimateUpdateSchema>;
-
-/** The estimate form: the create schema's fields without the job. */
-export type EstimateFormInput = Omit<EstimateCreateInput, 'jobId'>;
+export type EstimateFormInput = z.input<typeof estimateFormSchema>;

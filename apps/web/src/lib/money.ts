@@ -1,5 +1,5 @@
 import { formatMoney } from '@reparo/shared';
-import type { ShoppingStatusInput } from '@reparo/shared';
+import type { EstimateStatusInput, ShoppingStatusInput } from '@reparo/shared';
 
 /** Money as shown everywhere: "$1,234.56" (amounts come from the API in cents). */
 export const money = (cents: number) => formatMoney(cents);
@@ -31,6 +31,14 @@ export const SHOPPING_STATUS_LABEL: Record<ShoppingStatusInput, string> = {
   to_buy: 'To buy',
   purchased: 'Purchased',
   returned: 'Returned',
+};
+
+/** Estimate statuses in household words (M4). */
+export const ESTIMATE_STATUS_LABEL: Record<EstimateStatusInput, string> = {
+  requested: 'Requested',
+  received: 'Received',
+  chosen: 'Chosen',
+  declined: 'Declined',
 };
 
 /** What a shopping line's amount means right now: its price, what was paid, or what came back. */

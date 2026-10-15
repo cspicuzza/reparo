@@ -1,0 +1,449 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { RouterOutputs } from '@reparo/api';
+import {
+  estimateFormSchema,
+  formatIsoDate,
+  isIsoDate,
+  type EstimateForm as EstimateFormValues,
+  type EstimateFormInput,
+} from '@reparo/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
+import { AttachedFiles } from '@/components/attached-files';
+import { ConfirmRemove } from '@/components/confirm-remove';
+import { Field, FormError, Input, Textarea } from '@/components/form';
+import { EstimateStatusBadge } from '@/components/money';
+import { Panel } from '@/components/panel';
+import { Button } from '@/components/ui/button';
+import { VendorPicker } from '@/components/vendor-picker';
+import { centsToInput, money } from '@/lib/money';
+import { useTRPC } from '@/lib/trpc';
+import type { FileView } from '@/lib/upload';
+import { vendorOptions } from '@/lib/vendors';
+import type { Job } from '@/lib/work';
+
+type Estimate = RouterOutputs['estimates']['list'][number];
+
+const date = (d: string | null) => (d && isIsoDate(d) ? formatIsoDate(d) : null);
+
+/**
+ * Estimates on the job page (M4, OD-63; Q1, Q2, Q12–Q14, Q27, Q28): side by side, the cheapest
+ * Received one marked. Choosing one puts its amount on the job as the vendor's quote line and
+ * makes them the job's vendor; the others are declined. After a payment, choosing asks first,
+ * because what's been paid stays on the job.
+ */
+export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const estimates = useQuery(trpc.estimates.list.queryOptions({ jobId: job.id }));
+  const quotes = useQuery({
+    ...trpc.files.listMany.queryOptions({
+      ownerType: 'estimate',
+      ownerIds: (estimates.data ?? []).map((e) => e.id),
+    }),
+    enabled: (estimates.data?.length ?? 0) > 0,
+  });
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries(trpc.estimates.pathFilter()),
+      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+      queryClient.invalidateQueries(trpc.costLines.pathFilter()),
+      queryClient.invalidateQueries(trpc.money.pathFilter()),
+      queryClient.invalidateQueries(trpc.home.pathFilter()),
+    ]);
+  const create = useMutation(trpc.estimates.create.mutationOptions());
+  const update = useMutation(trpc.estimates.update.mutationOptions());
+
+  const list = estimates.data ?? [];
+  const quotesOf = (id: string): FileView[] => (quotes.data ?? []).filter((f) => f.ownerId === id);
+
+  return (
+    <Panel aria-labelledby="job-estimates">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="job-estimates" className="text-2xl">
+            Estimates
+          </h2>
+          <p className="mt-1 max-w-prose text-muted-foreground">
+            Quotes from vendors, side by side. Choosing one makes it the job&apos;s price and
+            vendor; estimates that aren&apos;t chosen don&apos;t count toward the money.
+          </p>
+        </div>
+        {canEdit && !adding ? (
+          <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+            Add an estimate
+          </Button>
+        ) : null}
+      </div>
+
+      {estimates.error ? (
+        <p role="alert" className="mt-3">
+          Couldn&apos;t load the estimates: {estimates.error.message}
+        </p>
+      ) : null}
+
+      {adding ? (
+        <div className="mt-4 rounded-xl border border-border bg-background p-4">
+          <h3 className="text-xl">New estimate</h3>
+          <div className="mt-4">
+            <EstimateForm
+              idPrefix={`new-estimate-${job.id}`}
+              submitLabel="Add the estimate"
+              serverError={create.error?.message}
+              onCancel={() => {
+                create.reset();
+                setAdding(false);
+              }}
+              onSubmit={async (v) => {
+                await create
+                  .mutateAsync({ ...v, jobId: job.id })
+                  .then(async () => {
+                    await refresh();
+                    setAdding(false);
+                  })
+                  .catch(() => undefined);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {list.length === 0 && !adding ? (
+        <p className="mt-4 text-muted-foreground">No estimates yet.</p>
+      ) : null}
+
+      {list.length > 0 ? (
+        <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {list.map((e) =>
+            editing === e.id ? (
+              <li key={e.id} className="rounded-xl border border-border bg-background p-4">
+                <h3 className="text-xl">Edit the {e.vendor.name} estimate</h3>
+                <div className="mt-4">
+                  <EstimateForm
+                    idPrefix={`estimate-${e.id}`}
+                    estimate={e}
+                    submitLabel="Save"
+                    serverError={update.error?.message}
+                    onCancel={() => {
+                      update.reset();
+                      setEditing(null);
+                    }}
+                    onSubmit={async (v) => {
+                      await update
+                        .mutateAsync({
+                          id: e.id,
+                          vendorId: v.vendorId,
+                          amountCents: v.amountCents,
+                          receivedOn: v.receivedOn,
+                          validUntil: v.validUntil,
+                          notes: v.notes,
+                          // The chosen one keeps its status; Requested becomes Received with an amount.
+                          ...(e.status === 'chosen' ? {} : { status: v.status }),
+                        })
+                        .then(async () => {
+                          await refresh();
+                          setEditing(null);
+                        })
+                        .catch(() => undefined);
+                    }}
+                  />
+                </div>
+              </li>
+            ) : (
+              <EstimateCard
+                key={e.id}
+                estimate={e}
+                quotes={quotesOf(e.id)}
+                paidCents={job.money.paidCents}
+                canEdit={canEdit}
+                onEdit={() => setEditing(e.id)}
+                onChanged={refresh}
+              />
+            ),
+          )}
+        </ul>
+      ) : null}
+    </Panel>
+  );
+}
+
+function EstimateCard({
+  estimate: e,
+  quotes,
+  paidCents,
+  canEdit,
+  onEdit,
+  onChanged,
+}: {
+  estimate: Estimate;
+  quotes: FileView[];
+  paidCents: number;
+  canEdit: boolean;
+  onEdit: () => void;
+  onChanged: () => Promise<unknown>;
+}) {
+  const trpc = useTRPC();
+  const [confirming, setConfirming] = useState(false);
+  const choose = useMutation(
+    trpc.estimates.choose.mutationOptions({
+      onSuccess: async () => {
+        setConfirming(false);
+        await onChanged();
+      },
+    }),
+  );
+  const decline = useMutation(trpc.estimates.update.mutationOptions({ onSuccess: onChanged }));
+  const remove = useMutation(trpc.estimates.remove.mutationOptions({ onSuccess: onChanged }));
+  const error = choose.error ?? decline.error ?? remove.error;
+  const canChoose = e.status !== 'chosen' && e.amountCents !== null;
+  const received = date(e.receivedOn);
+  const until = date(e.validUntil);
+
+  return (
+    <li
+      className={
+        e.status === 'chosen'
+          ? 'flex flex-col gap-3 rounded-xl border-2 border-foreground bg-card p-4'
+          : 'flex flex-col gap-3 rounded-xl border border-border bg-card p-4'
+      }
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="min-w-0 text-xl font-semibold break-words">{e.vendor.name}</h3>
+        <EstimateStatusBadge status={e.status} />
+      </div>
+      <div>
+        <p className="text-2xl font-semibold tabular-nums">
+          {e.amountCents === null ? (
+            <span className="text-base font-normal text-muted-foreground">
+              Waiting for the amount
+            </span>
+          ) : (
+            money(e.amountCents)
+          )}
+        </p>
+        {e.isCheapest ? (
+          <span className="mt-1 inline-flex rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
+            Cheapest
+          </span>
+        ) : null}
+      </div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+        {received ? (
+          <>
+            <dt className="text-muted-foreground">Received</dt>
+            <dd>{received}</dd>
+          </>
+        ) : null}
+        {until ? (
+          <>
+            <dt className="text-muted-foreground">Good until</dt>
+            <dd className={e.isExpired ? 'font-semibold' : undefined}>
+              {until}
+              {e.isExpired ? ' (expired)' : ''}
+            </dd>
+          </>
+        ) : null}
+      </dl>
+      {e.notes ? (
+        <p className="text-sm whitespace-pre-wrap text-muted-foreground">{e.notes}</p>
+      ) : null}
+
+      <AttachedFiles
+        files={quotes}
+        target={{ ownerType: 'estimate', ownerId: e.id, kind: 'quote' }}
+        addLabel="Attach the quote"
+        canEdit={canEdit}
+        what="quote"
+      />
+
+      {canEdit ? (
+        confirming ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
+            <p>
+              {money(paidCents)} already paid on this job stays counted. Choose {e.vendor.name}
+              {e.amountCents !== null ? ` at ${money(e.amountCents)}` : ''}?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                disabled={choose.isPending}
+                onClick={() => choose.mutate({ id: e.id })}
+              >
+                Yes, choose {e.vendor.name}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+                Keep it as it is
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="-ml-3 flex flex-wrap items-center gap-1">
+            {canChoose ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="ml-3"
+                disabled={choose.isPending}
+                onClick={() => (paidCents > 0 ? setConfirming(true) : choose.mutate({ id: e.id }))}
+              >
+                Choose this one
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" onClick={onEdit}>
+              {e.status === 'requested' ? 'Add the amount' : 'Edit'}
+              <span className="sr-only"> for {e.vendor.name}</span>
+            </Button>
+            {e.status === 'received' || e.status === 'requested' ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={decline.isPending}
+                onClick={() => decline.mutate({ id: e.id, status: 'declined' })}
+              >
+                Mark declined
+                <span className="sr-only"> for {e.vendor.name}</span>
+              </Button>
+            ) : null}
+            <ConfirmRemove
+              what={
+                e.status === 'chosen' && e.amountCents !== null
+                  ? `the ${e.vendor.name} estimate and its ${money(e.amountCents)} quote line`
+                  : `the ${e.vendor.name} estimate`
+              }
+              disabled={remove.isPending}
+              onConfirm={() => remove.mutate({ id: e.id })}
+            />
+          </div>
+        )
+      ) : null}
+      {error ? <FormError>{error.message}</FormError> : null}
+    </li>
+  );
+}
+
+function EstimateForm({
+  idPrefix,
+  estimate,
+  submitLabel,
+  serverError,
+  onSubmit,
+  onCancel,
+}: {
+  idPrefix: string;
+  estimate?: Estimate;
+  submitLabel: string;
+  serverError: string | undefined;
+  onSubmit: (v: EstimateFormValues) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const trpc = useTRPC();
+  const vendors = useQuery(trpc.vendors.list.queryOptions());
+  const id = (f: string) => `${idPrefix}-${f}`;
+  const { register, control, handleSubmit, formState } = useForm<
+    EstimateFormInput,
+    unknown,
+    EstimateFormValues
+  >({
+    resolver: zodResolver(estimateFormSchema),
+    defaultValues: {
+      vendorId: estimate?.vendorId ?? '',
+      status: estimate?.status === 'requested' ? 'requested' : 'received',
+      amountCents: estimate?.amountCents != null ? centsToInput(estimate.amountCents) : '',
+      receivedOn: estimate?.receivedOn ?? '',
+      validUntil: estimate?.validUntil ?? '',
+      notes: estimate?.notes ?? '',
+    },
+  });
+  const requested = useWatch({ control, name: 'status' }) === 'requested';
+  const { errors } = formState;
+  const current = estimate?.vendor ?? null;
+  const options = vendorOptions(
+    (vendors.data ?? []).map((v) => ({
+      id: v.id,
+      name: v.name,
+      trade: v.trade,
+      archived: v.archived,
+    })),
+    current
+      ? { id: current.id, name: current.name, trade: current.trade, archived: current.archived }
+      : null,
+  );
+
+  return (
+    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
+      <Field label="Vendor" htmlFor={id('vendor')} error={errors.vendorId?.message}>
+        <Controller
+          control={control}
+          name="vendorId"
+          render={({ field }) => (
+            <VendorPicker
+              id={id('vendor')}
+              value={field.value || null}
+              onChange={(v) => field.onChange(v ?? '')}
+              vendors={options}
+            />
+          )}
+        />
+      </Field>
+      {estimate?.status === 'chosen' ? null : (
+        <Controller
+          control={control}
+          name="status"
+          render={({ field }) => (
+            <label className="flex min-h-11 items-center gap-3">
+              <input
+                type="checkbox"
+                className="size-5 accent-foreground"
+                checked={field.value === 'requested'}
+                onChange={(ev) => field.onChange(ev.target.checked ? 'requested' : 'received')}
+                onBlur={field.onBlur}
+              />
+              <span>Asked for it, still waiting for the amount</span>
+            </label>
+          )}
+        />
+      )}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Amount"
+          htmlFor={id('amount')}
+          hint={requested ? 'Leave blank until it comes in' : 'The total they quoted'}
+          error={errors.amountCents?.message}
+        >
+          <Input
+            id={id('amount')}
+            inputMode="decimal"
+            autoComplete="off"
+            {...register('amountCents')}
+          />
+        </Field>
+        <Field label="Received on" htmlFor={id('received')} error={errors.receivedOn?.message}>
+          <Input id={id('received')} type="date" {...register('receivedOn')} />
+        </Field>
+        <Field label="Good until" htmlFor={id('until')} error={errors.validUntil?.message}>
+          <Input id={id('until')} type="date" {...register('validUntil')} />
+        </Field>
+      </div>
+      <Field
+        label="Notes"
+        htmlFor={id('notes')}
+        hint="What's included, what isn't, payment terms"
+        error={errors.notes?.message}
+      >
+        <Textarea id={id('notes')} rows={3} {...register('notes')} />
+      </Field>
+      {serverError ? <FormError>{serverError}</FormError> : null}
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit" disabled={formState.isSubmitting}>
+          {submitLabel}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
