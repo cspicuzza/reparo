@@ -10,7 +10,8 @@
     "dev": "tsx watch src/dev.ts",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "import-spreadsheet": "tsx src/cli/import-spreadsheet.ts"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

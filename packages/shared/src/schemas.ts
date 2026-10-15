@@ -428,3 +428,47 @@ export const adjustmentUpdateSchema = adjustmentCreateSchema.partial().extend({ 
 export type AdjustmentCreate = z.infer<typeof adjustmentCreateSchema>;
 export type AdjustmentCreateInput = z.input<typeof adjustmentCreateSchema>;
 export type AdjustmentUpdate = z.infer<typeof adjustmentUpdateSchema>;
+
+// --- spreadsheet import (OD-36) ---------------------------------------------------------------
+
+/** Blank cells come through as ''. */
+const cell = z.string().trim();
+
+/**
+ * One row of the import's lines file (`import/spreadsheet-lines.csv`), as the importer checks it
+ * before writing anything. Amounts are typed dollars ("16,335.25"). `job_match` lists the names
+ * an existing job may have, separated by ";".
+ */
+export const importLineSchema = z.object({
+  id: cell.min(1),
+  action: z.enum(['import', 'skip']),
+  kind: z.enum(['budget', 'vendor', 'job_cost', 'shopping']),
+  phase: cell,
+  room: cell,
+  category: cell,
+  job: cell,
+  job_match: cell,
+  vendor: cell,
+  trade: cell,
+  name: nameSchema,
+  /** Blank = $0 (a line with no price yet). */
+  amount: cell
+    .transform((v, ctx) => (v === '' ? 0 : parseDollars(v, ctx)))
+    .refine((c) => c >= 0, { error: 'Enter 0 or more' }),
+  store: cell,
+  link: urlishSchema,
+  model_number: cell,
+  quantity: cell.transform((v, ctx) => {
+    if (v === '') return 1;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1) {
+      ctx.addIssue({ code: 'custom', message: 'Enter a whole number, 1 or more' });
+      return z.NEVER;
+    }
+    return n;
+  }),
+  notes: notesSchema,
+  flags: cell,
+  source: cell,
+});
+export type ImportLine = z.infer<typeof importLineSchema>;

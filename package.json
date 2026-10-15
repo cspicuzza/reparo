@@ -19,7 +19,8 @@
     "db:generate": "pnpm --filter @reparo/db generate",
     "db:migrate": "pnpm --filter @reparo/db migrate",
     "db:studio": "pnpm --filter @reparo/db studio",
-    "db:seed": "pnpm --filter @reparo/db seed"
+    "db:seed": "pnpm --filter @reparo/db seed",
+    "db:import": "pnpm --filter @reparo/api run import-spreadsheet"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

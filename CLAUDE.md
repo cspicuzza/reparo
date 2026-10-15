@@ -96,9 +96,10 @@ pnpm db:generate      # migration from a schema change
 pnpm db:migrate       # apply migrations to DATABASE_URL (local: port 54322)
 pnpm db:seed          # upsert members from MEMBERS in .env
 pnpm db:studio        # Drizzle Studio
+pnpm db:import        # dry-run the spreadsheet import (import/spreadsheet-lines.csv); --write keeps it
 ```
 
-`@reparo/db` and `@reparo/api` tests need local Supabase running. Each package uses its own database on that server (`reparo_test_db`, `reparo_test_api`), dropped and rebuilt from every migration on each run; your dev database is never touched. Tests refuse to run unless `DATABASE_URL` is local. Every test still rolls back its own writes.
+`@reparo/db` and `@reparo/api` tests need local Supabase running. Each package uses its own database on that server (`reparo_test_db`, `reparo_test_api`, `reparo_test_import`), dropped and rebuilt from every migration on each run; your dev database is never touched. Tests refuse to run unless `DATABASE_URL` is local. Every test still rolls back its own writes.
 
 ## Naming
 
