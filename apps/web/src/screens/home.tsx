@@ -6,6 +6,9 @@ import { PlanGrid } from '@/components/plan-grid';
 import { StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
 import { buttonVariants } from '@/components/ui/button';
+import { MoneyTape } from '@/components/money-tape';
+import { formatMoney } from '@reparo/shared';
+import { headline, listText, plannedPhaseText } from '@/lib/money';
 import { greeting } from '@/lib/home';
 import { useMe } from '@/lib/me';
 import { roomProgressText } from '@/lib/rooms';
@@ -18,31 +21,108 @@ type Summary = RouterOutputs['home']['summary'];
 const HOME_ROOMS = 8;
 
 /**
- * Home (OD-41): what needs someone, how the current phase is going, and the rooms. Counts come
- * from `home.summary`. M2 puts the money sentence and money tape at the top.
+ * Home (OD-41, OD-53): the money left to spend, what needs someone, how the current phase is
+ * going, and the rooms. Every number comes from `home.summary`.
  */
 export function Home() {
   const trpc = useTRPC();
   const { member } = useMe();
   const summary = useQuery(trpc.home.summary.queryOptions());
 
+  const hello = greeting(new Date(), member?.displayName);
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-3xl">{greeting(new Date(), member?.displayName)}</h1>
       {summary.isPending ? (
-        <p className="text-muted-foreground">Loading the house…</p>
+        <>
+          <h1 className="text-3xl">{hello}</h1>
+          <p className="text-muted-foreground">Loading the house…</p>
+        </>
       ) : summary.error ? (
-        <p role="alert">Couldn&apos;t load Home: {summary.error.message}</p>
+        <>
+          <h1 className="text-3xl">{hello}</h1>
+          <p role="alert">Couldn&apos;t load Home: {summary.error.message}</p>
+        </>
       ) : (
         <>
           <div className="flex flex-wrap items-start gap-6">
-            <PhasePanel summary={summary.data} />
+            <MoneyHeadline greeting={hello} money={summary.data.money} />
             <NeedsYou items={summary.data.needsYou} />
           </div>
+          <PhasePanel summary={summary.data} />
           <Rooms rooms={summary.data.rooms} />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The money sentence and tape (canvas section D): what's left to spend after everything spent
+ * and planned in the phases that count, and what each planned phase would do to it.
+ */
+function MoneyHeadline({
+  greeting: hello,
+  money: m,
+}: {
+  greeting: string;
+  money: Summary['money'];
+}) {
+  const { lead, amount, tail } = headline(m.availableCents);
+  return (
+    <section aria-labelledby="money" className="min-w-0 flex-[999_1_32rem]">
+      <p className="text-muted-foreground">{hello}</p>
+      {m.poolCents === 0 ? (
+        <>
+          <h1 id="money" className="mt-1 text-4xl">
+            The budget isn&apos;t in yet.
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Once the starting balance is entered, this says what&apos;s left to spend.{' '}
+            <Link to="/money" className="text-foreground underline underline-offset-4">
+              Go to Money
+            </Link>
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 id="money" className="mt-1 text-4xl tabular-nums">
+            {lead}
+            <span className={m.availableCents < 0 ? 'text-destructive' : undefined}>{amount}</span>
+            {tail}
+          </h1>
+          <p className="mt-2 mb-5 text-muted-foreground">
+            That&apos;s what remains of the {formatMoney(m.poolCents)} budget after everything spent
+            {m.countingPhases.length > 0 ? ` and planned for ${listText(m.countingPhases)}` : ''}.
+          </p>
+          <MoneyTape
+            poolCents={m.poolCents}
+            spentCents={m.spentCents}
+            committedCents={m.committedCents}
+            availableCents={m.availableCents}
+          />
+          {m.plannedPhases.length > 0 ? (
+            <div className="mt-5 flex flex-col gap-1 border-t border-border pt-4 tabular-nums">
+              {m.plannedPhases.map((p) => {
+                const line = plannedPhaseText({ ...p, leavesCents: p.leavesCents ?? 0 });
+                return (
+                  <p key={p.id}>
+                    {line.text}
+                    {line.amount ? (
+                      <strong
+                        className={line.short ? 'font-semibold text-destructive' : 'font-semibold'}
+                      >
+                        {line.amount}
+                      </strong>
+                    ) : null}
+                    {line.amount ? '.' : null}
+                  </p>
+                );
+              })}
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -107,10 +187,7 @@ function NeedsYou({ items }: { items: Summary['needsYou'] }) {
 function PhasePanel({ summary }: { summary: Summary }) {
   const { phase, phaseJobs } = summary;
   return (
-    <section
-      aria-labelledby="phase"
-      className="min-w-0 flex-[999_1_30rem] rounded-xl border border-border bg-card p-5 sm:p-6"
-    >
+    <section aria-labelledby="phase" className="rounded-xl border border-border bg-card p-5 sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="phase" className="text-2xl">
           {phase == null

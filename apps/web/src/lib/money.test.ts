@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { centsToInput, lineAmountText, moneyStep, paymentText, shortMoney } from './money';
+import {
+  centsToInput,
+  headline,
+  lineAmountText,
+  listText,
+  moneyStep,
+  paymentText,
+  plannedPhaseText,
+  shortMoney,
+} from './money';
 
 describe('money display helpers', () => {
   it('prefills fields in a form the money schema reads back', () => {
@@ -34,5 +43,39 @@ describe('money display helpers', () => {
     expect(shortMoney(30000000)).toBe('$300k');
     expect(shortMoney(2736125)).toBe('$27.4k');
     expect(shortMoney(95000)).toBe('$950');
+  });
+});
+
+describe('money sentences', () => {
+  it('lists phase names', () => {
+    expect(listText([])).toBe('');
+    expect(listText(['Phase 1'])).toBe('Phase 1');
+    expect(listText(['Phase 0', 'Phase 1'])).toBe('Phase 0 and Phase 1');
+    expect(listText(['A', 'B', 'C'])).toBe('A, B and C');
+  });
+
+  it('says what is left, or how far over', () => {
+    expect(headline(2736125)).toEqual({
+      lead: 'You have ',
+      amount: '$27,361.25',
+      tail: ' left to spend.',
+    });
+    expect(headline(-500)).toEqual({ lead: "You're ", amount: '$5.00', tail: ' over budget.' });
+  });
+
+  it('says what a planned phase would need and leave', () => {
+    expect(
+      plannedPhaseText({ name: 'Phase 2', toComeCents: 12226000, leavesCents: -9489875 }),
+    ).toEqual({
+      text: 'Phase 2 would need $122,260.00, which would leave you ',
+      amount: '$94,898.75 short',
+      short: true,
+    });
+    expect(
+      plannedPhaseText({ name: 'Phase 3', toComeCents: 100000, leavesCents: 500000 }).amount,
+    ).toBe('$5,000.00');
+    expect(plannedPhaseText({ name: 'Phase 4', toComeCents: 0, leavesCents: 0 }).text).toBe(
+      'Nothing is planned for Phase 4 yet.',
+    );
   });
 });

@@ -68,3 +68,37 @@ export function shortMoney(cents: number): string {
   }
   return `$${Math.round(dollars)}`;
 }
+
+/** "Phase 1", "Phase 0 and Phase 1", "A, B and C". */
+export function listText(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] ?? ''}`;
+}
+
+/** The headline: "You have $X left to spend." or, over budget, "You're $X over budget." */
+export function headline(availableCents: number): { lead: string; amount: string; tail: string } {
+  if (availableCents < 0) {
+    return { lead: "You're ", amount: money(-availableCents), tail: ' over budget.' };
+  }
+  return { lead: 'You have ', amount: money(availableCents), tail: ' left to spend.' };
+}
+
+/**
+ * What a planned phase would do to the money: "Phase 2 would need $X, which would leave $Y."
+ * `short` is true when it would leave less than nothing (shown in red).
+ */
+export function plannedPhaseText(p: { name: string; toComeCents: number; leavesCents: number }): {
+  text: string;
+  amount: string;
+  short: boolean;
+} {
+  if (p.toComeCents === 0) {
+    return { text: `Nothing is planned for ${p.name} yet.`, amount: '', short: false };
+  }
+  const short = p.leavesCents < 0;
+  return {
+    text: `${p.name} would need ${money(p.toComeCents)}, which would leave ${short ? 'you ' : ''}`,
+    amount: short ? `${money(-p.leavesCents)} short` : money(p.leavesCents),
+    short,
+  };
+}

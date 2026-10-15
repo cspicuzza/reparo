@@ -14,6 +14,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
 import { Route as AppJobsJobIdRouteImport } from './routes/_app/jobs/$jobId'
+import { Route as AppMoneyIndexRouteImport } from './routes/_app/money/index'
 import { Route as AppPhasesIndexRouteImport } from './routes/_app/phases/index'
 import { Route as AppRoomsIndexRouteImport } from './routes/_app/rooms/index'
 import { Route as AppRoomsRoomIdRouteImport } from './routes/_app/rooms/$roomId'
@@ -42,6 +43,11 @@ const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
 const AppJobsJobIdRoute = AppJobsJobIdRouteImport.update({
   id: '/jobs/$jobId',
   path: '/jobs/$jobId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMoneyIndexRoute = AppMoneyIndexRouteImport.update({
+  id: '/money/',
+  path: '/money/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPhasesIndexRoute = AppPhasesIndexRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/jobs/': typeof AppJobsIndexRoute
+  '/money/': typeof AppMoneyIndexRoute
   '/phases/': typeof AppPhasesIndexRoute
   '/rooms/': typeof AppRoomsIndexRoute
   '/shopping/': typeof AppShoppingIndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/jobs': typeof AppJobsIndexRoute
+  '/money': typeof AppMoneyIndexRoute
   '/phases': typeof AppPhasesIndexRoute
   '/rooms': typeof AppRoomsIndexRoute
   '/shopping': typeof AppShoppingIndexRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/_app/jobs/': typeof AppJobsIndexRoute
+  '/_app/money/': typeof AppMoneyIndexRoute
   '/_app/phases/': typeof AppPhasesIndexRoute
   '/_app/rooms/': typeof AppRoomsIndexRoute
   '/_app/shopping/': typeof AppShoppingIndexRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/rooms/$roomId'
     | '/jobs/'
+    | '/money/'
     | '/phases/'
     | '/rooms/'
     | '/shopping/'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/jobs/$jobId'
     | '/rooms/$roomId'
     | '/jobs'
+    | '/money'
     | '/phases'
     | '/rooms'
     | '/shopping'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/_app/jobs/$jobId'
     | '/_app/rooms/$roomId'
     | '/_app/jobs/'
+    | '/_app/money/'
     | '/_app/phases/'
     | '/_app/rooms/'
     | '/_app/shopping/'
@@ -184,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppJobsJobIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/money/': {
+      id: '/_app/money/'
+      path: '/money'
+      fullPath: '/money/'
+      preLoaderRoute: typeof AppMoneyIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/phases/': {
       id: '/_app/phases/'
       path: '/phases'
@@ -227,6 +246,7 @@ interface AppRouteChildren {
   AppJobsJobIdRoute: typeof AppJobsJobIdRoute
   AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
   AppJobsIndexRoute: typeof AppJobsIndexRoute
+  AppMoneyIndexRoute: typeof AppMoneyIndexRoute
   AppPhasesIndexRoute: typeof AppPhasesIndexRoute
   AppRoomsIndexRoute: typeof AppRoomsIndexRoute
   AppShoppingIndexRoute: typeof AppShoppingIndexRoute
@@ -238,6 +258,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppJobsJobIdRoute: AppJobsJobIdRoute,
   AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
   AppJobsIndexRoute: AppJobsIndexRoute,
+  AppMoneyIndexRoute: AppMoneyIndexRoute,
   AppPhasesIndexRoute: AppPhasesIndexRoute,
   AppRoomsIndexRoute: AppRoomsIndexRoute,
   AppShoppingIndexRoute: AppShoppingIndexRoute,
