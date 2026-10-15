@@ -3,6 +3,15 @@ import { router } from '../trpc';
 import { healthRouter } from './health';
 import { homeRouter } from './home';
 import { jobRoomsRouter, jobsRouter } from './jobs';
+import {
+  budgetAdjustmentsRouter,
+  budgetRouter,
+  categoriesRouter,
+  costLinesRouter,
+  moneyRouter,
+  paymentsRouter,
+  shoppingLinesRouter,
+} from './money';
 import { phasesRouter } from './phases';
 import { roomsRouter } from './rooms';
 import { vendorsRouter } from './vendors';
@@ -15,6 +24,13 @@ export const appRouter = router({
   jobs: jobsRouter,
   jobRooms: jobRoomsRouter,
   vendors: vendorsRouter,
+  categories: categoriesRouter,
+  shoppingLines: shoppingLinesRouter,
+  costLines: costLinesRouter,
+  payments: paymentsRouter,
+  budget: budgetRouter,
+  budgetAdjustments: budgetAdjustmentsRouter,
+  money: moneyRouter,
 });
 
 export type AppRouter = typeof appRouter;

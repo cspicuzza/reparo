@@ -17,6 +17,8 @@ import type { JobCreate, JobList, JobRoomCreate, JobRoomUpdate, JobUpdate } from
 import { badRequest, conflict, isUniqueViolation, notFound } from './errors';
 import { getPhase } from './phases';
 import { getRoom } from './rooms';
+import { jobMoneyTotals } from './job-money';
+import { paymentStatus } from './money-rules';
 import { getVendor, vendorSummary } from './vendors';
 
 // Jobs and the rooms they cover (Model fix; Linear *Data model* doc). A job holds the
@@ -102,7 +104,13 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
     )
     .orderBy(asc(rooms.sortOrder), asc(rooms.name));
 
+  const money = await jobMoneyTotals(
+    db,
+    rows.map((r) => r.job.id),
+  );
+
   return rows.map(({ job, vendor, phase }) => {
+    const totals = money.get(job.id) ?? { costCents: 0, paidCents: 0 };
     const mine = covered
       .filter((c) => c.jobRoom.jobId === job.id)
       .map((c) => ({ ...c.jobRoom, room: c.room, ...resolve(job.spec, c.jobRoom) }));
@@ -110,6 +118,8 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
       ...job,
       vendor: vendor ? vendorSummary(vendor) : null,
       phase,
+      /** What the job costs and what's been paid (M3); derived here, not in the browser. */
+      money: { ...totals, payment: paymentStatus(totals.costCents, totals.paidCents) },
       rooms: mine,
       progress: rollUp(
         mine.map((r) => r.status),

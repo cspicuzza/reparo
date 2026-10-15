@@ -1,11 +1,13 @@
 import type { Db } from '@reparo/db';
 import { listJobs } from './jobs';
+import { getMoneySummary } from './money';
 import { listPhases } from './phases';
 import { listRooms, roomsProgress } from './rooms';
 
 /**
  * Everything Home shows (OD-41), in one read: what needs someone, the current phase's jobs and
- * how far along each room is. Counts come from here, not the browser (web.md). Money joins in M3.
+ * how far along each room is, and the money headline. Counts come from here, not the browser
+ * (web.md).
  */
 /** Something waiting for someone to check it: a job in one room, or a job with no rooms. */
 export type NeedsYou = {
@@ -20,6 +22,7 @@ export async function homeSummary(db: Db) {
   const allPhases = await listPhases(db);
   const allRooms = await listRooms(db);
   const progress = await roomsProgress(db);
+  const money = await getMoneySummary(db);
 
   // A job covering rooms waits per room; a job with no rooms (a fee) waits as a whole.
   const needsYou = allJobs.flatMap<NeedsYou>((job) =>
@@ -39,6 +42,22 @@ export async function homeSummary(db: Db) {
     null;
 
   return {
+    /** The money headline (M3): left to spend, and what each planned phase would need. */
+    money: {
+      poolCents: money.pool.poolCents,
+      spentCents: money.spentCents,
+      committedCents: money.committedCents,
+      availableCents: money.availableCents,
+      countingPhases: money.byPhase.filter((p) => p.counting).map((p) => p.name),
+      plannedPhases: money.byPhase
+        .filter((p) => !p.counting)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          toComeCents: p.toComeCents,
+          leavesCents: p.leavesCents,
+        })),
+    },
     needsYou,
     phase: current ? { id: current.id, name: current.name, status: current.status } : null,
     phaseJobs: current

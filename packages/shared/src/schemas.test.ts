@@ -13,6 +13,15 @@ import {
   vendorCreateSchema,
   vendorListSchema,
   vendorUpdateSchema,
+  adjustmentCreateSchema,
+  categoryMergeSchema,
+  MONEY_HELP,
+  moneyInputSchema,
+  paymentCreateSchema,
+  positiveMoneyInputSchema,
+  shoppingLineCreateSchema,
+  shoppingLineUpdateSchema,
+  signedMoneyInputSchema,
 } from './schemas';
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -160,5 +169,87 @@ describe('job rooms', () => {
     expect(jobRoomCreateSchema.safeParse({ jobId: ID, roomId: ID, status: 'done' }).success).toBe(
       false,
     );
+  });
+});
+
+describe('money inputs', () => {
+  it('typed text is dollars, a number is already cents', () => {
+    expect(moneyInputSchema.parse('1,234.56')).toBe(123456);
+    expect(moneyInputSchema.parse('$90')).toBe(9000);
+    expect(moneyInputSchema.parse(123456)).toBe(123456);
+    // The form's output goes through the API's copy of the schema unchanged.
+    expect(moneyInputSchema.parse(moneyInputSchema.parse('35,000'))).toBe(3500000);
+  });
+
+  it('says what to type when the amount is wrong', () => {
+    const msg = (r: { success: boolean; error?: { issues: { message: string }[] } }) =>
+      r.error?.issues[0]?.message;
+    expect(msg(moneyInputSchema.safeParse('12.345'))).toBe(MONEY_HELP);
+    expect(msg(moneyInputSchema.safeParse('ten'))).toBe(MONEY_HELP);
+    expect(msg(moneyInputSchema.safeParse(12.5))).toBe(MONEY_HELP);
+    expect(msg(moneyInputSchema.safeParse('-5'))).toBe('Enter 0 or more');
+    expect(msg(positiveMoneyInputSchema.safeParse('0'))).toBe('Enter an amount above 0');
+    expect(signedMoneyInputSchema.parse('-5,000')).toBe(-500000);
+    expect(signedMoneyInputSchema.safeParse('0').success).toBe(false);
+  });
+});
+
+describe('shopping lines', () => {
+  it('create needs a phase, category and name; the rest default', () => {
+    expect(
+      shoppingLineCreateSchema.parse({
+        phaseId: ID,
+        categoryId: ID,
+        name: ' Couch ',
+        priceCents: '5,000',
+      }),
+    ).toEqual({
+      phaseId: ID,
+      categoryId: ID,
+      name: 'Couch',
+      roomId: null,
+      jobId: null,
+      link: '',
+      store: '',
+      modelNumber: '',
+      quantity: 1,
+      priceCents: 500000,
+      notes: '',
+    });
+    expect(shoppingLineCreateSchema.safeParse({ phaseId: ID, name: 'x' }).success).toBe(false);
+  });
+
+  it('Purchased needs what was paid; Returned needs what came back', () => {
+    expect(shoppingLineUpdateSchema.safeParse({ id: ID, status: 'purchased' }).success).toBe(false);
+    expect(
+      shoppingLineUpdateSchema.parse({ id: ID, status: 'purchased', paidCents: '4,800' }),
+    ).toEqual({ id: ID, status: 'purchased', paidCents: 480000 });
+    const ret = shoppingLineUpdateSchema.safeParse({ id: ID, status: 'returned' });
+    expect(ret.error?.issues[0]?.message).toBe('Say how much came back');
+    expect(shoppingLineUpdateSchema.parse({ id: ID, status: 'to_buy' })).toEqual({
+      id: ID,
+      status: 'to_buy',
+    });
+  });
+
+  it('a category cannot merge into itself', () => {
+    expect(categoryMergeSchema.safeParse({ id: ID, intoId: ID }).success).toBe(false);
+  });
+
+  it('payments need an amount above 0 and a date; adjustments can be negative', () => {
+    expect(
+      paymentCreateSchema.parse({ jobId: ID, amountCents: '10,000', paidOn: '2026-10-01' }),
+    ).toEqual({
+      jobId: ID,
+      amountCents: 1000000,
+      paidOn: '2026-10-01',
+      note: '',
+    });
+    expect(
+      paymentCreateSchema.safeParse({ jobId: ID, amountCents: '0', paidOn: '2026-10-01' }).success,
+    ).toBe(false);
+    expect(
+      adjustmentCreateSchema.parse({ amountCents: '-1,500', on: '2026-09-15' }).amountCents,
+    ).toBe(-150000);
   });
 });

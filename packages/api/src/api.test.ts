@@ -691,6 +691,435 @@ describe('@reparo/api', () => {
       });
     }));
 
+  // --- M3 (OD-50) -------------------------------------------------------------------------------
+
+  /** Phase 1 (active, seeded), a category by name, and a fresh planned phase. */
+  async function moneyFixtures(h: Handler) {
+    const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
+    const cats = rows(await query(h, 'viewer', 'categories.list'));
+    const cat = (name: string) => {
+      const c = cats.find((x) => x.name === name);
+      if (!c) throw new Error(`no category ${name}`);
+      return c.id;
+    };
+    if (!phase1) throw new Error('seed missing');
+    const phase2 = row(
+      await mutate(h, 'chris', 'phases.create', { name: 'Money Phase 2', sortOrder: 50 }),
+    );
+    return { phase1, phase2, cat };
+  }
+
+  it('money role guards: editors keep lines, costs and payments; only the admin touches the pool and categories', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      expect((await query(h, 'viewer', 'money.summary')).status).toBe(200);
+      expect((await query(h, 'viewer', 'budget.get')).status).toBe(200);
+      const v = await mutate(h, 'viewer', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Rugs'),
+        name: 'Rug',
+      });
+      expect(v.status).toBe(403);
+      const e = await mutate(h, 'editor', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Rugs'),
+        name: 'Rug',
+      });
+      expect(e.status).toBe(200);
+      for (const [path, input] of [
+        ['budget.update', { startingCents: '300,000' }],
+        ['budgetAdjustments.create', { amountCents: '-5,000', on: '2026-09-15' }],
+        ['categories.create', { name: 'Garden' }],
+        ['categories.update', { id: cat('Rugs'), name: 'Carpets' }],
+        ['categories.merge', { id: cat('Rugs'), intoId: cat('Decor') }],
+      ] as const) {
+        const r = await mutate(h, 'editor', path, input);
+        expect([path, r.status]).toEqual([path, 403]);
+      }
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Trim' }),
+      );
+      expect(
+        (
+          await mutate(h, 'editor', 'costLines.create', {
+            jobId: job.id,
+            description: 'Quote',
+            amountCents: '20,000',
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await mutate(h, 'editor', 'payments.create', {
+            jobId: job.id,
+            amountCents: '5,000',
+            paidOn: '2026-10-01',
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await mutate(h, 'viewer', 'payments.create', {
+            jobId: job.id,
+            amountCents: '1',
+            paidOn: '2026-10-01',
+          })
+        ).status,
+      ).toBe(403);
+    }));
+
+  it('shopping lines: add, buy, return, back to To buy; amounts and phases are checked', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, phase2, cat } = await moneyFixtures(h);
+      const living = row(await mutate(h, 'editor', 'rooms.create', { name: 'Shop Living' }));
+      type LineRow = Row & {
+        status: string;
+        priceCents: number;
+        paidCents: number | null;
+        refundCents: number | null;
+        room: Row | null;
+        category: Row;
+        job: Row | null;
+      };
+      const created = await mutate(h, 'editor', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Furniture'),
+        roomId: living.id,
+        name: 'Couch',
+        store: 'Castlery',
+        priceCents: '5,000',
+      });
+      expect(created.status).toBe(200);
+      const couch = created.data as LineRow;
+      expect([couch.status, couch.priceCents, couch.room?.name, couch.category.name]).toEqual([
+        'to_buy',
+        500000,
+        'Shop Living',
+        'Furniture',
+      ]);
+
+      // Purchased needs what was paid; it can differ from the price.
+      expect(
+        (await mutate(h, 'editor', 'shoppingLines.update', { id: couch.id, status: 'purchased' }))
+          .code,
+      ).toBe('BAD_REQUEST');
+      const bought = (
+        await mutate(h, 'editor', 'shoppingLines.update', {
+          id: couch.id,
+          status: 'purchased',
+          paidCents: '4,800',
+        })
+      ).data as LineRow;
+      expect([bought.status, bought.paidCents, bought.refundCents]).toEqual([
+        'purchased',
+        480000,
+        null,
+      ]);
+
+      // Returned: no more than was paid came back.
+      const tooMuch = await mutate(h, 'editor', 'shoppingLines.update', {
+        id: couch.id,
+        status: 'returned',
+        refundCents: '5,000',
+      });
+      expect([tooMuch.code, tooMuch.message]).toEqual([
+        'BAD_REQUEST',
+        'More came back than was paid; check the amounts',
+      ]);
+      const back = (
+        await mutate(h, 'editor', 'shoppingLines.update', {
+          id: couch.id,
+          status: 'returned',
+          refundCents: '4,500',
+        })
+      ).data as LineRow;
+      expect([back.status, back.paidCents, back.refundCents]).toEqual(['returned', 480000, 450000]);
+      // Back to To buy clears both amounts.
+      const again = (
+        await mutate(h, 'editor', 'shoppingLines.update', { id: couch.id, status: 'to_buy' })
+      ).data as LineRow;
+      expect([again.paidCents, again.refundCents]).toEqual([null, null]);
+
+      // A To-buy line can't jump straight to Returned.
+      const jump = await mutate(h, 'editor', 'shoppingLines.update', {
+        id: couch.id,
+        status: 'returned',
+        refundCents: '1',
+      });
+      expect(jump.message).toBe('Mark it as purchased first, with what was paid');
+
+      // "For this job": the job must be in the same phase.
+      const flooring = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase2.id, name: 'Flooring' }),
+      );
+      const wrongPhase = await mutate(h, 'editor', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Other'),
+        jobId: flooring.id,
+        name: 'Tile',
+      });
+      expect([wrongPhase.code, wrongPhase.message]).toEqual([
+        'BAD_REQUEST',
+        '"Flooring" is in another phase; put this line in the same phase',
+      ]);
+      const tile = (
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase2.id,
+          categoryId: cat('Other'),
+          jobId: flooring.id,
+          name: 'Tile',
+          priceCents: 0,
+        })
+      ).data as LineRow;
+      expect(tile.job?.name).toBe('Flooring');
+
+      // Lists: To buy first; whole-house lines by roomId null; by job.
+      const all = rows(await query(h, 'viewer', 'shoppingLines.list')) as LineRow[];
+      expect(all.map((l) => l.name)).toEqual(expect.arrayContaining(['Couch', 'Tile']));
+      const house = rows(
+        await query(h, 'viewer', 'shoppingLines.list', { roomId: null }),
+      ) as LineRow[];
+      expect(house.map((l) => l.name)).toEqual(['Tile']);
+      const forJob = rows(
+        await query(h, 'viewer', 'shoppingLines.list', { jobId: flooring.id }),
+      ) as LineRow[];
+      expect(forJob.map((l) => l.name)).toEqual(['Tile']);
+
+      // Remove hides it; restore brings it back.
+      await mutate(h, 'editor', 'shoppingLines.remove', { id: tile.id });
+      expect((await query(h, 'viewer', 'shoppingLines.get', { id: tile.id })).code).toBe(
+        'NOT_FOUND',
+      );
+      expect((await mutate(h, 'editor', 'shoppingLines.restore', { id: tile.id })).status).toBe(
+        200,
+      );
+    }));
+
+  it('categories: add, duplicate names conflict, rename, merge moves the lines', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const garden = row(await mutate(h, 'chris', 'categories.create', { name: 'Garden' }));
+      const list = async () => rows(await query(h, 'viewer', 'categories.list'));
+      expect((await list()).at(-1)?.name).toBe('Garden');
+      expect((await mutate(h, 'chris', 'categories.create', { name: 'rugs' })).code).toBe(
+        'CONFLICT',
+      );
+      expect(
+        row(
+          await mutate(h, 'chris', 'categories.update', { id: garden.id, name: 'Garden & patio' }),
+        ).name,
+      ).toBe('Garden & patio');
+
+      const pots = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase1.id,
+          categoryId: garden.id,
+          name: 'Pots',
+        }),
+      );
+      const merged = await mutate(h, 'chris', 'categories.merge', {
+        id: garden.id,
+        intoId: cat('Decor'),
+      });
+      expect((merged.data as { moved: number }).moved).toBe(1);
+      expect((await list()).some((c) => c.id === garden.id)).toBe(false);
+      const moved = row(await query(h, 'viewer', 'shoppingLines.get', { id: pots.id })) as Row & {
+        category: Row;
+      };
+      expect(moved.category.name).toBe('Decor');
+      // The merged category's name is free again.
+      expect(
+        (await mutate(h, 'chris', 'categories.create', { name: 'Garden & patio' })).status,
+      ).toBe(200);
+      expect(
+        (await mutate(h, 'chris', 'categories.merge', { id: cat('Decor'), intoId: cat('Decor') }))
+          .code,
+      ).toBe('BAD_REQUEST');
+    }));
+
+  it('job money: cost lines and payments give a payment status', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const paint = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Paint' }),
+      );
+      type Money = {
+        costCents: number;
+        paidCents: number;
+        payment: { kind: string; percent?: number };
+      };
+      const money = async () =>
+        (row(await query(h, 'viewer', 'jobs.get', { id: paint.id })) as Row & { money: Money })
+          .money;
+      expect(await money()).toEqual({ costCents: 0, paidCents: 0, payment: { kind: 'no_price' } });
+
+      const quote = row(
+        await mutate(h, 'editor', 'costLines.create', {
+          jobId: paint.id,
+          description: 'Pro-vision quote',
+          amountCents: '35,000',
+        }),
+      );
+      const permit = row(
+        await mutate(h, 'editor', 'costLines.create', {
+          jobId: paint.id,
+          description: 'Permit',
+          amountCents: '250',
+        }),
+      );
+      expect((await money()).payment).toEqual({ kind: 'unpaid' });
+      const deposit = row(
+        await mutate(h, 'editor', 'payments.create', {
+          jobId: paint.id,
+          amountCents: '10,000',
+          paidOn: '2026-10-01',
+          note: 'Deposit',
+        }),
+      );
+      expect(await money()).toEqual({
+        costCents: 3525000,
+        paidCents: 1000000,
+        payment: { kind: 'deposit', percent: 28 },
+      });
+      const lines = rows(await query(h, 'viewer', 'costLines.list', { jobId: paint.id }));
+      expect(lines.map((l) => l.description)).toEqual(['Pro-vision quote', 'Permit']);
+
+      // Edit and remove; then the rest is paid.
+      await mutate(h, 'editor', 'costLines.update', { id: quote.id, amountCents: '34,000' });
+      await mutate(h, 'editor', 'costLines.remove', { id: permit.id });
+      await mutate(h, 'editor', 'payments.update', { id: deposit.id, amountCents: '14,000' });
+      await mutate(h, 'editor', 'payments.create', {
+        jobId: paint.id,
+        amountCents: '20,000',
+        paidOn: '2026-11-01',
+      });
+      expect(await money()).toEqual({
+        costCents: 3400000,
+        paidCents: 3400000,
+        payment: { kind: 'paid' },
+      });
+      expect(rows(await query(h, 'viewer', 'payments.list', { jobId: paint.id })).length).toBe(2);
+      const bad = await mutate(h, 'editor', 'payments.create', {
+        jobId: paint.id,
+        amountCents: '12.345',
+        paidOn: '2026-11-01',
+      });
+      expect([bad.code, bad.message]).toEqual([
+        'BAD_REQUEST',
+        expect.stringContaining('Enter an amount like 1,234.56'),
+      ]);
+    }));
+
+  it('money summary: pool, Spent, Committed, Available and the totals, as Home shows them', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, phase2, cat } = await moneyFixtures(h);
+      type Summary = {
+        pool: { startingCents: number; adjustmentsCents: number; poolCents: number };
+        spentCents: number;
+        committedCents: number;
+        availableCents: number;
+        byPhase: {
+          id: string;
+          counting: boolean;
+          spentCents: number;
+          toComeCents: number;
+          leavesCents: number | null;
+        }[];
+        byCategory: { name: string; spentCents: number; committedCents: number }[];
+        byRoom: { id: string | null; name: string; spentCents: number; committedCents: number }[];
+      };
+      const summary = async () => (await query(h, 'viewer', 'money.summary')).data as Summary;
+      const before = await summary();
+
+      await mutate(h, 'chris', 'budget.update', { startingCents: '300,000', asOf: '2026-09-03' });
+      const adj = await mutate(h, 'chris', 'budgetAdjustments.create', {
+        amountCents: '-5,000',
+        on: '2026-09-15',
+        note: '401K loan',
+      });
+      expect((adj.data as { poolCents: number }).poolCents).toBe(29500000);
+
+      // Phase 1: a $35,000 job with a $10,000 deposit, a rug bought for $850, a $5,000 couch to buy.
+      const paint = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Paint' }),
+      );
+      await mutate(h, 'editor', 'costLines.create', {
+        jobId: paint.id,
+        description: 'Quote',
+        amountCents: '35,000',
+      });
+      await mutate(h, 'editor', 'payments.create', {
+        jobId: paint.id,
+        amountCents: '10,000',
+        paidOn: '2026-10-01',
+      });
+      const rug = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase1.id,
+          categoryId: cat('Rugs'),
+          name: 'Rug',
+          priceCents: '900',
+        }),
+      );
+      await mutate(h, 'editor', 'shoppingLines.update', {
+        id: rug.id,
+        status: 'purchased',
+        paidCents: '850',
+      });
+      await mutate(h, 'editor', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Furniture'),
+        name: 'Couch',
+        priceCents: '5,000',
+      });
+      // Phase 2 (planned): a $15,000 bath job; not committed, but Phase 2 would need it.
+      const bath = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase2.id, name: 'Guest bath' }),
+      );
+      await mutate(h, 'editor', 'costLines.create', {
+        jobId: bath.id,
+        description: 'Estimate',
+        amountCents: '15,000',
+      });
+
+      const s = await summary();
+      expect(s.pool).toMatchObject({
+        startingCents: 30000000,
+        adjustmentsCents: -500000,
+        poolCents: 29500000,
+      });
+      expect(s.spentCents - before.spentCents).toBe(1000000 + 85000);
+      expect(s.committedCents - before.committedCents).toBe(2500000 + 500000);
+      expect(s.availableCents).toBe(29500000 - s.spentCents - s.committedCents);
+      const p2 = s.byPhase.find((p) => p.id === phase2.id);
+      expect(p2).toMatchObject({
+        counting: false,
+        toComeCents: 1500000,
+        leavesCents: s.availableCents - 1500000,
+      });
+      expect(s.byCategory.find((c) => c.name === 'Rugs')).toMatchObject({
+        spentCents: 85000,
+        committedCents: 0,
+      });
+      expect(s.byRoom.at(-1)).toMatchObject({ id: null, name: 'Whole house' });
+
+      // Cancelling the job: its deposit stays spent; the rest is no longer committed.
+      await mutate(h, 'editor', 'jobs.update', { id: paint.id, status: 'cancelled' });
+      const c = await summary();
+      expect(c.spentCents).toBe(s.spentCents);
+      expect(s.committedCents - c.committedCents).toBe(2500000);
+
+      // Home carries the same headline.
+      type Home = {
+        money: { availableCents: number; plannedPhases: { id: string; leavesCents: number }[] };
+      };
+      const home = (await query(h, 'viewer', 'home.summary')).data as Home;
+      expect(home.money.availableCents).toBe(c.availableCents);
+      expect(home.money.plannedPhases.find((p) => p.id === phase2.id)?.leavesCents).toBe(
+        c.availableCents - 1500000,
+      );
+    }));
+
   it('403 when a viewer calls an editor-only procedure; editor passes', () =>
     withSeeded(async (tx) => {
       const testRouter = router({ write: editorProcedure.mutation(() => 'ok') });

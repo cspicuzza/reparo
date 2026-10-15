@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { isIsoDate } from './date';
 import { parseLength, snapInches } from './length';
+import { cents } from './money';
 
 export const PHASE_STATUSES = ['planned', 'active', 'complete'] as const;
 export type PhaseStatusInput = (typeof PHASE_STATUSES)[number];
@@ -237,3 +238,188 @@ export type JobRoomFormInput = z.input<typeof jobRoomFormSchema>;
 
 /** Phase form: the create schema's input shape, reused for edits. */
 export type PhaseCreateInput = z.input<typeof phaseCreateSchema>;
+
+// --- money (M3) -----------------------------------------------------------------------------
+
+export const MONEY_HELP = 'Enter an amount like 1,234.56';
+
+/**
+ * An amount as a person types it ("1,234.56", "$90") or a number that is already integer cents.
+ * Like `lengthSchema`, this lets one schema serve the form (text in, cents out) and the API (the
+ * form's cents in, unchanged): text is dollars, a number is cents. Output is integer cents
+ * (ADR-004), parsed by `cents` in ./money.
+ */
+const parseDollars = (v: string | number, ctx: z.RefinementCtx): number => {
+  if (typeof v === 'number') {
+    if (Number.isSafeInteger(v)) return v === 0 ? 0 : v;
+    ctx.addIssue({ code: 'custom', message: MONEY_HELP });
+    return z.NEVER;
+  }
+  try {
+    return cents(v);
+  } catch {
+    ctx.addIssue({ code: 'custom', message: MONEY_HELP });
+    return z.NEVER;
+  }
+};
+
+/** Typed dollars → cents, 0 or more. */
+export const moneyInputSchema = z
+  .union([z.string(), z.number()])
+  .transform(parseDollars)
+  .refine((c) => c >= 0, { error: 'Enter 0 or more' });
+/** Typed dollars → cents, more than 0. */
+export const positiveMoneyInputSchema = z
+  .union([z.string(), z.number()])
+  .transform(parseDollars)
+  .refine((c) => c > 0, { error: 'Enter an amount above 0' });
+/** Typed dollars → cents, either sign, not 0 (money added to or taken from the pool). */
+export const signedMoneyInputSchema = z
+  .union([z.string(), z.number()])
+  .transform(parseDollars)
+  .refine((c) => c !== 0, { error: 'Enter an amount, with a minus sign to take money out' });
+
+const urlishSchema = z.string().trim().max(2000, 'Keep the link under 2,000 characters');
+const shortText = (max: number, what: string) =>
+  z.string().trim().max(max, `Keep the ${what} under ${max} characters`);
+
+// Categories -----------------------------------------------------------------------------------
+
+export const categoryCreateSchema = z.object({ name: nameSchema });
+export const categoryUpdateSchema = z.object({
+  id: idSchema,
+  name: nameSchema.optional(),
+  sortOrder: sortOrderSchema.optional(),
+});
+/** Move every line from `id` to `intoId`, then remove `id`. */
+export const categoryMergeSchema = z
+  .object({ id: idSchema, intoId: idSchema })
+  .refine((v) => v.id !== v.intoId, { error: 'Pick a different category to merge into' });
+export type CategoryCreate = z.infer<typeof categoryCreateSchema>;
+export type CategoryUpdate = z.infer<typeof categoryUpdateSchema>;
+export type CategoryMerge = z.infer<typeof categoryMergeSchema>;
+
+// Shopping lines -------------------------------------------------------------------------------
+
+const shoppingFields = {
+  phaseId: idSchema,
+  /** Null = the whole house. */
+  roomId: idSchema.nullable(),
+  categoryId: idSchema,
+  /** "For this job" (tile for flooring); must be in the same phase. */
+  jobId: idSchema.nullable(),
+  name: nameSchema,
+  link: urlishSchema,
+  store: shortText(120, 'store'),
+  modelNumber: shortText(120, 'model number'),
+  quantity: z
+    .number({ error: 'Enter a whole number, 1 or more' })
+    .int('Enter a whole number, 1 or more')
+    .min(1, 'Enter a whole number, 1 or more'),
+  /** The expected line total. */
+  priceCents: moneyInputSchema,
+  notes: notesSchema,
+};
+
+export const shoppingLineCreateSchema = z.object({
+  ...shoppingFields,
+  roomId: shoppingFields.roomId.default(null),
+  jobId: shoppingFields.jobId.default(null),
+  link: shoppingFields.link.default(''),
+  store: shoppingFields.store.default(''),
+  modelNumber: shoppingFields.modelNumber.default(''),
+  quantity: shoppingFields.quantity.default(1),
+  priceCents: shoppingFields.priceCents.default(0),
+  notes: shoppingFields.notes.default(''),
+});
+
+/**
+ * Edits, and status changes with the amount each needs: Purchased needs what was paid,
+ * Returned needs what came back. Moving back to To buy clears both.
+ */
+export const shoppingLineUpdateSchema = z
+  .object(shoppingFields)
+  .partial()
+  .extend({
+    id: idSchema,
+    status: z.enum(SHOPPING_STATUSES).optional(),
+    paidCents: moneyInputSchema.optional(),
+    refundCents: moneyInputSchema.optional(),
+  })
+  .refine((v) => v.status !== 'purchased' || v.paidCents !== undefined, {
+    error: 'Say what was paid',
+    path: ['paidCents'],
+  })
+  .refine((v) => v.status !== 'returned' || v.refundCents !== undefined, {
+    error: 'Say how much came back',
+    path: ['refundCents'],
+  });
+
+export const shoppingLineListSchema = z
+  .object({
+    phaseId: idSchema,
+    /** null = whole-house lines only. */
+    roomId: idSchema.nullable(),
+    categoryId: idSchema,
+    jobId: idSchema,
+    status: z.enum(SHOPPING_STATUSES),
+  })
+  .partial();
+export type ShoppingLineCreate = z.infer<typeof shoppingLineCreateSchema>;
+export type ShoppingLineCreateInput = z.input<typeof shoppingLineCreateSchema>;
+export type ShoppingLineUpdate = z.infer<typeof shoppingLineUpdateSchema>;
+export type ShoppingLineList = z.infer<typeof shoppingLineListSchema>;
+
+// Job money: cost lines and payments -----------------------------------------------------------
+
+export const costLineCreateSchema = z.object({
+  jobId: idSchema,
+  /** "Pro-vision quote", "Permit", "Extra: closet trim". */
+  description: nameSchema,
+  amountCents: moneyInputSchema,
+  notes: notesSchema.default(''),
+});
+export const costLineUpdateSchema = costLineCreateSchema
+  .omit({ jobId: true })
+  .partial()
+  .extend({ id: idSchema });
+export type CostLineCreate = z.infer<typeof costLineCreateSchema>;
+export type CostLineCreateInput = z.input<typeof costLineCreateSchema>;
+export type CostLineUpdate = z.infer<typeof costLineUpdateSchema>;
+
+export const paymentCreateSchema = z.object({
+  jobId: idSchema,
+  amountCents: positiveMoneyInputSchema,
+  paidOn: isoDateSchema,
+  /** "Deposit", "Progress", "Final". */
+  note: shortText(200, 'note').default(''),
+});
+export const paymentUpdateSchema = paymentCreateSchema
+  .omit({ jobId: true })
+  .partial()
+  .extend({ id: idSchema });
+export type PaymentCreate = z.infer<typeof paymentCreateSchema>;
+export type PaymentCreateInput = z.input<typeof paymentCreateSchema>;
+export type PaymentUpdate = z.infer<typeof paymentUpdateSchema>;
+
+// The pool -----------------------------------------------------------------------------------
+
+export const budgetUpdateSchema = z
+  .object({
+    startingCents: moneyInputSchema,
+    asOf: isoDateSchema.nullable(),
+    notes: notesSchema,
+  })
+  .partial();
+export type BudgetUpdate = z.infer<typeof budgetUpdateSchema>;
+export type BudgetUpdateInput = z.input<typeof budgetUpdateSchema>;
+
+export const adjustmentCreateSchema = z.object({
+  amountCents: signedMoneyInputSchema,
+  on: isoDateSchema,
+  note: shortText(200, 'note').default(''),
+});
+export const adjustmentUpdateSchema = adjustmentCreateSchema.partial().extend({ id: idSchema });
+export type AdjustmentCreate = z.infer<typeof adjustmentCreateSchema>;
+export type AdjustmentCreateInput = z.input<typeof adjustmentCreateSchema>;
+export type AdjustmentUpdate = z.infer<typeof adjustmentUpdateSchema>;
