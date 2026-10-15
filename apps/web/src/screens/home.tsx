@@ -278,6 +278,10 @@ function PhasePanel({ summary }: { summary: Summary }) {
 }
 
 function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
+  const trpc = useTRPC();
+  // Same covers as the Rooms list (M4, OD-64); a room without one keeps the plan-grid placeholder.
+  const covers = useQuery(trpc.files.roomCovers.queryOptions());
+  const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
   return (
     <section aria-labelledby="rooms">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -298,27 +302,42 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
         </p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {rooms.slice(0, HOME_ROOMS).map((r) => (
-            <li key={r.id}>
-              <Link
-                to="/rooms/$roomId"
-                params={{ roomId: r.id }}
-                className="block overflow-hidden rounded-xl border border-border bg-card hover:border-input"
-              >
-                <PlanGrid className="h-24 sm:h-32">No picture yet</PlanGrid>
-                <div className="p-3 sm:p-4">
-                  <p className="text-xl font-semibold">{r.name}</p>
-                  {r.awaitingReview ? (
-                    <span className="mt-1 inline-block">
-                      <StatusBadge status="awaiting_review" />
-                    </span>
+          {rooms.slice(0, HOME_ROOMS).map((r) => {
+            const cover = coverOf.get(r.id);
+            return (
+              <li key={r.id}>
+                <Link
+                  to="/rooms/$roomId"
+                  params={{ roomId: r.id }}
+                  className="block overflow-hidden rounded-xl border border-border bg-card hover:border-input"
+                >
+                  {cover ? (
+                    <img
+                      src={cover}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-24 w-full bg-inset object-cover sm:h-32"
+                    />
                   ) : (
-                    <p className="text-sm text-muted-foreground">{roomProgressText(r.progress)}</p>
+                    <PlanGrid className="h-24 sm:h-32">No picture yet</PlanGrid>
                   )}
-                </div>
-              </Link>
-            </li>
-          ))}
+                  <div className="p-3 sm:p-4">
+                    <p className="text-xl font-semibold">{r.name}</p>
+                    {r.awaitingReview ? (
+                      <span className="mt-1 inline-block">
+                        <StatusBadge status="awaiting_review" />
+                      </span>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        {roomProgressText(r.progress)}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
