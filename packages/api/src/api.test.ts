@@ -203,10 +203,10 @@ describe('@reparo/api', () => {
   const rows = (r: Rpc) => r.data as Row[];
   const row = (r: Rpc) => r.data as Row;
 
-  it('role guards: viewers read, editors write rooms/work, only admins touch phases/items', () =>
+  it('role guards: viewers read, editors write rooms/work/vendors, only admins touch phases or archive vendors', () =>
     withSeeded(async (_tx, h) => {
       expect((await query(h, 'viewer', 'rooms.list')).status).toBe(200);
-      expect((await query(h, 'viewer', 'items.list')).status).toBe(200);
+      expect((await query(h, 'viewer', 'vendors.list')).status).toBe(200);
       expect((await query(h, 'viewer', 'phases.list')).status).toBe(200);
 
       const v = await mutate(h, 'viewer', 'rooms.create', { name: 'Kitchen' });
@@ -214,12 +214,16 @@ describe('@reparo/api', () => {
 
       const e1 = await mutate(h, 'editor', 'phases.create', { name: 'Phase 2' });
       expect([e1.status, e1.message]).toEqual([403, 'Requires admin role']);
-      const e2 = await mutate(h, 'editor', 'items.create', { name: 'Roofing' });
+      const roofer = await mutate(h, 'editor', 'vendors.create', { name: 'Roofer' });
+      expect(roofer.status).toBe(200);
+      const e2 = await mutate(h, 'editor', 'vendors.remove', { id: row(roofer).id });
       expect([e2.status, e2.message]).toEqual([403, 'Requires admin role']);
+      const v2 = await mutate(h, 'viewer', 'vendors.create', { name: 'Gutters' });
+      expect(v2.status).toBe(403);
 
       expect((await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' })).status).toBe(200);
       expect((await mutate(h, 'chris', 'phases.create', { name: 'Phase 2' })).status).toBe(200);
-      expect((await mutate(h, 'chris', 'items.create', { name: 'Roofing' })).status).toBe(200);
+      expect((await mutate(h, 'chris', 'vendors.remove', { id: row(roofer).id })).status).toBe(200);
     }));
 
   it('rooms: create parses lengths, update clears one, duplicates conflict, remove hides', () =>
@@ -288,44 +292,88 @@ describe('@reparo/api', () => {
       expect(rows(await query(h, 'viewer', 'phases.list')).map((p) => p.name)).toEqual(['Phase 1']);
     }));
 
-  it('items: starter catalog is listed; retire hides from pickers and blocks new work', () =>
+  // --- M2 (OD-45) -------------------------------------------------------------------------------
+
+  it('vendors: add, search, edit, duplicate names conflict, archive hides but jobs keep them', () =>
     withSeeded(async (_tx, h) => {
-      const all = rows(await query(h, 'viewer', 'items.list'));
-      expect(all.length).toBeGreaterThanOrEqual(23);
-      expect(all[0]?.name).toBe('Demo');
-      const stucco = all.find((i) => i.name === 'Stucco');
-      const paint = all.find((i) => i.name === 'Paint');
-      if (!stucco || !paint) throw new Error('seed missing');
-
-      expect((await mutate(h, 'chris', 'items.create', { name: 'Paint' })).code).toBe('CONFLICT');
-      const renamed = await mutate(h, 'chris', 'items.update', {
-        id: stucco.id,
-        name: 'Stucco repair',
+      const created = await mutate(h, 'editor', 'vendors.create', {
+        name: 'Rolland Reash',
+        trade: 'Plumber',
+        phone: '555-0101',
       });
-      expect(row(renamed).name).toBe('Stucco repair');
+      expect(created.status).toBe(200);
+      const rr = row(created);
+      expect([rr.email, rr.notes]).toEqual(['', '']);
+      const tj = row(await mutate(h, 'editor', 'vendors.create', { name: 'TJ', trade: 'Demo' }));
 
-      const retired = await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: true });
-      expect(row(retired).retiredAt).not.toBeNull();
-      expect(rows(await query(h, 'viewer', 'items.list')).some((i) => i.id === stucco.id)).toBe(
-        false,
+      type VendorRow = Row & { jobCount: number; archived: boolean };
+      const list = async (input?: object) =>
+        rows(await query(h, 'viewer', 'vendors.list', input)) as VendorRow[];
+      expect((await list()).map((v) => v.name)).toEqual(
+        expect.arrayContaining(['Rolland Reash', 'TJ']),
       );
-      expect(
-        rows(await query(h, 'viewer', 'items.list', { includeRetired: true })).some(
-          (i) => i.id === stucco.id,
-        ),
-      ).toBe(true);
+      // Search matches the name or what they do, ignoring case; % is literal.
+      expect((await list({ query: 'plumb' })).map((v) => v.name)).toEqual(['Rolland Reash']);
+      expect((await list({ query: 'rolland' })).map((v) => v.name)).toEqual(['Rolland Reash']);
+      expect(await list({ query: '%' })).toEqual([]);
 
-      const [phase] = rows(await query(h, 'viewer', 'phases.list'));
-      if (!phase) throw new Error('seed missing');
-      const blocked = await mutate(h, 'editor', 'jobs.create', {
-        itemId: stucco.id,
-        phaseId: phase.id,
+      const dup = await mutate(h, 'editor', 'vendors.create', { name: 'rolland reash' });
+      expect([dup.status, dup.message]).toEqual([
+        409,
+        "There's already a vendor called rolland reash",
+      ]);
+      const trimmed = await mutate(h, 'editor', 'vendors.update', { id: tj.id, name: ' TJ ' });
+      expect(row(trimmed).name).toBe('TJ');
+      const clash = await mutate(h, 'editor', 'vendors.update', {
+        id: tj.id,
+        name: 'Rolland Reash',
       });
-      expect([blocked.status, blocked.code]).toEqual([400, 'BAD_REQUEST']);
-      expect(blocked.message).toMatch(/retired/);
+      expect(clash.code).toBe('CONFLICT');
+      const badEmail = await mutate(h, 'editor', 'vendors.update', { id: tj.id, email: 'nope' });
+      expect(badEmail.code).toBe('BAD_REQUEST');
 
-      const restored = await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: false });
-      expect(row(restored).retiredAt).toBeNull();
+      // A job names TJ; the list counts it.
+      const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
+      if (!phase1) throw new Error('seed missing');
+      const demo = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          name: 'Demo week',
+          vendorId: tj.id,
+        }),
+      );
+      expect((await list({ query: 'TJ' }))[0]?.jobCount).toBe(1);
+
+      // Archive: gone from the list, the picker and `get`, still on the job.
+      await mutate(h, 'chris', 'vendors.remove', { id: tj.id });
+      expect((await list()).some((v) => v.id === tj.id)).toBe(false);
+      expect((await query(h, 'viewer', 'vendors.get', { id: tj.id })).code).toBe('NOT_FOUND');
+      const archived = (await list({ includeArchived: true })).find((v) => v.id === tj.id);
+      expect(archived?.archived).toBe(true);
+      const onJob = row(await query(h, 'viewer', 'jobs.get', { id: demo.id })) as Row & {
+        vendor: Row;
+      };
+      expect([onJob.vendor.name, onJob.vendor.archived]).toEqual(['TJ', true]);
+      // Editing the job leaves the archived vendor alone; picking one needs a live vendor.
+      const kept = await mutate(h, 'editor', 'jobs.update', { id: demo.id, notes: 'dumpster' });
+      expect((row(kept) as Row & { vendor: Row }).vendor.name).toBe('TJ');
+      const pickArchived = await mutate(h, 'editor', 'jobs.update', {
+        id: demo.id,
+        vendorId: rr.id,
+      });
+      expect(pickArchived.status).toBe(200);
+      const repick = await mutate(h, 'editor', 'jobs.update', { id: demo.id, vendorId: tj.id });
+      expect(repick.code).toBe('NOT_FOUND');
+      // Clearing the vendor is allowed.
+      const cleared = await mutate(h, 'editor', 'jobs.update', { id: demo.id, vendorId: null });
+      expect((row(cleared) as Row & { vendor: unknown }).vendor).toBeNull();
+
+      // Restore brings TJ back, unless a live vendor has taken the name meanwhile.
+      const newTj = row(await mutate(h, 'editor', 'vendors.create', { name: 'TJ' }));
+      expect((await mutate(h, 'chris', 'vendors.restore', { id: tj.id })).code).toBe('CONFLICT');
+      await mutate(h, 'chris', 'vendors.remove', { id: newTj.id });
+      const back = await mutate(h, 'chris', 'vendors.restore', { id: tj.id });
+      expect(row(back).deletedAt).toBeNull();
     }));
 
   // --- Model fix (OD-34) ------------------------------------------------------------------------
@@ -353,61 +401,24 @@ describe('@reparo/api', () => {
     expect(rollUp(['in_progress'], 'unstarted').status).toBe('in_progress');
   });
 
-  it('categories and items: list, Misc by default, admin recategorizes', () =>
-    withSeeded(async (_tx, h) => {
-      const cats = rows(await query(h, 'viewer', 'categories.list'));
-      expect(cats.map((c) => c.name)).toEqual([
-        'Remodel',
-        'Furnishing',
-        'Tech',
-        'Appliances',
-        'Moving',
-        'Misc',
-      ]);
-      const id = (name: string) => cats.find((c) => c.name === name)?.id;
-
-      const roofing = row(await mutate(h, 'chris', 'items.create', { name: 'Test Roofing' }));
-      expect(roofing.categoryId).toBe(id('Misc'));
-      const gutters = row(
-        await mutate(h, 'chris', 'items.create', {
-          name: 'Test Gutters',
-          categoryId: id('Remodel'),
-        }),
-      );
-      expect(gutters.categoryId).toBe(id('Remodel'));
-
-      const moved = await mutate(h, 'chris', 'items.update', {
-        id: roofing.id,
-        categoryId: id('Remodel'),
-      });
-      expect(row(moved).categoryId).toBe(id('Remodel'));
-      const ghost = '99999999-9999-4999-8999-999999999999';
-      expect(
-        (await mutate(h, 'chris', 'items.update', { id: roofing.id, categoryId: ghost })).code,
-      ).toBe('NOT_FOUND');
-      expect(
-        (await mutate(h, 'editor', 'items.update', { id: roofing.id, categoryId: id('Misc') }))
-          .status,
-      ).toBe(403);
-    }));
-
-  it('jobs: create with rooms, per-room status and spec, roll-up, room and item views', () =>
+  it('jobs: create with rooms, per-room status and spec, roll-up, room and vendor views', () =>
     withSeeded(async (_tx, h) => {
       const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
-      const catalog = rows(await query(h, 'viewer', 'items.list'));
-      const paint = catalog.find((i) => i.name === 'Paint');
-      const fee = catalog.find((i) => i.name === 'Project Fee');
-      if (!phase1 || !paint || !fee) throw new Error('seed missing');
+      if (!phase1) throw new Error('seed missing');
+      const proVision = row(
+        await mutate(h, 'editor', 'vendors.create', { name: 'Test Pro-vision', trade: 'Painter' }),
+      );
       const room = async (name: string) => row(await mutate(h, 'editor', 'rooms.create', { name }));
       const kitchen = await room('Test Kitchen');
       const den = await room('Test Den');
       const bath = await room('Test Bath');
       const office = await room('Test Office');
 
-      // One action: Paint in Phase 1 covering three rooms; blank name is filled in.
+      // One action: Paint in Phase 1 by Pro-vision, covering three rooms.
       const created = await mutate(h, 'editor', 'jobs.create', {
         phaseId: phase1.id,
-        itemId: paint.id,
+        name: 'Paint — Phase 1',
+        vendorId: proVision.id,
         spec: 'SW Alabaster, eggshell',
         roomIds: [kitchen.id, den.id, bath.id],
       });
@@ -418,9 +429,10 @@ describe('@reparo/api', () => {
         resolvedSpec: string;
         specSource: string;
       };
-      type JobRow = Row & { rooms: JobRoomRow[]; progress: Row; phase: Row; item: Row };
+      type JobRow = Row & { rooms: JobRoomRow[]; progress: Row; phase: Row; vendor: Row | null };
       const job = created.data as JobRow;
       expect(job.name).toBe('Paint — Phase 1');
+      expect([job.vendor?.name, job.vendor?.trade]).toEqual(['Test Pro-vision', 'Painter']);
       expect(job.rooms.map((r) => r.room.name).sort()).toEqual([
         'Test Bath',
         'Test Den',
@@ -487,7 +499,6 @@ describe('@reparo/api', () => {
       const feeJob = row(
         await mutate(h, 'editor', 'jobs.create', {
           phaseId: phase1.id,
-          itemId: fee.id,
           name: "Brian's project fee",
         }),
       );
@@ -509,26 +520,33 @@ describe('@reparo/api', () => {
       expect(noBath.rooms.some((r) => r.room.name === 'Test Bath')).toBe(false);
 
       // Room view: only the jobs that cover the room. The office has none.
-      type ForRoom = Row & { job: Row; item: Row; status: string; resolvedSpec: string };
+      type ForRoom = Row & { job: Row; vendor: Row | null; status: string; resolvedSpec: string };
       const kitchenView = (await query(h, 'viewer', 'jobs.forRoom', { roomId: kitchen.id }))
         .data as ForRoom[];
-      expect(kitchenView.map((v) => [v.job.name, v.status])).toEqual([
-        ['Paint — Phase 1', 'completed'],
+      expect(kitchenView.map((v) => [v.job.name, v.status, v.vendor?.name])).toEqual([
+        ['Paint — Phase 1', 'completed', 'Test Pro-vision'],
       ]);
       expect(rows(await query(h, 'viewer', 'jobs.forRoom', { roomId: office.id }))).toEqual([]);
 
-      // Item view: the same item can have a job in another phase covering the same room.
+      // Vendor view: the same vendor can have a job in another phase covering the same room;
+      // jobs come back in phase order.
       const p2 = row(
         await mutate(h, 'chris', 'phases.create', { name: 'Test Phase 2', sortOrder: 2 }),
       );
       await mutate(h, 'editor', 'jobs.create', {
         phaseId: p2.id,
-        itemId: paint.id,
+        name: 'Exterior paint',
+        vendorId: proVision.id,
         roomIds: [kitchen.id],
       });
-      const paintJobs = (await query(h, 'viewer', 'jobs.list', { itemId: paint.id }))
+      const theirJobs = (await query(h, 'viewer', 'jobs.list', { vendorId: proVision.id }))
         .data as JobRow[];
-      expect(paintJobs.map((j) => j.name)).toEqual(['Paint — Phase 1', 'Paint — Test Phase 2']);
+      expect(theirJobs.map((j) => [j.name, j.phase.name])).toEqual([
+        ['Paint — Phase 1', 'Phase 1'],
+        ['Exterior paint', 'Test Phase 2'],
+      ]);
+      const inP2 = (await query(h, 'viewer', 'jobs.list', { phaseId: p2.id })).data as JobRow[];
+      expect(inP2.map((j) => j.name)).toEqual(['Exterior paint']);
       expect(
         ((await query(h, 'viewer', 'jobs.forRoom', { roomId: kitchen.id })).data as ForRoom[])
           .length,
@@ -561,10 +579,7 @@ describe('@reparo/api', () => {
   it('home: needs you, the current phase and room progress', () =>
     withSeeded(async (_tx, h) => {
       const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
-      const catalog = rows(await query(h, 'viewer', 'items.list'));
-      const paint = catalog.find((i) => i.name === 'Paint');
-      const fee = catalog.find((i) => i.name === 'Project Fee');
-      if (!phase1 || !paint || !fee) throw new Error('seed missing');
+      if (!phase1) throw new Error('seed missing');
       const room = async (name: string) => row(await mutate(h, 'editor', 'rooms.create', { name }));
       const den = await room('Home Den');
       const hall = await room('Home Hall');
@@ -574,7 +589,7 @@ describe('@reparo/api', () => {
       const job = (
         await mutate(h, 'editor', 'jobs.create', {
           phaseId: phase1.id,
-          itemId: paint.id,
+          name: 'Paint — Phase 1',
           roomIds: [den.id, hall.id],
         })
       ).data as JobRow;
@@ -591,22 +606,22 @@ describe('@reparo/api', () => {
       const feeJob = row(
         await mutate(h, 'editor', 'jobs.create', {
           phaseId: phase1.id,
-          itemId: fee.id,
+          name: 'Project fee',
           status: 'awaiting_review',
         }),
       );
 
       type Summary = {
-        needsYou: { jobName: string; room: Row | null }[];
+        needsYou: { jobId: string; jobName: string; room: Row | null }[];
         phase: Row | null;
         phaseJobs: (Row & { roomCount: number; progress: Row })[];
         rooms: (Row & { progress: Row; awaitingReview: boolean })[];
       };
       const home = (await query(h, 'viewer', 'home.summary')).data as Summary;
 
-      expect(home.needsYou.map((n) => [n.jobName, n.room?.name ?? null])).toEqual([
-        ['Paint — Phase 1', 'Home Den'],
-        [feeJob.name, null],
+      expect(home.needsYou.map((n) => [n.jobId, n.jobName, n.room?.name ?? null])).toEqual([
+        [job.id, 'Paint — Phase 1', 'Home Den'],
+        [feeJob.id, feeJob.name, null],
       ]);
       expect([home.phase?.name, home.phase?.status]).toEqual(['Phase 1', 'active']);
       const paintJob = home.phaseJobs.find((j) => j.id === job.id);
@@ -640,37 +655,32 @@ describe('@reparo/api', () => {
       expect(after.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 1, total: 2 });
     }));
 
-  it('jobs: guards — viewers read only, retired items and unknown rooms are refused', () =>
+  it('jobs: guards — viewers read only; a name, a real phase, vendor and rooms are needed', () =>
     withSeeded(async (_tx, h) => {
       const [phase1] = rows(await query(h, 'viewer', 'phases.list'));
-      const catalog = rows(await query(h, 'viewer', 'items.list'));
-      const trim = catalog.find((i) => i.name === 'Trim');
-      const stucco = catalog.find((i) => i.name === 'Stucco');
-      if (!phase1 || !trim || !stucco) throw new Error('seed missing');
+      if (!phase1) throw new Error('seed missing');
 
-      const v = await mutate(h, 'viewer', 'jobs.create', { phaseId: phase1.id, itemId: trim.id });
+      const v = await mutate(h, 'viewer', 'jobs.create', { phaseId: phase1.id, name: 'Trim' });
       expect(v.status).toBe(403);
-
-      await mutate(h, 'chris', 'items.update', { id: stucco.id, retired: true });
-      const retired = await mutate(h, 'editor', 'jobs.create', {
-        phaseId: phase1.id,
-        itemId: stucco.id,
-      });
-      expect([retired.code, retired.message]).toEqual([
-        'BAD_REQUEST',
-        '"Stucco" is retired; restore it to add work',
-      ]);
+      const noName = await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: ' ' });
+      expect([noName.code, noName.message]).toEqual(['BAD_REQUEST', expect.stringMatching(/name/)]);
 
       const ghost = '99999999-9999-4999-8999-999999999999';
+      const noVendor = await mutate(h, 'editor', 'jobs.create', {
+        phaseId: phase1.id,
+        name: 'Trim',
+        vendorId: ghost,
+      });
+      expect([noVendor.code, noVendor.message]).toEqual(['NOT_FOUND', 'Vendor not found']);
       const noRoom = await mutate(h, 'editor', 'jobs.create', {
         phaseId: phase1.id,
-        itemId: trim.id,
+        name: 'Trim',
         roomIds: [ghost],
       });
       expect(noRoom.code).toBe('NOT_FOUND');
       const withStatus = await mutate(h, 'editor', 'jobs.create', {
         phaseId: phase1.id,
-        itemId: trim.id,
+        name: 'Trim',
         roomIds: [],
         status: 'in_progress',
       });

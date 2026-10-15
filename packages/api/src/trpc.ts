@@ -37,5 +37,5 @@ function atLeast(role: MemberRole) {
 
 /** Editor or admin (ADR-008). Every write uses this or `adminProcedure`. */
 export const editorProcedure = atLeast('editor');
-/** Admin only: members and roles, item list, phases, hard deletes (ADR-008). */
+/** Admin only: members and roles, phases, archiving vendors, hard deletes (ADR-008). */
 export const adminProcedure = atLeast('admin');

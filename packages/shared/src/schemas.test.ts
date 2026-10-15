@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  itemCreateSchema,
-  itemUpdateSchema,
   jobCreateSchema,
   jobRoomCreateSchema,
   jobRoomUpdateSchema,
@@ -12,6 +10,9 @@ import {
   phaseUpdateSchema,
   roomCreateSchema,
   roomUpdateSchema,
+  vendorCreateSchema,
+  vendorListSchema,
+  vendorUpdateSchema,
 } from './schemas';
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -83,43 +84,60 @@ describe('rooms', () => {
   });
 });
 
-describe('items', () => {
-  it('item update accepts rename, reorder, retire, recategorize', () => {
-    expect(itemUpdateSchema.parse({ id: ID, retired: true })).toEqual({ id: ID, retired: true });
-    expect(itemUpdateSchema.parse({ id: ID, categoryId: ID })).toEqual({ id: ID, categoryId: ID });
+describe('vendors', () => {
+  it('create needs only a name; the rest default to blank', () => {
+    expect(vendorCreateSchema.parse({ name: ' Rolland Reash ' })).toEqual({
+      name: 'Rolland Reash',
+      trade: '',
+      phone: '',
+      email: '',
+      notes: '',
+    });
+    expect(vendorCreateSchema.safeParse({ name: '  ' }).success).toBe(false);
   });
 
-  it('item create: category is optional (the API files it under Misc)', () => {
-    expect(itemCreateSchema.parse({ name: 'Roofing' })).toEqual({ name: 'Roofing', sortOrder: 0 });
-    expect(itemCreateSchema.safeParse({ name: 'Roofing', categoryId: 'nope' }).success).toBe(false);
+  it('email is blank or a real address', () => {
+    const ok = vendorCreateSchema.parse({ name: 'TJ', email: ' tj@example.com ' });
+    expect(ok.email).toBe('tj@example.com');
+    const bad = vendorCreateSchema.safeParse({ name: 'TJ', email: 'tj at example' });
+    expect(bad.success).toBe(false);
+    expect(bad.error?.issues[0]?.message).toBe('Enter an email like name@example.com');
+  });
+
+  it('update is partial; list defaults to live vendors and no search', () => {
+    expect(vendorUpdateSchema.parse({ id: ID, phone: '555-0100' })).toEqual({
+      id: ID,
+      phone: '555-0100',
+    });
+    expect(vendorListSchema.parse({})).toEqual({ query: '', includeArchived: false });
   });
 });
 
 describe('jobs', () => {
-  it('create applies defaults, requires phase and item, and rejects a repeated room', () => {
-    expect(jobCreateSchema.parse({ phaseId: ID, itemId: ID, name: ' Paint — Phase 1 ' })).toEqual({
+  it('create applies defaults, requires phase and name, and rejects a repeated room', () => {
+    expect(jobCreateSchema.parse({ phaseId: ID, name: ' Exterior paint ' })).toEqual({
       phaseId: ID,
-      itemId: ID,
-      name: 'Paint — Phase 1',
+      vendorId: null,
+      name: 'Exterior paint',
       roomIds: [],
       spec: '',
       notes: '',
       status: 'unstarted',
       sortOrder: 0,
     });
-    expect(jobCreateSchema.safeParse({ phaseId: ID, name: 'x' }).success).toBe(false);
-    // A blank name is allowed; the API fills in "‹Item› — ‹Phase›".
-    expect(jobCreateSchema.parse({ phaseId: ID, itemId: ID }).name).toBe('');
-    const twice = jobCreateSchema.safeParse({ phaseId: ID, itemId: ID, roomIds: [ID, ID] });
+    expect(jobCreateSchema.safeParse({ name: 'x' }).success).toBe(false);
+    expect(jobCreateSchema.safeParse({ phaseId: ID, name: '' }).success).toBe(false);
+    const twice = jobCreateSchema.safeParse({ phaseId: ID, name: 'x', roomIds: [ID, ID] });
     expect(twice.success).toBe(false);
   });
 
-  it('update is partial and cannot change the item', () => {
+  it('update is partial and can set or clear the vendor', () => {
     expect(jobUpdateSchema.parse({ id: ID, spec: 'SW Alabaster, eggshell' })).toEqual({
       id: ID,
       spec: 'SW Alabaster, eggshell',
     });
-    expect(jobUpdateSchema.parse({ id: ID, itemId: ID })).toEqual({ id: ID });
+    expect(jobUpdateSchema.parse({ id: ID, vendorId: ID })).toEqual({ id: ID, vendorId: ID });
+    expect(jobUpdateSchema.parse({ id: ID, vendorId: null })).toEqual({ id: ID, vendorId: null });
   });
 });
 

@@ -110,30 +110,48 @@ export type RoomUpdate = z.infer<typeof roomUpdateSchema>;
 /** What a room form holds before parsing: lengths as typed text. */
 export type RoomCreateInput = z.input<typeof roomCreateSchema>;
 
-// --- items ----------------------------------------------------------------------------------
+// --- vendors (M2) ----------------------------------------------------------------------------
 
-const itemFields = {
+/** Free-text contact fields: blank is fine, so the household can add a vendor with just a name. */
+const shortTextSchema = (max: number, what: string) =>
+  z.string().trim().max(max, `Keep the ${what} under ${max} characters`);
+
+const vendorFields = {
   name: nameSchema,
-  categoryId: idSchema,
-  sortOrder: sortOrderSchema,
-  /** true retires the item (hidden from new work, kept on existing work); false restores it. */
-  retired: z.boolean(),
+  /** What they do ("Plumber", "Demo crew"). Free text; there is no trade list. */
+  trade: shortTextSchema(120, 'trade'),
+  phone: shortTextSchema(40, 'phone number'),
+  email: z.union([
+    z.literal(''),
+    z
+      .string()
+      .trim()
+      .pipe(z.email({ error: 'Enter an email like name@example.com' })),
+  ]),
+  notes: notesSchema,
 };
 
-/** Without a category the API files the item under Misc; the admin can change it later. */
-export const itemCreateSchema = z.object({
-  name: itemFields.name,
-  categoryId: itemFields.categoryId.optional(),
-  sortOrder: itemFields.sortOrder.default(0),
+export const vendorCreateSchema = z.object({
+  name: vendorFields.name,
+  trade: vendorFields.trade.default(''),
+  phone: vendorFields.phone.default(''),
+  email: vendorFields.email.default(''),
+  notes: vendorFields.notes.default(''),
 });
-export const itemUpdateSchema = z.object(itemFields).partial().extend({ id: idSchema });
-export type ItemCreate = z.infer<typeof itemCreateSchema>;
-export type ItemCreateInput = z.input<typeof itemCreateSchema>;
-export type ItemUpdate = z.infer<typeof itemUpdateSchema>;
+export const vendorUpdateSchema = z.object(vendorFields).partial().extend({ id: idSchema });
+/** `query` matches the name or trade; archived vendors are left out unless asked for. */
+export const vendorListSchema = z.object({
+  query: z.string().trim().max(120).default(''),
+  includeArchived: z.boolean().default(false),
+});
+export type VendorCreate = z.infer<typeof vendorCreateSchema>;
+export type VendorCreateInput = z.input<typeof vendorCreateSchema>;
+export type VendorUpdate = z.infer<typeof vendorUpdateSchema>;
+export type VendorList = z.infer<typeof vendorListSchema>;
 
 // --- jobs (Model fix) ------------------------------------------------------------------------
 
-/** Mirrors `file_kind` / `file_owner_type` in `@reparo/db`. Uploads arrive in M3. */
+/** Mirrors `file_kind` / `file_owner_type` in `@reparo/db`. Uploads arrive in M4. */
 export const FILE_KINDS = [
   'mockup',
   'spec_drawing',
@@ -150,7 +168,8 @@ export const FILE_OWNER_TYPES = ['job', 'cost', 'vendor', 'quote', 'room', 'purc
 
 const jobFields = {
   phaseId: idSchema,
-  itemId: idSchema,
+  /** Who's doing it; null for work we do ourselves or haven't given out yet (M2). */
+  vendorId: idSchema.nullable(),
   name: nameSchema,
   /** Markdown: the house-wide spec, used by every covered room that has none of its own. */
   spec: notesSchema,
@@ -162,8 +181,7 @@ const jobFields = {
 
 export const jobCreateSchema = z.object({
   ...jobFields,
-  /** Blank → the API names the job "‹Item› — ‹Phase›". */
-  name: z.string().trim().max(120, 'Keep the name under 120 characters').default(''),
+  vendorId: jobFields.vendorId.default(null),
   /** Rooms the job covers from the start; more can be added or removed later. */
   roomIds: z
     .array(idSchema)
@@ -174,17 +192,13 @@ export const jobCreateSchema = z.object({
   status: jobFields.status.default('unstarted'),
   sortOrder: jobFields.sortOrder.default(0),
 });
-/** Item is fixed after creation; phase, name, spec, notes, status, order can change. */
-export const jobUpdateSchema = z
-  .object(jobFields)
-  .omit({ itemId: true })
-  .partial()
-  .extend({ id: idSchema });
+/** Phase, vendor, name, spec, notes, status (no rooms only) and order can change. */
+export const jobUpdateSchema = z.object(jobFields).partial().extend({ id: idSchema });
 export type JobCreate = z.infer<typeof jobCreateSchema>;
 export type JobCreateInput = z.input<typeof jobCreateSchema>;
 export type JobUpdate = z.infer<typeof jobUpdateSchema>;
 
-export const jobListSchema = z.object({ phaseId: idSchema, itemId: idSchema }).partial();
+export const jobListSchema = z.object({ phaseId: idSchema, vendorId: idSchema }).partial();
 export type JobList = z.infer<typeof jobListSchema>;
 
 /** A room's spec: null = same as the job; text = this room differs. Blank text counts as null. */

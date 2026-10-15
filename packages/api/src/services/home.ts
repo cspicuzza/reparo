@@ -5,14 +5,13 @@ import { listRooms, roomsProgress } from './rooms';
 
 /**
  * Everything Home shows (OD-41), in one read: what needs someone, the current phase's jobs and
- * how far along each room is. Counts come from here, not the browser (web.md). Money joins in M2;
- * deliveries and deposits join "needs you" in M2 and M3.
+ * how far along each room is. Counts come from here, not the browser (web.md). Money joins in M3.
  */
 /** Something waiting for someone to check it: a job in one room, or a job with no rooms. */
 export type NeedsYou = {
   id: string;
+  jobId: string;
   jobName: string;
-  itemId: string;
   room: { id: string; name: string } | null;
 };
 
@@ -27,9 +26,9 @@ export async function homeSummary(db: Db) {
     job.rooms.length > 0
       ? job.rooms
           .filter((r) => r.status === 'awaiting_review')
-          .map((r) => ({ id: r.id, jobName: job.name, itemId: job.itemId, room: r.room }))
+          .map((r) => ({ id: r.id, jobId: job.id, jobName: job.name, room: r.room }))
       : job.progress.status === 'awaiting_review'
-        ? [{ id: job.id, jobName: job.name, itemId: job.itemId, room: null }]
+        ? [{ id: job.id, jobId: job.id, jobName: job.name, room: null }]
         : [],
   );
 
@@ -48,7 +47,6 @@ export async function homeSummary(db: Db) {
           .map((j) => ({
             id: j.id,
             name: j.name,
-            itemId: j.itemId,
             roomCount: j.rooms.length,
             progress: j.progress,
           }))

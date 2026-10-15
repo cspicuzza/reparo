@@ -4,24 +4,25 @@ import {
   eq,
   inArray,
   isNull,
-  items,
   jobRooms,
   jobs,
   phases,
   rooms,
+  vendors,
   type Db,
   type JobRoom,
   type WorkStatus,
 } from '@reparo/db';
 import type { JobCreate, JobList, JobRoomCreate, JobRoomUpdate, JobUpdate } from '@reparo/shared';
 import { badRequest, conflict, isUniqueViolation, notFound } from './errors';
-import { getItem } from './items';
 import { getPhase } from './phases';
 import { getRoom } from './rooms';
+import { getVendor, vendorSummary } from './vendors';
 
 // Jobs and the rooms they cover (Model fix; Linear *Data model* doc). A job holds the
 // house-wide spec; each covered room has its own status and either uses the job's spec
-// (`spec` null) or its own.
+// (`spec` null) or its own. Since M2 (OD-45) a job has no item: it's a named task in a phase,
+// with an optional vendor.
 
 const liveJob = () => isNull(jobs.deletedAt);
 const liveJobRoom = () => isNull(jobRooms.deletedAt);
@@ -62,24 +63,27 @@ function resolve(jobSpec: string, room: Pick<JobRoom, 'spec'>) {
     : { resolvedSpec: room.spec, specSource: 'room' as const };
 }
 
-/** Live jobs in live phases, with item, phase, covered rooms (live) and progress. */
+/**
+ * Live jobs in live phases, in phase order, with phase, vendor (archived ones included, so an
+ * old job still shows who did it), covered rooms (live) and progress.
+ */
 async function loadJobs(db: Db, filter: JobList & { id?: string }) {
   const conds = [liveJob(), isNull(phases.deletedAt)];
   if (filter.id !== undefined) conds.push(eq(jobs.id, filter.id));
   if (filter.phaseId !== undefined) conds.push(eq(jobs.phaseId, filter.phaseId));
-  if (filter.itemId !== undefined) conds.push(eq(jobs.itemId, filter.itemId));
+  if (filter.vendorId !== undefined) conds.push(eq(jobs.vendorId, filter.vendorId));
 
   const rows = await db
     .select({
       job: jobs,
-      item: { id: items.id, name: items.name, categoryId: items.categoryId },
+      vendor: vendors,
       phase: { id: phases.id, name: phases.name, status: phases.status },
     })
     .from(jobs)
-    .innerJoin(items, eq(items.id, jobs.itemId))
     .innerJoin(phases, eq(phases.id, jobs.phaseId))
+    .leftJoin(vendors, eq(vendors.id, jobs.vendorId))
     .where(and(...conds))
-    .orderBy(asc(phases.sortOrder), asc(jobs.sortOrder), asc(items.sortOrder), asc(jobs.createdAt));
+    .orderBy(asc(phases.sortOrder), asc(phases.name), asc(jobs.sortOrder), asc(jobs.createdAt));
   if (rows.length === 0) return [];
 
   const covered = await db
@@ -98,13 +102,13 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
     )
     .orderBy(asc(rooms.sortOrder), asc(rooms.name));
 
-  return rows.map(({ job, item, phase }) => {
+  return rows.map(({ job, vendor, phase }) => {
     const mine = covered
       .filter((c) => c.jobRoom.jobId === job.id)
       .map((c) => ({ ...c.jobRoom, room: c.room, ...resolve(job.spec, c.jobRoom) }));
     return {
       ...job,
-      item,
+      vendor: vendor ? vendorSummary(vendor) : null,
       phase,
       rooms: mine,
       progress: rollUp(
@@ -135,20 +139,15 @@ async function liveRoomIds(db: Db, jobId: string) {
 }
 
 export async function createJob(db: Db, { roomIds, ...input }: JobCreate) {
-  const item = await getItem(db, input.itemId);
-  if (item.retiredAt) throw badRequest(`"${item.name}" is retired; restore it to add work`);
-  const phase = await getPhase(db, input.phaseId);
+  await getPhase(db, input.phaseId);
+  if (input.vendorId !== null) await getVendor(db, input.vendorId);
   for (const roomId of roomIds) await getRoom(db, roomId);
   if (roomIds.length > 0 && input.status !== 'unstarted') {
     throw badRequest("A job that covers rooms takes its status from them; set each room's status");
   }
-  const name = input.name === '' ? `${item.name} — ${phase.name}` : input.name;
 
   const id = await db.transaction(async (tx) => {
-    const [job] = await tx
-      .insert(jobs)
-      .values({ ...input, name })
-      .returning();
+    const [job] = await tx.insert(jobs).values(input).returning();
     if (!job) throw new Error('insert returned no row');
     if (roomIds.length > 0) {
       await tx.insert(jobRooms).values(roomIds.map((roomId) => ({ jobId: job.id, roomId })));
@@ -158,10 +157,16 @@ export async function createJob(db: Db, { roomIds, ...input }: JobCreate) {
   return getJob(db, id);
 }
 
-/** Phase, name, spec, notes, order — and status only when the job covers no rooms. */
+/**
+ * Phase, vendor, name, spec, notes, order — and status only when the job covers no rooms. A job
+ * may keep a vendor that was archived since; picking a vendor needs a live one.
+ */
 export async function updateJob(db: Db, { id, ...patch }: JobUpdate) {
-  await getJob(db, id);
+  const current = await getJob(db, id);
   if (patch.phaseId !== undefined) await getPhase(db, patch.phaseId);
+  if (patch.vendorId != null && patch.vendorId !== current.vendorId) {
+    await getVendor(db, patch.vendorId);
+  }
   if (patch.status !== undefined && (await liveRoomIds(db, id)).length > 0) {
     throw badRequest("This job takes its status from its rooms; set each room's status");
   }
@@ -236,20 +241,20 @@ export async function jobsForRoom(db: Db, roomId: string) {
     .select({
       jobRoom: jobRooms,
       job: jobs,
-      item: { id: items.id, name: items.name, categoryId: items.categoryId },
+      vendor: { id: vendors.id, name: vendors.name },
       phase: { id: phases.id, name: phases.name, status: phases.status },
     })
     .from(jobRooms)
     .innerJoin(jobs, eq(jobs.id, jobRooms.jobId))
-    .innerJoin(items, eq(items.id, jobs.itemId))
     .innerJoin(phases, eq(phases.id, jobs.phaseId))
+    .leftJoin(vendors, eq(vendors.id, jobs.vendorId))
     .where(and(eq(jobRooms.roomId, roomId), liveJobRoom(), liveJob(), isNull(phases.deletedAt)))
-    .orderBy(asc(phases.sortOrder), asc(items.sortOrder), asc(jobs.sortOrder));
-  return rows.map(({ jobRoom, job, item, phase }) => ({
+    .orderBy(asc(phases.sortOrder), asc(jobs.sortOrder), asc(jobs.createdAt));
+  return rows.map(({ jobRoom, job, vendor, phase }) => ({
     ...jobRoom,
     ...resolve(job.spec, jobRoom),
     job: { id: job.id, name: job.name, spec: job.spec, notes: job.notes },
-    item,
+    vendor,
     phase,
   }));
 }

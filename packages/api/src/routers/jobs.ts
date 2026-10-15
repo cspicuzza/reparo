@@ -21,7 +21,7 @@ import {
   updateJobRoom,
 } from '../services/jobs';
 
-/** Jobs with their rooms and progress. `list({ itemId })` is the item view across phases. */
+/** Jobs with their vendor, rooms and progress, in phase order. `list({ vendorId })` for a vendor. */
 export const jobsRouter = router({
   list: memberProcedure
     .input(jobListSchema.default({}))
