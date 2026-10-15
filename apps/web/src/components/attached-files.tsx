@@ -31,9 +31,9 @@ export function AttachedFiles({
   const remove = useMutation(trpc.files.remove.mutationOptions({ onSuccess: refresh }));
   if (files.length === 0 && !canEdit) return null;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-wrap items-center gap-x-2">
       {files.length > 0 ? (
-        <ul className="flex flex-col">
+        <ul className="flex flex-wrap items-center gap-x-2">
           {files.map((f) => (
             <li key={f.id} className="flex flex-wrap items-center gap-x-1">
               <a
@@ -64,13 +64,13 @@ export function AttachedFiles({
       {canEdit ? (
         <FileUpload
           compact
-          className="-ml-3"
+          className={files.length > 0 ? '' : '-ml-3'}
           target={() => target}
           label={addLabel}
           onUploaded={refresh}
         />
       ) : null}
-      {remove.error ? <FormError>{remove.error.message}</FormError> : null}
+      {remove.error ? <FormError className="w-full">{remove.error.message}</FormError> : null}
     </div>
   );
 }

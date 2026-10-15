@@ -1,10 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
-import { useMutation } from '@tanstack/react-query';
-import { ExternalLink } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { ExternalLink, Images } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
+import { FileSection } from '@/components/file-section';
 import { Field, FormError, Input } from '@/components/form';
 import { ShoppingStatusBadge } from '@/components/money';
 import { Button } from '@/components/ui/button';
@@ -12,6 +14,8 @@ import { centsToInput, lineAmountText, money } from '@/lib/money';
 import { lineWhere, type ShoppingLine } from '@/lib/shopping';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { useTRPC } from '@/lib/trpc';
+import type { FileView } from '@/lib/upload';
+import { cn } from '@/lib/utils';
 import { ShoppingLineForm } from './shopping-line-form';
 
 /**
@@ -28,11 +32,20 @@ export function ShoppingList({
   canEdit: boolean;
   showRoom?: boolean;
 }) {
+  const trpc = useTRPC();
+  // Every line's pictures and receipts in one call (M4, OD-59).
+  const files = useQuery(
+    trpc.files.listMany.queryOptions({
+      ownerType: 'shopping_line',
+      ownerIds: lines.map((l) => l.id),
+    }),
+  );
+  const filesOf = (lineId: string) => (files.data ?? []).filter((f) => f.ownerId === lineId);
   return (
     <ul className="divide-y divide-border">
       {lines.map((l) => (
         <li key={l.id} className="py-4 first:pt-0 last:pb-0">
-          <LineRow line={l} canEdit={canEdit} showRoom={showRoom} />
+          <LineRow line={l} canEdit={canEdit} showRoom={showRoom} files={filesOf(l.id)} />
         </li>
       ))}
     </ul>
@@ -45,14 +58,20 @@ function LineRow({
   line,
   canEdit,
   showRoom,
+  files,
 }: {
   line: ShoppingLine;
   canEdit: boolean;
   showRoom: boolean;
+  files: FileView[];
 }) {
   const trpc = useTRPC();
   const invalidate = useInvalidateShopping();
   const [mode, setMode] = useState<Mode>('view');
+  const [showPictures, setShowPictures] = useState(false);
+  const pictures = files.filter((f) => f.kind === 'product_image');
+  const receipts = files.filter((f) => f.kind === 'receipt');
+  const thumb = pictures.find((p) => p.url);
   const update = useMutation(trpc.shoppingLines.update.mutationOptions());
   const remove = useMutation(trpc.shoppingLines.remove.mutationOptions({ onSuccess: invalidate }));
   const done = async () => {
@@ -97,7 +116,21 @@ function LineRow({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1">
+      <div
+        className={cn(
+          'grid items-start gap-x-3 gap-y-1 sm:gap-x-4',
+          thumb?.url ? 'grid-cols-[auto_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_auto]',
+        )}
+      >
+        {thumb?.url ? (
+          <img
+            src={thumb.url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover sm:size-16"
+          />
+        ) : null}
         <div className="min-w-0">
           <p className="font-semibold break-words">{line.name}</p>
           <p className="text-sm text-muted-foreground">{details.join(', ')}</p>
@@ -111,6 +144,16 @@ function LineRow({
         <p className="max-w-prose text-sm text-muted-foreground whitespace-pre-wrap">
           {line.notes}
         </p>
+      ) : null}
+
+      {line.status !== 'to_buy' && (receipts.length > 0 || canEdit) ? (
+        <AttachedFiles
+          files={receipts}
+          target={{ ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' }}
+          addLabel="Attach a receipt"
+          canEdit={canEdit}
+          what="receipt"
+        />
       ) : null}
 
       {mode === 'purchase' ? (
@@ -147,6 +190,22 @@ function LineRow({
         />
       ) : (
         <div className="-ml-3 flex flex-wrap items-center gap-1">
+          {canEdit || pictures.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              aria-expanded={showPictures}
+              onClick={() => setShowPictures((v) => !v)}
+            >
+              <Images aria-hidden className="size-4" />
+              {showPictures
+                ? 'Hide pictures'
+                : pictures.length > 0
+                  ? `Pictures (${pictures.length})`
+                  : 'Add pictures'}
+              <span className="sr-only"> of {line.name}</span>
+            </Button>
+          ) : null}
           {line.link ? (
             <a
               href={line.link}
@@ -207,6 +266,19 @@ function LineRow({
           ) : null}
         </div>
       )}
+      {showPictures ? (
+        <div className="rounded-xl border border-border bg-background p-4">
+          <FileSection
+            id={`line-pictures-${line.id}`}
+            title={`Pictures of ${line.name}`}
+            files={pictures}
+            target={() => ({ ownerType: 'shopping_line', ownerId: line.id, kind: 'product_image' })}
+            uploadLabel="Add pictures"
+            emptyText="No pictures yet. Copy one from the store's page and paste it below."
+            canEdit={canEdit}
+          />
+        </div>
+      ) : null}
       {mode === 'view' && (update.error ?? remove.error) ? (
         <FormError>{(update.error ?? remove.error)?.message}</FormError>
       ) : null}
