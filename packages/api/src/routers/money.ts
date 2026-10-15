@@ -13,6 +13,7 @@ import {
   shoppingLineCreateSchema,
   shoppingLineListSchema,
   shoppingLineUpdateSchema,
+  storeRenameSchema,
 } from '@reparo/shared';
 import { z } from 'zod';
 import { adminProcedure, editorProcedure, memberProcedure, router } from '../trpc';
@@ -44,8 +45,11 @@ import {
   createShoppingLine,
   getShoppingLine,
   listShoppingLines,
+  listStores,
   removeShoppingLine,
+  renameStore,
   restoreShoppingLine,
+  shoppingTotals,
   updateShoppingLine,
 } from '../services/shopping-lines';
 
@@ -86,6 +90,16 @@ export const shoppingLinesRouter = router({
   restore: editorProcedure
     .input(byId)
     .mutation(({ ctx, input }) => restoreShoppingLine(ctx.db, input.id)),
+  /** Counts and totals per status and room, for the same filters as `list` (OD-68). */
+  totals: memberProcedure
+    .input(shoppingLineListSchema.default({}))
+    .query(({ ctx, input }) => shoppingTotals(ctx.db, input)),
+  /** Stores in use, for suggestions (OD-69). */
+  stores: memberProcedure.query(({ ctx }) => listStores(ctx.db)),
+  /** Rename a store on every line (OD-69); editors and the admin. */
+  renameStore: editorProcedure
+    .input(storeRenameSchema)
+    .mutation(({ ctx, input }) => renameStore(ctx.db, input)),
 });
 
 /** What a job costs: the vendor's price, permits, fees, extras. */

@@ -22,6 +22,7 @@ import {
   shoppingLineCreateSchema,
   shoppingLineUpdateSchema,
   signedMoneyInputSchema,
+  storeRenameSchema,
 } from './schemas';
 
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -251,5 +252,16 @@ describe('shopping lines', () => {
     expect(
       adjustmentCreateSchema.parse({ amountCents: '-1,500', on: '2026-09-15' }).amountCents,
     ).toBe(-150000);
+  });
+});
+
+describe('storeRenameSchema (OD-69)', () => {
+  it('trims both names and needs both', () => {
+    expect(storeRenameSchema.parse({ from: ' Wayfair ', to: ' Way Fair ' })).toEqual({
+      from: 'Wayfair',
+      to: 'Way Fair',
+    });
+    expect(storeRenameSchema.safeParse({ from: 'Wayfair', to: '   ' }).success).toBe(false);
+    expect(storeRenameSchema.safeParse({ from: '', to: 'Wayfair' }).success).toBe(false);
   });
 });

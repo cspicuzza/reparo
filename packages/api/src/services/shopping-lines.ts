@@ -12,7 +12,14 @@ import {
   type Db,
   type ShoppingLine,
 } from '@reparo/db';
-import type { ShoppingLineCreate, ShoppingLineList, ShoppingLineUpdate } from '@reparo/shared';
+import {
+  sumCents,
+  type Cents,
+  type ShoppingLineCreate,
+  type ShoppingLineList,
+  type ShoppingLineUpdate,
+  type StoreRename,
+} from '@reparo/shared';
 import { getCategory } from './categories';
 import { badRequest, notFound } from './errors';
 import { getPhase } from './phases';
@@ -97,7 +104,11 @@ async function checkRefs(
 
 export async function createShoppingLine(db: Db, input: ShoppingLineCreate) {
   await checkRefs(db, input);
-  const [row] = await db.insert(shoppingLines).values(input).returning();
+  const store = await snapStore(db, input.store);
+  const [row] = await db
+    .insert(shoppingLines)
+    .values({ ...input, store })
+    .returning();
   if (!row) throw new Error('insert returned no row');
   return getShoppingLine(db, row.id);
 }
@@ -136,9 +147,16 @@ export async function updateShoppingLine(
     amounts = { paidCents: paid, refundCents: refund };
   }
 
+  const store = patch.store === undefined ? undefined : await snapStore(db, patch.store, id);
   await db
     .update(shoppingLines)
-    .set({ ...patch, ...next, status: target, ...amounts })
+    .set({
+      ...patch,
+      ...(store === undefined ? {} : { store }),
+      ...next,
+      status: target,
+      ...amounts,
+    })
     .where(and(eq(shoppingLines.id, id), live()));
   return getShoppingLine(db, id);
 }
@@ -156,4 +174,128 @@ export async function restoreShoppingLine(db: Db, id: string) {
     await db.update(shoppingLines).set({ deletedAt: null }).where(eq(shoppingLines.id, id));
   }
   return getShoppingLine(db, id);
+}
+
+// --- totals (Workflow polish, OD-68) ----------------------------------------------------------
+
+type Status = 'to_buy' | 'purchased' | 'returned';
+
+/**
+ * What a line counts for in its section: the price while it's To buy, what was paid once
+ * Purchased, and what was paid less what came back once Returned.
+ */
+export function lineSectionCents(l: {
+  status: Status;
+  priceCents: Cents;
+  paidCents: Cents | null;
+  refundCents: Cents | null;
+}): Cents {
+  if (l.status === 'to_buy') return l.priceCents;
+  if (l.status === 'purchased') return l.paidCents ?? 0;
+  return sumCents([l.paidCents ?? 0, -(l.refundCents ?? 0)]);
+}
+
+/**
+ * Counts and totals for the Shopping page, following the same filters as the list: one
+ * section per status (To buy, Purchased, Returned, always all three), and inside each the rooms
+ * that have lines, in room order, with Whole house (roomId null) last.
+ */
+export async function shoppingTotals(db: Db, filter: ShoppingLineList = {}) {
+  const lines = await listShoppingLines(db, filter);
+  const roomOrder = await db
+    .select({ id: rooms.id, sortOrder: rooms.sortOrder, name: rooms.name })
+    .from(rooms);
+  const rank = new Map(
+    roomOrder
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      .map((r, i) => [r.id, i]),
+  );
+  const statuses: Status[] = ['to_buy', 'purchased', 'returned'];
+  return statuses.map((status) => {
+    const inSection = lines.filter((l) => l.status === status);
+    const byRoom = new Map<string | null, typeof inSection>();
+    for (const l of inSection) {
+      const key = l.room?.id ?? null;
+      byRoom.set(key, [...(byRoom.get(key) ?? []), l]);
+    }
+    const roomsInSection = [...byRoom.entries()]
+      .map(([roomId, ls]) => ({
+        roomId,
+        name: ls[0]?.room?.name ?? 'Whole house',
+        count: ls.length,
+        totalCents: sumCents(ls.map(lineSectionCents)),
+      }))
+      .sort((a, b) => {
+        if (a.roomId === null) return 1;
+        if (b.roomId === null) return -1;
+        return (rank.get(a.roomId) ?? 0) - (rank.get(b.roomId) ?? 0);
+      });
+    return {
+      status,
+      count: inSection.length,
+      totalCents: sumCents(inSection.map(lineSectionCents)),
+      rooms: roomsInSection,
+    };
+  });
+}
+
+// --- stores (Workflow polish, OD-69) ----------------------------------------------------------
+
+/**
+ * The stores in use on live lines, one entry per store whatever the case, spelled the way most
+ * lines spell it, most used first. For suggestions as you type.
+ */
+export async function listStores(db: Db) {
+  const counts = await db
+    .select({ store: shoppingLines.store, n: sql<number>`count(*)::int` })
+    .from(shoppingLines)
+    .where(and(live(), sql`trim(${shoppingLines.store}) <> ''`))
+    .groupBy(shoppingLines.store);
+  const byKey = new Map<string, { name: string; count: number; best: number }>();
+  for (const { store, n } of counts) {
+    const key = store.trim().toLowerCase();
+    const seen = byKey.get(key);
+    if (!seen) byKey.set(key, { name: store.trim(), count: n, best: n });
+    else {
+      seen.count += n;
+      if (n > seen.best) {
+        seen.best = n;
+        seen.name = store.trim();
+      }
+    }
+  }
+  return [...byKey.values()]
+    .map(({ name, count }) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * A store as typed, snapped to the spelling already in use when only the case differs
+ * ("wayfair" → "Wayfair"), so the list doesn't grow two of the same store. `exceptLineId` leaves
+ * the line being edited out of the count.
+ */
+async function snapStore(db: Db, typed: string, exceptLineId?: string): Promise<string> {
+  const trimmed = typed.trim();
+  if (trimmed === '') return '';
+  const conds = [live(), sql`lower(trim(${shoppingLines.store})) = ${trimmed.toLowerCase()}`];
+  if (exceptLineId !== undefined) conds.push(sql`${shoppingLines.id} <> ${exceptLineId}`);
+  const [existing] = await db
+    .select({ store: shoppingLines.store, n: sql<number>`count(*)::int` })
+    .from(shoppingLines)
+    .where(and(...conds))
+    .groupBy(shoppingLines.store)
+    .orderBy(sql`count(*) desc`, asc(shoppingLines.store))
+    .limit(1);
+  return existing ? existing.store.trim() : trimmed;
+}
+
+/** "Rename this store everywhere": every live line whose store matches `from`, any case. */
+export async function renameStore(db: Db, { from, to }: StoreRename) {
+  const changed = await db
+    .update(shoppingLines)
+    .set({ store: to })
+    .where(and(live(), sql`lower(trim(${shoppingLines.store})) = ${from.toLowerCase()}`))
+    .returning({ id: shoppingLines.id });
+  if (changed.length === 0) throw notFound('Store');
+  return { name: to, count: changed.length };
 }

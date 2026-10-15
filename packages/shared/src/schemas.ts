@@ -494,6 +494,16 @@ export type ShoppingLineCreateInput = z.input<typeof shoppingLineCreateSchema>;
 export type ShoppingLineUpdate = z.infer<typeof shoppingLineUpdateSchema>;
 export type ShoppingLineList = z.infer<typeof shoppingLineListSchema>;
 
+/**
+ * Rename a store on every line that uses it (Workflow polish, OD-69). Stores stay text on the
+ * line; this fixes a spelling everywhere at once. Matching is case-insensitive.
+ */
+export const storeRenameSchema = z.object({
+  from: shortText(120, 'store').min(1, 'Say which store to rename'),
+  to: shortText(120, 'store').min(1, 'Give the store a name'),
+});
+export type StoreRename = z.infer<typeof storeRenameSchema>;
+
 // Job money: cost lines and payments -----------------------------------------------------------
 
 export const costLineCreateSchema = z.object({

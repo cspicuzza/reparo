@@ -1679,4 +1679,116 @@ describe('@reparo/api', () => {
       expect(editor.status).toBe(200);
       expect((await body(editor)).result?.data).toBe('ok');
     }));
+
+  // --- Workflow polish (OD-68, OD-69) -----------------------------------------------------------
+
+  it('shopping totals: per status and per room, Whole house last, following the filters', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const a = row(await mutate(h, 'editor', 'rooms.create', { name: 'Tot A', sortOrder: 1 }));
+      const b = row(await mutate(h, 'editor', 'rooms.create', { name: 'Tot B', sortOrder: 2 }));
+      const add = async (name: string, roomId: string | null, price: string) =>
+        row(
+          await mutate(h, 'editor', 'shoppingLines.create', {
+            phaseId: phase1.id,
+            categoryId: cat('Decor'),
+            roomId,
+            name,
+            priceCents: price,
+          }),
+        );
+      await add('Lamp', b.id, '100');
+      await add('Rug', a.id, '200');
+      await add('Pad', null, '30');
+      const vase = await add('Vase', a.id, '50');
+      await mutate(h, 'editor', 'shoppingLines.update', {
+        id: vase.id,
+        status: 'purchased',
+        paidCents: '45',
+      });
+      const chair = await add('Chair', b.id, '400');
+      await mutate(h, 'editor', 'shoppingLines.update', {
+        id: chair.id,
+        status: 'purchased',
+        paidCents: '400',
+      });
+      await mutate(h, 'editor', 'shoppingLines.update', {
+        id: chair.id,
+        status: 'returned',
+        refundCents: '350',
+      });
+
+      type Section = {
+        status: string;
+        count: number;
+        totalCents: number;
+        rooms: { roomId: string | null; name: string; count: number; totalCents: number }[];
+      };
+      const all = (await query(h, 'viewer', 'shoppingLines.totals')).data as Section[];
+      expect(all.map((x) => [x.status, x.count, x.totalCents])).toEqual([
+        ['to_buy', 3, 33000],
+        ['purchased', 1, 4500],
+        ['returned', 1, 5000],
+      ]);
+      expect(all[0]?.rooms.map((r) => [r.name, r.count, r.totalCents])).toEqual([
+        ['Tot A', 1, 20000],
+        ['Tot B', 1, 10000],
+        ['Whole house', 1, 3000],
+      ]);
+
+      const onlyA = (await query(h, 'viewer', 'shoppingLines.totals', { roomId: a.id }))
+        .data as Section[];
+      expect(onlyA.map((x) => [x.status, x.count, x.totalCents])).toEqual([
+        ['to_buy', 1, 20000],
+        ['purchased', 1, 4500],
+        ['returned', 0, 0],
+      ]);
+    }));
+
+  it('stores: suggestions merge case, new lines snap to the spelling in use, rename fixes every line', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const add = async (name: string, store: string) =>
+        row(
+          await mutate(h, 'editor', 'shoppingLines.create', {
+            phaseId: phase1.id,
+            categoryId: cat('Decor'),
+            name,
+            store,
+          }),
+        );
+      await add('One', 'Storey Mart');
+      await add('Two', 'Storey Mart');
+      const snapped = await add('Three', 'storey mart  ');
+      expect(snapped.store).toBe('Storey Mart');
+      await add('Four', 'Other Shop');
+
+      type Store = { name: string; count: number };
+      const stores = (await query(h, 'viewer', 'shoppingLines.stores')).data as Store[];
+      const ours = stores.filter((x) => ['Storey Mart', 'Other Shop'].includes(x.name));
+      expect(ours).toEqual([
+        { name: 'Storey Mart', count: 3 },
+        { name: 'Other Shop', count: 1 },
+      ]);
+
+      const viewer = await mutate(h, 'viewer', 'shoppingLines.renameStore', {
+        from: 'Storey Mart',
+        to: 'Storey Market',
+      });
+      expect(viewer.status).toBe(403);
+      const renamed = await mutate(h, 'editor', 'shoppingLines.renameStore', {
+        from: 'storey mart',
+        to: 'Storey Market',
+      });
+      expect(renamed.data).toEqual({ name: 'Storey Market', count: 3 });
+      const after = (await query(h, 'viewer', 'shoppingLines.stores')).data as Store[];
+      expect(after.some((x) => x.name === 'Storey Mart')).toBe(false);
+      expect(after.find((x) => x.name === 'Storey Market')?.count).toBe(3);
+
+      const missing = await mutate(h, 'editor', 'shoppingLines.renameStore', {
+        from: 'Nowhere',
+        to: 'Somewhere',
+      });
+      expect(missing.code).toBe('NOT_FOUND');
+    }));
 });
