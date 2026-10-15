@@ -31,7 +31,14 @@ export function Jobs() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Jobs"
-        description="The work, phase by phase. Each job says who's doing it and which rooms it covers."
+        description={
+          <>
+            The work, phase by phase. Each job says who&apos;s doing it and which rooms it covers.{' '}
+            <Link to="/vendors" className="text-foreground underline underline-offset-4">
+              See all vendors
+            </Link>
+          </>
+        }
         action={
           canEdit && !adding ? (
             <Button type="button" onClick={() => setAdding(true)}>

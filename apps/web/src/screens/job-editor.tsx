@@ -1,8 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobCreateSchema, type JobCreate, type JobCreateInput } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm, useWatch } from 'react-hook-form';
+import { useController, useForm, useWatch } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
+import { VendorPicker } from '@/components/vendor-picker';
+import { vendorOptions, type VendorOption } from '@/lib/vendors';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
 import { Button } from '@/components/ui/button';
@@ -107,14 +109,6 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
   );
 }
 
-type VendorOption = { id: string; name: string; trade: string; archived: boolean };
-
-/** Live vendors, plus the job's own vendor if it has been archived since it was picked. */
-function vendorOptions(live: VendorOption[], current: VendorOption | null): VendorOption[] {
-  if (!current || live.some((v) => v.id === current.id)) return live;
-  return [...live, current];
-}
-
 function JobForm({
   idPrefix,
   phases,
@@ -146,6 +140,7 @@ function JobForm({
   });
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
+  const vendorField = useController({ control, name: 'vendorId' });
   // Checkboxes are driven by hand rather than `register`: react-hook-form returns a boolean
   // instead of an array when a checkbox group has a single box (one room in the house).
   const picked = new Set(useWatch({ control, name: 'roomIds' }) ?? []);
@@ -185,22 +180,15 @@ function JobForm({
       <Field
         label="Vendor"
         htmlFor={id('vendor')}
-        hint="Who's doing it. Leave as Nobody yet for work you do yourselves."
+        hint="Who's doing it. Search by name or what they do, or type a new name to add them. Leave empty for work you do yourselves."
         error={errors.vendorId?.message}
       >
-        <Select
+        <VendorPicker
           id={id('vendor')}
-          {...register('vendorId', { setValueAs: (v: unknown) => (v === '' ? null : v) })}
-        >
-          <option value="">Nobody yet</option>
-          {vendors.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-              {v.trade ? ` (${v.trade})` : ''}
-              {v.archived ? ', archived' : ''}
-            </option>
-          ))}
-        </Select>
+          value={vendorField.field.value ?? null}
+          onChange={vendorField.field.onChange}
+          vendors={vendors}
+        />
       </Field>
 
       <Field

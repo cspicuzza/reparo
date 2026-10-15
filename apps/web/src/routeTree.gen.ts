@@ -17,6 +17,7 @@ import { Route as AppJobsJobIdRouteImport } from './routes/_app/jobs/$jobId'
 import { Route as AppPhasesIndexRouteImport } from './routes/_app/phases/index'
 import { Route as AppRoomsIndexRouteImport } from './routes/_app/rooms/index'
 import { Route as AppRoomsRoomIdRouteImport } from './routes/_app/rooms/$roomId'
+import { Route as AppVendorsIndexRouteImport } from './routes/_app/vendors/index'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -57,6 +58,11 @@ const AppRoomsRoomIdRoute = AppRoomsRoomIdRouteImport.update({
   path: '/rooms/$roomId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVendorsIndexRoute = AppVendorsIndexRouteImport.update({
+  id: '/vendors/',
+  path: '/vendors/',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/jobs/': typeof AppJobsIndexRoute
   '/phases/': typeof AppPhasesIndexRoute
   '/rooms/': typeof AppRoomsIndexRoute
+  '/vendors/': typeof AppVendorsIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/jobs': typeof AppJobsIndexRoute
   '/phases': typeof AppPhasesIndexRoute
   '/rooms': typeof AppRoomsIndexRoute
+  '/vendors': typeof AppVendorsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_app/jobs/': typeof AppJobsIndexRoute
   '/_app/phases/': typeof AppPhasesIndexRoute
   '/_app/rooms/': typeof AppRoomsIndexRoute
+  '/_app/vendors/': typeof AppVendorsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/jobs/'
     | '/phases/'
     | '/rooms/'
+    | '/vendors/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/phases'
     | '/rooms'
+    | '/vendors'
   id:
     | '__root__'
     | '/_app'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/_app/jobs/'
     | '/_app/phases/'
     | '/_app/rooms/'
+    | '/_app/vendors/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRoomsRoomIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/vendors/': {
+      id: '/_app/vendors/'
+      path: '/vendors'
+      fullPath: '/vendors/'
+      preLoaderRoute: typeof AppVendorsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -191,6 +210,7 @@ interface AppRouteChildren {
   AppJobsIndexRoute: typeof AppJobsIndexRoute
   AppPhasesIndexRoute: typeof AppPhasesIndexRoute
   AppRoomsIndexRoute: typeof AppRoomsIndexRoute
+  AppVendorsIndexRoute: typeof AppVendorsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -200,6 +220,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppJobsIndexRoute: AppJobsIndexRoute,
   AppPhasesIndexRoute: AppPhasesIndexRoute,
   AppRoomsIndexRoute: AppRoomsIndexRoute,
+  AppVendorsIndexRoute: AppVendorsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

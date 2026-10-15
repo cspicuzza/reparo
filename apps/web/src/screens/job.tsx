@@ -11,6 +11,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
 import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
+import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { JobRoomEditor } from './job-room-editor';
@@ -323,17 +324,19 @@ function VendorBlock({ vendor }: { vendor: Job['vendor'] }) {
   }
   return (
     <div className="mt-3">
-      <p className="text-xl font-semibold">{vendor.name}</p>
+      <Link
+        to="/vendors"
+        className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+      >
+        {vendor.name}
+      </Link>
       {vendor.trade ? <p className="text-muted-foreground">{vendor.trade}</p> : null}
       {vendor.archived ? (
         <p className="mt-1 text-sm text-muted-foreground">Archived: not offered for new jobs.</p>
       ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {vendor.phone ? (
-          <a
-            href={`tel:${vendor.phone.replace(/[^\d+]/g, '')}`}
-            className={buttonVariants({ variant: 'outline' })}
-          >
+          <a href={telHref(vendor.phone)} className={buttonVariants({ variant: 'outline' })}>
             <Phone aria-hidden className="size-4" />
             {vendor.phone}
           </a>
