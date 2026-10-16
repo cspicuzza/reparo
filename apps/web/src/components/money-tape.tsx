@@ -29,10 +29,13 @@ export function MoneyTape({
   const seg = budgetSegments(spentCents, committedCents, poolCents);
   const step = moneyStep(seg.scaleCents);
   const over = seg.over > 0;
-  // Over budget, the budget's own label takes the space near it.
-  const majors = moneyTicks(seg.scaleCents, step).filter(
-    (t) => t.major && (!over || Math.abs(t.at - seg.budgetAt) > 0.15),
-  );
+  // Over budget, the budget's own label takes the space before its mark (or after it, when
+  // the mark is near the start), so scale labels there give way.
+  const clear = (at: number) =>
+    seg.budgetAt < 0.3
+      ? at < seg.budgetAt - 0.05 || at > seg.budgetAt + 0.25
+      : at < seg.budgetAt - 0.25 || at > seg.budgetAt + 0.05;
+  const majors = moneyTicks(seg.scaleCents, step).filter((t) => t.major && (!over || clear(t.at)));
   const marks = compact ? [] : majors;
   return (
     <div>
