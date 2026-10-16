@@ -409,10 +409,13 @@ function SearchBox({
         className={cn(inputClass, 'pr-20 pl-10 [&::-webkit-search-cancel-button]:hidden')}
       />
       {text !== '' ? (
+        // Stretched to the box's height rather than centred with a transform: the button's
+        // 1px press shift replaces a transform, which dropped it out from under the pointer
+        // mid-click so the click never landed (OD-102).
         <Button
           type="button"
           variant="ghost"
-          className="absolute top-1/2 right-0 -translate-y-1/2 px-3"
+          className="absolute inset-y-0 right-0 px-3"
           onClick={() => {
             setText('');
             onChange('');
