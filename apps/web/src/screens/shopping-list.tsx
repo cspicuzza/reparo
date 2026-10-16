@@ -228,8 +228,11 @@ function ShoppingRow({
             className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
           />
         ) : pictureColumn ? (
-          // Keeps the picture column on a laptop, so names still line up.
-          <span aria-hidden className="hidden sm:block" />
+          // A plain tile on a laptop, so the picture column never looks like a gap (OD-108, Q112).
+          <span
+            aria-hidden
+            className="hidden size-14 shrink-0 rounded-lg border border-border bg-inset sm:block"
+          />
         ) : null}
         <div className="min-w-0">
           {/* The name opens the panel too (OD-101, Q90). It looks like plain text until

@@ -390,7 +390,8 @@ function ShoppingSection({
             aria-controls={bodyId}
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? 'Hide' : 'Show'}
+            {/* Fold, like the rooms (OD-108, Q113). */}
+            {open ? 'Fold' : 'Unfold'}
             <span className="sr-only"> {SECTION_TITLE[section.status].toLowerCase()}</span>
           </Button>
         ) : roomKeys.length > 1 ? (
