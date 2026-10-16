@@ -90,6 +90,23 @@ export function Shopping() {
           }),
       }
     : undefined;
+  const stopSelecting = () => {
+    setSelected(new Map());
+    setSelecting(false);
+  };
+  // Escape leaves Select mode, like Done (OD-104, Q103), unless something on top of the list
+  // (a side panel) is what Escape should close.
+  const panelOpen = openId !== null || adding;
+  useEffect(() => {
+    if (!selecting || panelOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      setSelected(new Map());
+      setSelecting(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [selecting, panelOpen]);
   const pickAll = (ls: ShoppingLine[], on: boolean) =>
     setSelected((prev) => {
       const next = new Map(prev);
@@ -172,10 +189,7 @@ export function Shopping() {
               type="button"
               variant="outline"
               aria-pressed={selecting}
-              onClick={() => {
-                if (selecting) setSelected(new Map());
-                setSelecting((v) => !v);
-              }}
+              onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
             >
               {selecting ? 'Done' : 'Select'}
             </Button>

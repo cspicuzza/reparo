@@ -1,8 +1,9 @@
+import { sumCents } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
-import { listText } from '@/lib/money';
+import { listText, money } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
@@ -104,15 +105,18 @@ export function BatchBar({
     <div
       role="region"
       aria-label="Batch editing"
-      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 sm:bottom-4"
+      // The same column as the page (shell.tsx: max-w-6xl with px-4, sm:px-6), so the bar lines
+      // up with the list instead of overhanging it (OD-104, Q103).
+      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-6xl px-4 sm:bottom-4 sm:px-6"
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-3 rounded-xl border border-border bg-popover p-3 shadow-[0_6px_24px_var(--float-shadow)] sm:p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-popover p-3 shadow-[0_6px_24px_var(--float-shadow)] sm:p-4">
         {/* Phone: the count and Clear on top, the actions two to a row below. Laptop: one row,
             count first and Clear last. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex items-center justify-between gap-3 sm:contents">
             <p role="status" aria-live="polite" className="font-semibold tabular-nums sm:order-1">
-              {items(lines.length)} selected
+              {/* How many and what they cost together (OD-104, Q103). */}
+              {items(lines.length)}, {money(sumCents(lines.map((l) => l.priceCents)))} selected
               {hidden > 0 ? (
                 <span className="font-normal text-muted-foreground"> ({hidden} not shown)</span>
               ) : null}
@@ -128,7 +132,7 @@ export function BatchBar({
           </div>
           <div className="grid grid-cols-2 gap-2 sm:order-2 sm:flex sm:flex-wrap sm:items-center">
             <BatchSelect
-              label="Move to room"
+              label="Move to room…"
               disabled={busy}
               options={[
                 { value: 'house', label: 'Whole house' },
@@ -139,7 +143,7 @@ export function BatchBar({
               }
             />
             <BatchSelect
-              label="Category"
+              label="Set category…"
               disabled={busy}
               options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
               onPick={(v, label) =>
@@ -147,7 +151,7 @@ export function BatchBar({
               }
             />
             <BatchSelect
-              label="For a job"
+              label="Set job…"
               disabled={busy || onePhase === undefined}
               note={onePhase === undefined ? 'Pick items from one phase to set a job' : undefined}
               options={[

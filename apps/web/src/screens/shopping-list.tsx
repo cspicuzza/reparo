@@ -55,11 +55,12 @@ export function ShoppingRows({
     <ul
       className={cn(
         'divide-y divide-border sm:grid sm:gap-x-4',
-        // A checkbox column first while batch editing (OD-101), then pictures, if any.
+        // A checkbox column first while batch editing (OD-101), then pictures, if any. While
+        // selecting, the rows' buttons step aside, so there's no button column (OD-104, Q102).
         selection
           ? withPictures
-            ? 'sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_auto]'
-            : 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
+            ? 'isolate sm:grid-cols-[auto_auto_minmax(0,1fr)_auto]'
+            : 'isolate sm:grid-cols-[auto_minmax(0,1fr)_auto]'
           : withPictures
             ? 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
             : 'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
@@ -67,7 +68,16 @@ export function ShoppingRows({
       )}
     >
       {lines.map((l) => (
-        <li key={l.id} className="py-4 sm:col-span-full sm:grid sm:grid-cols-subgrid">
+        <li
+          key={l.id}
+          className={cn(
+            'relative py-4 sm:col-span-full sm:grid sm:grid-cols-subgrid',
+            // A picked row is tinted edge to edge (OD-104, Q101). Drawn behind the row, past the
+            // list's side padding, so the subgrid's columns don't move.
+            selection?.selected.has(l.id) &&
+              'before:absolute before:inset-y-0 before:-right-4 before:-left-4 before:-z-10 before:bg-accent sm:before:-right-5 sm:before:-left-5',
+          )}
+        >
           <ShoppingRow
             line={l}
             canEdit={canEdit}
@@ -132,40 +142,52 @@ function ShoppingRow({
       <span className="sr-only"> for {line.name}</span>
     </Button>
   );
-  const actions = buying ? null : (
-    <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
-      {details}
-      {line.status === 'to_buy' && canEdit ? (
-        <Button
-          type="button"
-          variant="outline"
-          className={ROW_BUTTON}
-          onClick={() => setBuying(true)}
-          data-return-focus={`line-purchase-${line.id}`}
-        >
-          <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
-          Mark as purchased
-          <span className="sr-only"> {line.name}</span>
-        </Button>
-      ) : null}
-      {line.status === 'purchased' && (receipts.length > 0 || canEdit) ? (
-        <AttachedFiles
-          files={receipts}
-          target={{ ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' }}
-          addLabel="Attach receipt"
-          canEdit={canEdit}
-          what="receipt"
-        />
-      ) : null}
-    </div>
-  );
+  const actions =
+    buying || selection ? null : (
+      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
+        {details}
+        {line.status === 'to_buy' && canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            className={ROW_BUTTON}
+            onClick={() => setBuying(true)}
+            data-return-focus={`line-purchase-${line.id}`}
+          >
+            <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
+            Mark as purchased
+            <span className="sr-only"> {line.name}</span>
+          </Button>
+        ) : null}
+        {line.status === 'purchased' && (receipts.length > 0 || canEdit) ? (
+          <AttachedFiles
+            files={receipts}
+            target={{ ownerType: 'shopping_line', ownerId: line.id, kind: 'receipt' }}
+            addLabel="Attach receipt"
+            canEdit={canEdit}
+            what="receipt"
+          />
+        ) : null}
+      </div>
+    );
 
   return (
     <div
       className={cn(
         'flex flex-col gap-3 transition-[opacity,translate] duration-150 ease-out sm:col-span-full sm:grid sm:grid-cols-subgrid',
         leaving && '-translate-y-3 opacity-0',
+        selection && 'cursor-pointer',
       )}
+      // While selecting, a click anywhere on the row ticks it (OD-104, Q101). The checkbox stays
+      // the keyboard way; links and controls in the row keep their own clicks.
+      onClick={
+        selection
+          ? (e) => {
+              if ((e.target as Element).closest('a, button, input, label')) return;
+              selection.toggle(line);
+            }
+          : undefined
+      }
     >
       {/* Phone: picture, name and price, with the buttons underneath. Laptop: one line per
           item, in the list's shared columns. */}
@@ -210,8 +232,12 @@ function ShoppingRow({
           <button
             type="button"
             tabIndex={-1}
-            onClick={onOpen}
-            className="text-left text-lg font-semibold break-words underline-offset-4 hover:underline"
+            // While selecting, the name ticks the row like the rest of it does (OD-104).
+            onClick={selection ? () => selection.toggle(line) : onOpen}
+            className={cn(
+              'text-left text-lg font-semibold break-words underline-offset-4',
+              !selection && 'hover:underline',
+            )}
           >
             {line.name}
           </button>
