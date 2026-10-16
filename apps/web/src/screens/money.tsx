@@ -539,6 +539,20 @@ function ByPhase({ s }: { s: Summary }) {
         <caption className="mb-1 text-left text-sm text-muted-foreground">
           By kind of spending
         </caption>
+        {/* One heading row, like the tables below, not the labels on every row (OD-94). */}
+        <thead>
+          <tr className="text-left text-sm text-muted-foreground">
+            <th scope="col" className="py-2 font-normal">
+              <span className="sr-only">Kind</span>
+            </th>
+            <th scope="col" className="py-2 pl-3 text-right font-normal">
+              Spent
+            </th>
+            <th scope="col" className="py-2 pl-3 text-right font-normal">
+              Committed
+            </th>
+          </tr>
+        </thead>
         <tbody className="divide-y divide-border border-t border-border">
           {(
             [
@@ -550,14 +564,8 @@ function ByPhase({ s }: { s: Summary }) {
               <th scope="row" className="py-3 text-left font-semibold">
                 {name}
               </th>
-              <td className="py-3 pl-3 text-right">
-                <span className="block text-sm text-muted-foreground">Spent</span>
-                {money(t.spentCents)}
-              </td>
-              <td className="py-3 pl-3 text-right">
-                <span className="block text-sm text-muted-foreground">Committed</span>
-                {money(t.committedCents)}
-              </td>
+              <td className="py-3 pl-3 text-right">{money(t.spentCents)}</td>
+              <td className="py-3 pl-3 text-right">{money(t.committedCents)}</td>
             </tr>
           ))}
         </tbody>
