@@ -49,6 +49,12 @@
       "skillPath": "skills/productivity/grilling/SKILL.md",
       "computedHash": "ef1641a2047b71b60f1942cd35efb47d3afc9d584dff5a0b01f8c7db923aaa08"
     },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/impeccable/SKILL.md",
+      "computedHash": "2b16bd26632e294094da7e6d2352dce4c1efec66d3b90c88f0e059b28e2d6e04"
+    },
     "linear": {
       "source": "openai/skills",
       "sourceType": "github",
