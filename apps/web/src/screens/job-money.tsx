@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
+import { EditPanel } from '@/components/edit-panel';
 import { Field, FormError, Input } from '@/components/form';
 import { PaymentBadge, ShoppingStatusBadge } from '@/components/money';
 import { Panel } from '@/components/panel';
@@ -171,73 +172,65 @@ function CostLines({
   const create = useMutation(trpc.costLines.create.mutationOptions());
   const update = useMutation(trpc.costLines.update.mutationOptions());
   const remove = useMutation(trpc.costLines.remove.mutationOptions({ onSuccess: invalidate }));
+  const editingLine = lines.find((l) => l.id === editing);
 
   return (
     <div>
-      {lines.length === 0 && !adding ? (
+      {lines.length === 0 ? (
         <p className="mt-3 text-muted-foreground">No price yet.</p>
       ) : (
         <ul className="mt-2 divide-y divide-border">
-          {lines.map((l) =>
-            editing === l.id ? (
-              <li key={l.id} className="py-3">
-                <CostLineForm
-                  idPrefix={`cost-${l.id}`}
-                  jobId={jobId}
-                  line={l}
-                  submitLabel="Save"
-                  serverError={update.error?.message}
-                  onCancel={() => setEditing(null)}
-                  onSubmit={async (v) => {
-                    await update
-                      .mutateAsync({
-                        id: l.id,
-                        description: v.description,
-                        amountCents: v.amountCents,
-                      })
-                      .then(async () => {
-                        await invalidate();
-                        setEditing(null);
-                      })
-                      .catch(() => undefined);
-                  }}
-                />
-              </li>
-            ) : (
-              <li
-                key={l.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-              >
-                <span className="min-w-0 break-words">{l.description}</span>
-                <span className="font-semibold tabular-nums">{money(l.amountCents)}</span>
-                {canEdit ? (
-                  <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label={`Edit ${l.description}`}
-                      onClick={() => setEditing(l.id)}
-                      data-return-focus={`cost-${l.id}`}
-                    >
-                      <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                      Edit
-                    </Button>
-                    <ConfirmRemove
-                      what={l.description}
-                      disabled={remove.isPending}
-                      onConfirm={() => remove.mutate({ id: l.id })}
-                    />
-                  </span>
-                ) : null}
-              </li>
-            ),
-          )}
+          {lines.map((l) => (
+            <li
+              key={l.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+            >
+              <span className="min-w-0 break-words">{l.description}</span>
+              <span className="font-semibold tabular-nums">{money(l.amountCents)}</span>
+              {canEdit ? (
+                <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Edit ${l.description}`}
+                    onClick={() => setEditing(l.id)}
+                    data-return-focus={`cost-${l.id}`}
+                  >
+                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                    Edit
+                  </Button>
+                  <ConfirmRemove
+                    what={l.description}
+                    disabled={remove.isPending}
+                    onConfirm={() => remove.mutate({ id: l.id })}
+                  />
+                </span>
+              ) : null}
+            </li>
+          ))}
         </ul>
       )}
       {remove.error ? <FormError>{remove.error.message}</FormError> : null}
       {canEdit ? (
-        adding ? (
-          <div className="mt-3 rounded-xl border border-border bg-background p-4">
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => setAdding(true)}
+            data-return-focus={`add-cost-${jobId}`}
+          >
+            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+            {lines.length === 0 ? 'Add the price' : 'Add a cost'}
+          </Button>
+          <EditPanel
+            open={adding}
+            title={lines.length === 0 ? 'Add the price' : 'Add a cost'}
+            onClose={() => {
+              create.reset();
+              setAdding(false);
+            }}
+          >
             <CostLineForm
               idPrefix={`new-cost-${jobId}`}
               jobId={jobId}
@@ -257,19 +250,40 @@ function CostLines({
                   .catch(() => undefined);
               }}
             />
-          </div>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3"
-            onClick={() => setAdding(true)}
-            data-return-focus={`add-cost-${jobId}`}
+          </EditPanel>
+          <EditPanel
+            open={editingLine !== undefined}
+            title={editingLine ? `Edit ${editingLine.description}` : 'Edit'}
+            onClose={() => {
+              update.reset();
+              setEditing(null);
+            }}
           >
-            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
-            {lines.length === 0 ? 'Add the price' : 'Add a cost'}
-          </Button>
-        )
+            {editingLine ? (
+              <CostLineForm
+                idPrefix={`cost-${editingLine.id}`}
+                jobId={jobId}
+                line={editingLine}
+                submitLabel="Save"
+                serverError={update.error?.message}
+                onCancel={() => setEditing(null)}
+                onSubmit={async (v) => {
+                  await update
+                    .mutateAsync({
+                      id: editingLine.id,
+                      description: v.description,
+                      amountCents: v.amountCents,
+                    })
+                    .then(async () => {
+                      await invalidate();
+                      setEditing(null);
+                    })
+                    .catch(() => undefined);
+                }}
+              />
+            ) : null}
+          </EditPanel>
+        </>
       ) : null}
     </div>
   );
@@ -364,6 +378,7 @@ function Payments({
   const create = useMutation(trpc.payments.create.mutationOptions());
   const update = useMutation(trpc.payments.update.mutationOptions());
   const remove = useMutation(trpc.payments.remove.mutationOptions({ onSuccess: invalidate }));
+  const editingPayment = payments.find((p) => p.id === editing);
   const receipts = useQuery(
     trpc.files.listMany.queryOptions({
       ownerType: 'payment',
@@ -375,85 +390,74 @@ function Payments({
 
   return (
     <div>
-      {payments.length === 0 && !adding ? (
+      {payments.length === 0 ? (
         <p className="mt-3 text-muted-foreground">Nothing paid yet.</p>
       ) : (
         <ul className="mt-2 divide-y divide-border">
-          {payments.map((p) =>
-            editing === p.id ? (
-              <li key={p.id} className="py-3">
-                <PaymentForm
-                  idPrefix={`pay-${p.id}`}
-                  jobId={jobId}
-                  payment={p}
-                  submitLabel="Save"
-                  serverError={update.error?.message}
-                  onCancel={() => setEditing(null)}
-                  onSubmit={async (v) => {
-                    await update
-                      .mutateAsync({
-                        id: p.id,
-                        amountCents: v.amountCents,
-                        paidOn: v.paidOn,
-                        note: v.note,
-                      })
-                      .then(async () => {
-                        await invalidate();
-                        setEditing(null);
-                      })
-                      .catch(() => undefined);
-                  }}
-                />
-              </li>
-            ) : (
-              <li
-                key={p.id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-              >
-                <span className="min-w-0">
-                  <span className="block break-words">{p.note || 'Payment'}</span>
-                  <span className="block text-sm text-muted-foreground">
-                    {isIsoDate(p.paidOn) ? formatIsoDate(p.paidOn) : p.paidOn}
-                  </span>
-                  <span className="mt-1 block">
-                    <AttachedFiles
-                      files={receiptsOf(p.id)}
-                      target={{ ownerType: 'payment', ownerId: p.id, kind: 'receipt' }}
-                      addLabel="Attach a receipt"
-                      canEdit={canEdit}
-                      what="receipt"
-                    />
-                  </span>
+          {payments.map((p) => (
+            <li
+              key={p.id}
+              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+            >
+              <span className="min-w-0">
+                <span className="block break-words">{p.note || 'Payment'}</span>
+                <span className="block text-sm text-muted-foreground">
+                  {isIsoDate(p.paidOn) ? formatIsoDate(p.paidOn) : p.paidOn}
                 </span>
-                <span className="font-semibold tabular-nums">{money(p.amountCents)}</span>
-                {canEdit ? (
-                  <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label={`Edit the ${money(p.amountCents)} payment`}
-                      onClick={() => setEditing(p.id)}
-                      data-return-focus={`pay-${p.id}`}
-                    >
-                      <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                      Edit
-                    </Button>
-                    <ConfirmRemove
-                      what={`the ${money(p.amountCents)} payment`}
-                      disabled={remove.isPending}
-                      onConfirm={() => remove.mutate({ id: p.id })}
-                    />
-                  </span>
-                ) : null}
-              </li>
-            ),
-          )}
+                <span className="mt-1 block">
+                  <AttachedFiles
+                    files={receiptsOf(p.id)}
+                    target={{ ownerType: 'payment', ownerId: p.id, kind: 'receipt' }}
+                    addLabel="Attach a receipt"
+                    canEdit={canEdit}
+                    what="receipt"
+                  />
+                </span>
+              </span>
+              <span className="font-semibold tabular-nums">{money(p.amountCents)}</span>
+              {canEdit ? (
+                <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Edit the ${money(p.amountCents)} payment`}
+                    onClick={() => setEditing(p.id)}
+                    data-return-focus={`pay-${p.id}`}
+                  >
+                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                    Edit
+                  </Button>
+                  <ConfirmRemove
+                    what={`the ${money(p.amountCents)} payment`}
+                    disabled={remove.isPending}
+                    onConfirm={() => remove.mutate({ id: p.id })}
+                  />
+                </span>
+              ) : null}
+            </li>
+          ))}
         </ul>
       )}
       {remove.error ? <FormError>{remove.error.message}</FormError> : null}
       {canEdit ? (
-        adding ? (
-          <div className="mt-3 rounded-xl border border-border bg-background p-4">
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => setAdding(true)}
+            data-return-focus={`add-pay-${jobId}`}
+          >
+            Record a payment
+          </Button>
+          <EditPanel
+            open={adding}
+            title="Record a payment"
+            onClose={() => {
+              create.reset();
+              setAdding(false);
+            }}
+          >
             <PaymentForm
               idPrefix={`new-pay-${jobId}`}
               jobId={jobId}
@@ -473,18 +477,41 @@ function Payments({
                   .catch(() => undefined);
               }}
             />
-          </div>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-3"
-            onClick={() => setAdding(true)}
-            data-return-focus={`add-pay-${jobId}`}
+          </EditPanel>
+          <EditPanel
+            open={editingPayment !== undefined}
+            title="Edit the payment"
+            onClose={() => {
+              update.reset();
+              setEditing(null);
+            }}
           >
-            Record a payment
-          </Button>
-        )
+            {editingPayment ? (
+              <PaymentForm
+                idPrefix={`pay-${editingPayment.id}`}
+                jobId={jobId}
+                payment={editingPayment}
+                submitLabel="Save"
+                serverError={update.error?.message}
+                onCancel={() => setEditing(null)}
+                onSubmit={async (v) => {
+                  await update
+                    .mutateAsync({
+                      id: editingPayment.id,
+                      amountCents: v.amountCents,
+                      paidOn: v.paidOn,
+                      note: v.note,
+                    })
+                    .then(async () => {
+                      await invalidate();
+                      setEditing(null);
+                    })
+                    .catch(() => undefined);
+                }}
+              />
+            ) : null}
+          </EditPanel>
+        </>
       ) : null}
     </div>
   );

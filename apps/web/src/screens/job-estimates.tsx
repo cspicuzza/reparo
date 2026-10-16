@@ -18,6 +18,7 @@ import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { Field, FormError, Input, Textarea } from '@/components/form';
 import { EstimateStatusBadge } from '@/components/money';
+import { EditPanel } from '@/components/edit-panel';
 import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
@@ -63,6 +64,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const update = useMutation(trpc.estimates.update.mutationOptions());
 
   const list = estimates.data ?? [];
+  const editingEstimate = list.find((e) => e.id === editing);
   const quotesOf = (id: string): FileView[] => (quotes.data ?? []).filter((f) => f.ownerId === id);
 
   return (
@@ -77,7 +79,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
             vendor; estimates that aren&apos;t chosen don&apos;t count toward the money.
           </p>
         </div>
-        {canEdit && !adding ? (
+        {canEdit ? (
           <Button
             type="button"
             variant="outline"
@@ -96,87 +98,91 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
         </p>
       ) : null}
 
-      {adding ? (
-        <div className="mt-4 rounded-xl border border-border bg-background p-4">
-          <h3 className="text-xl">New estimate</h3>
-          <div className="mt-4">
-            <EstimateForm
-              idPrefix={`new-estimate-${job.id}`}
-              submitLabel="Add the estimate"
-              serverError={create.error?.message}
-              onCancel={() => {
-                create.reset();
+      <EditPanel
+        open={adding}
+        title="New estimate"
+        onClose={() => {
+          create.reset();
+          setAdding(false);
+        }}
+      >
+        <EstimateForm
+          idPrefix={`new-estimate-${job.id}`}
+          submitLabel="Add the estimate"
+          serverError={create.error?.message}
+          onCancel={() => {
+            create.reset();
+            setAdding(false);
+          }}
+          onSubmit={async (v) => {
+            await create
+              .mutateAsync({ ...v, jobId: job.id })
+              .then(async () => {
+                await refresh();
                 setAdding(false);
-              }}
-              onSubmit={async (v) => {
-                await create
-                  .mutateAsync({ ...v, jobId: job.id })
-                  .then(async () => {
-                    await refresh();
-                    setAdding(false);
-                  })
-                  .catch(() => undefined);
-              }}
-            />
-          </div>
-        </div>
-      ) : null}
+              })
+              .catch(() => undefined);
+          }}
+        />
+      </EditPanel>
 
-      {list.length === 0 && !adding ? (
-        <p className="mt-4 text-muted-foreground">No estimates yet.</p>
-      ) : null}
+      {list.length === 0 ? <p className="mt-4 text-muted-foreground">No estimates yet.</p> : null}
 
       {list.length > 0 ? (
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {list.map((e) =>
-            editing === e.id ? (
-              <li key={e.id} className="rounded-xl border border-border bg-background p-4">
-                <h3 className="text-xl">Edit the {e.vendor.name} estimate</h3>
-                <div className="mt-4">
-                  <EstimateForm
-                    idPrefix={`estimate-${e.id}`}
-                    estimate={e}
-                    submitLabel="Save"
-                    serverError={update.error?.message}
-                    onCancel={() => {
-                      update.reset();
-                      setEditing(null);
-                    }}
-                    onSubmit={async (v) => {
-                      await update
-                        .mutateAsync({
-                          id: e.id,
-                          vendorId: v.vendorId,
-                          amountCents: v.amountCents,
-                          receivedOn: v.receivedOn,
-                          validUntil: v.validUntil,
-                          notes: v.notes,
-                          // The chosen one keeps its status; Requested becomes Received with an amount.
-                          ...(e.status === 'chosen' ? {} : { status: v.status }),
-                        })
-                        .then(async () => {
-                          await refresh();
-                          setEditing(null);
-                        })
-                        .catch(() => undefined);
-                    }}
-                  />
-                </div>
-              </li>
-            ) : (
-              <EstimateCard
-                key={e.id}
-                estimate={e}
-                quotes={quotesOf(e.id)}
-                paidCents={job.money.paidCents}
-                canEdit={canEdit}
-                onEdit={() => setEditing(e.id)}
-                onChanged={refresh}
-              />
-            ),
-          )}
+          {list.map((e) => (
+            <EstimateCard
+              key={e.id}
+              estimate={e}
+              quotes={quotesOf(e.id)}
+              paidCents={job.money.paidCents}
+              canEdit={canEdit}
+              onEdit={() => setEditing(e.id)}
+              onChanged={refresh}
+            />
+          ))}
         </ul>
       ) : null}
+
+      <EditPanel
+        open={editingEstimate !== undefined}
+        title={editingEstimate ? `Edit the ${editingEstimate.vendor.name} estimate` : 'Edit'}
+        onClose={() => {
+          update.reset();
+          setEditing(null);
+        }}
+      >
+        {editingEstimate ? (
+          <EstimateForm
+            idPrefix={`estimate-${editingEstimate.id}`}
+            estimate={editingEstimate}
+            submitLabel="Save"
+            serverError={update.error?.message}
+            onCancel={() => {
+              update.reset();
+              setEditing(null);
+            }}
+            onSubmit={async (v) => {
+              await update
+                .mutateAsync({
+                  id: editingEstimate.id,
+                  vendorId: v.vendorId,
+                  amountCents: v.amountCents,
+                  receivedOn: v.receivedOn,
+                  validUntil: v.validUntil,
+                  notes: v.notes,
+                  // The chosen one keeps its status; Requested becomes Received with an amount.
+                  ...(editingEstimate.status === 'chosen' ? {} : { status: v.status }),
+                })
+                .then(async () => {
+                  await refresh();
+                  setEditing(null);
+                })
+                .catch(() => undefined);
+            }}
+          />
+        ) : null}
+      </EditPanel>
     </Panel>
   );
 }

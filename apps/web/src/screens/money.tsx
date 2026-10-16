@@ -21,6 +21,7 @@ import { ConfirmRemove } from '@/components/confirm-remove';
 import { Field, FormError, Input, Textarea } from '@/components/form';
 import { MoneyTape } from '@/components/money-tape';
 import { PageHeader } from '@/components/page-header';
+import { EditPanel } from '@/components/edit-panel';
 import { Panel } from '@/components/panel';
 import { PhaseStatusBadge } from '@/components/status';
 import { Button } from '@/components/ui/button';
@@ -174,6 +175,7 @@ function Pool({ budget }: { budget: Budget }) {
   const removeAdj = useMutation(
     trpc.budgetAdjustments.remove.mutationOptions({ onSuccess: invalidate }),
   );
+  const editingAdjustment = budget.adjustments.find((a) => a.id === editingAdj);
 
   return (
     <Panel aria-labelledby="pool">
@@ -181,7 +183,7 @@ function Pool({ budget }: { budget: Budget }) {
         <h2 id="pool" className="text-2xl">
           The budget
         </h2>
-        {isAdmin && !editing ? (
+        {isAdmin ? (
           <Button
             type="button"
             variant="outline"
@@ -194,113 +196,105 @@ function Pool({ budget }: { budget: Budget }) {
         ) : null}
       </div>
 
-      {editing ? (
-        <div className="mt-4">
-          <BudgetForm
-            budget={budget}
-            serverError={update.error?.message}
-            onCancel={() => setEditing(false)}
-            onSubmit={async (v) => {
-              await update
-                .mutateAsync(v)
-                .then(async () => {
-                  await invalidate();
-                  setEditing(false);
-                })
-                .catch(() => undefined);
-            }}
-          />
-        </div>
-      ) : (
-        <table className="mt-4 w-full tabular-nums">
-          <caption className="sr-only">The budget: starting balance, adjustments and total</caption>
-          <tbody className="divide-y divide-border">
-            <tr>
+      {/* The starting balance and adjustments open in the side panel (OD-90). */}
+      <table className="mt-4 w-full tabular-nums">
+        <caption className="sr-only">The budget: starting balance, adjustments and total</caption>
+        <tbody className="divide-y divide-border">
+          <tr>
+            <th scope="row" className="py-3 text-left font-normal">
+              Starting balance
+              {budget.asOf ? (
+                <span className="block text-sm text-muted-foreground">
+                  As of {dateText(budget.asOf)}
+                </span>
+              ) : null}
+            </th>
+            <td className="py-3 text-right font-semibold">{money(budget.startingCents)}</td>
+            {isAdmin ? <td /> : null}
+          </tr>
+          {budget.adjustments.map((a) => (
+            <tr key={a.id}>
               <th scope="row" className="py-3 text-left font-normal">
-                Starting balance
-                {budget.asOf ? (
-                  <span className="block text-sm text-muted-foreground">
-                    As of {dateText(budget.asOf)}
-                  </span>
-                ) : null}
+                {a.note || 'Adjustment'}
+                <span className="block text-sm text-muted-foreground">{dateText(a.on)}</span>
               </th>
-              <td className="py-3 text-right font-semibold">{money(budget.startingCents)}</td>
-              {isAdmin ? <td /> : null}
-            </tr>
-            {budget.adjustments.map((a) =>
-              editingAdj === a.id ? (
-                <tr key={a.id}>
-                  <td colSpan={isAdmin ? 3 : 2} className="py-3">
-                    <AdjustmentForm
-                      idPrefix={`adj-${a.id}`}
-                      adjustment={a}
-                      submitLabel="Save"
-                      serverError={updateAdj.error?.message}
-                      onCancel={() => setEditingAdj(null)}
-                      onSubmit={async (v) => {
-                        await updateAdj
-                          .mutateAsync({ id: a.id, ...v })
-                          .then(async () => {
-                            await invalidate();
-                            setEditingAdj(null);
-                          })
-                          .catch(() => undefined);
-                      }}
-                    />
-                  </td>
-                </tr>
-              ) : (
-                <tr key={a.id}>
-                  <th scope="row" className="py-3 text-left font-normal">
-                    {a.note || 'Adjustment'}
-                    <span className="block text-sm text-muted-foreground">{dateText(a.on)}</span>
-                  </th>
-                  <td
-                    className={cn(
-                      'py-3 text-right font-semibold',
-                      a.amountCents < 0 && 'text-destructive',
-                    )}
+              <td
+                className={cn(
+                  'py-3 text-right font-semibold',
+                  a.amountCents < 0 && 'text-destructive',
+                )}
+              >
+                {a.amountCents > 0 ? '+' : ''}
+                {money(a.amountCents)}
+              </td>
+              {isAdmin ? (
+                <td className="w-0 py-3 pl-2 text-right whitespace-nowrap">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-label={`Edit ${a.note || 'adjustment'}`}
+                    onClick={() => setEditingAdj(a.id)}
+                    data-return-focus={`adj-${a.id}`}
                   >
-                    {a.amountCents > 0 ? '+' : ''}
-                    {money(a.amountCents)}
-                  </td>
-                  {isAdmin ? (
-                    <td className="w-0 py-3 pl-2 text-right whitespace-nowrap">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        aria-label={`Edit ${a.note || 'adjustment'}`}
-                        onClick={() => setEditingAdj(a.id)}
-                        data-return-focus={`adj-${a.id}`}
-                      >
-                        <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                        Edit
-                      </Button>
-                      <ConfirmRemove
-                        what={a.note || 'this adjustment'}
-                        disabled={removeAdj.isPending}
-                        onConfirm={() => removeAdj.mutate({ id: a.id })}
-                      />
-                    </td>
-                  ) : null}
-                </tr>
-              ),
-            )}
-            <tr>
-              <th scope="row" className="py-3 text-left font-semibold">
-                Budget
-              </th>
-              <td className="py-3 text-right text-xl font-semibold">{money(budget.poolCents)}</td>
-              {isAdmin ? <td /> : null}
+                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                    Edit
+                  </Button>
+                  <ConfirmRemove
+                    what={a.note || 'this adjustment'}
+                    disabled={removeAdj.isPending}
+                    onConfirm={() => removeAdj.mutate({ id: a.id })}
+                  />
+                </td>
+              ) : null}
             </tr>
-          </tbody>
-        </table>
-      )}
+          ))}
+          <tr>
+            <th scope="row" className="py-3 text-left font-semibold">
+              Budget
+            </th>
+            <td className="py-3 text-right text-xl font-semibold">{money(budget.poolCents)}</td>
+            {isAdmin ? <td /> : null}
+          </tr>
+        </tbody>
+      </table>
+      <EditPanel open={editing} title="The starting balance" onClose={() => setEditing(false)}>
+        <BudgetForm
+          budget={budget}
+          serverError={update.error?.message}
+          onCancel={() => setEditing(false)}
+          onSubmit={async (v) => {
+            await update
+              .mutateAsync(v)
+              .then(async () => {
+                await invalidate();
+                setEditing(false);
+              })
+              .catch(() => undefined);
+          }}
+        />
+      </EditPanel>
       {removeAdj.error ? <FormError>{removeAdj.error.message}</FormError> : null}
 
-      {isAdmin && !editing ? (
-        adding ? (
-          <div className="mt-4 rounded-xl border border-border bg-background p-4">
+      {isAdmin ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4"
+            onClick={() => setAdding(true)}
+            data-return-focus="add-adjustment"
+          >
+            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+            Add money in or out
+          </Button>
+          <EditPanel
+            open={adding}
+            title="Money in or out"
+            onClose={() => {
+              createAdj.reset();
+              setAdding(false);
+            }}
+          >
             <AdjustmentForm
               idPrefix="new-adj"
               submitLabel="Add to the budget"
@@ -319,19 +313,35 @@ function Pool({ budget }: { budget: Budget }) {
                   .catch(() => undefined);
               }}
             />
-          </div>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-4"
-            onClick={() => setAdding(true)}
-            data-return-focus="add-adjustment"
+          </EditPanel>
+          <EditPanel
+            open={editingAdjustment !== undefined}
+            title={editingAdjustment?.note || 'Edit the adjustment'}
+            onClose={() => {
+              updateAdj.reset();
+              setEditingAdj(null);
+            }}
           >
-            <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
-            Add money in or out
-          </Button>
-        )
+            {editingAdjustment ? (
+              <AdjustmentForm
+                idPrefix={`adj-${editingAdjustment.id}`}
+                adjustment={editingAdjustment}
+                submitLabel="Save"
+                serverError={updateAdj.error?.message}
+                onCancel={() => setEditingAdj(null)}
+                onSubmit={async (v) => {
+                  await updateAdj
+                    .mutateAsync({ id: editingAdjustment.id, ...v })
+                    .then(async () => {
+                      await invalidate();
+                      setEditingAdj(null);
+                    })
+                    .catch(() => undefined);
+                }}
+              />
+            ) : null}
+          </EditPanel>
+        </>
       ) : null}
     </Panel>
   );
