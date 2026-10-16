@@ -114,7 +114,11 @@ export function BatchBar({
             count first and Clear last. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="flex items-center justify-between gap-3 sm:contents">
-            <p role="status" aria-live="polite" className="font-semibold tabular-nums sm:order-1">
+            <p
+              role="status"
+              aria-live="polite"
+              className="font-semibold tabular-nums sm:order-1 sm:whitespace-nowrap"
+            >
               {/* How many and what they cost together (OD-104, Q103). */}
               {items(lines.length)}, {money(sumCents(lines.map((l) => l.priceCents)))} selected
               {hidden > 0 ? (
