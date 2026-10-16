@@ -265,11 +265,6 @@ export function Shopping() {
         <BatchBar
           selected={picked}
           shownIds={new Set(current.keys())}
-          pictured={
-            new Set(
-              (files.data ?? []).filter((f) => f.kind === 'product_image').map((f) => f.ownerId),
-            )
-          }
           onClear={() => setSelected(new Map())}
         />
       ) : null}
