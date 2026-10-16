@@ -9,7 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { MoneyTape } from '@/components/money-tape';
 import { formatIsoDate, formatMoney, isIsoDate } from '@reparo/shared';
 import { headline, listText, plannedPhaseText } from '@/lib/money';
-import { greeting } from '@/lib/home';
+import { greeting, phaseGlance } from '@/lib/home';
 import { useMe } from '@/lib/me';
 import { roomProgressText } from '@/lib/rooms';
 import { useTRPC } from '@/lib/trpc';
@@ -244,8 +244,26 @@ function PhasePanel({ summary }: { summary: Summary }) {
           No jobs in {phase.name} yet. Add them on the Jobs page.
         </p>
       ) : (
+        <PhaseGlance jobs={phaseJobs} />
+      )}
+    </section>
+  );
+}
+
+/**
+ * The phase in one line, then only the jobs that are moving (under way or waiting on
+ * someone), with a way to all of them (OD-92). A list of twelve "Unstarted" said nothing.
+ */
+function PhaseGlance({ jobs }: { jobs: Summary['phaseJobs'] }) {
+  const { text, moving } = phaseGlance(jobs);
+  return (
+    <>
+      <p className="mt-2 text-lg tabular-nums">{text}</p>
+      {moving.length === 0 ? (
+        <p className="mt-1 text-muted-foreground">Nothing is under way right now.</p>
+      ) : (
         <ul className="mt-4 flex flex-col gap-4">
-          {phaseJobs.map((j) => {
+          {moving.map((j) => {
             const count = progressText(j.progress, j.roomCount);
             return (
               <li
@@ -283,7 +301,10 @@ function PhasePanel({ summary }: { summary: Summary }) {
           })}
         </ul>
       )}
-    </section>
+      <Link to="/jobs" className={buttonVariants({ variant: 'link', className: 'mt-2 px-0' })}>
+        See all {jobs.length} {jobs.length === 1 ? 'job' : 'jobs'}
+      </Link>
+    </>
   );
 }
 
