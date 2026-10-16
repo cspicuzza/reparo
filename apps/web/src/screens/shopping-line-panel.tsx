@@ -167,11 +167,24 @@ function EditBody({
   // Suggestions only; nothing waits for them.
   const stores = useQuery(trpc.shoppingLines.stores.queryOptions());
   const [renaming, setRenaming] = useState(false);
+  // Removing one line offers the same 10 seconds of Undo as removing many (OD-103).
   const remove = useMutation(
     trpc.shoppingLines.remove.mutationOptions({
       onSuccess: async () => {
         onRemoved();
         await invalidate();
+        toasts.add({
+          title: `Removed ${line.name}`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.shoppingLines.restore
+                .mutate({ id: line.id })
+                .then(invalidate)
+                .catch(() => undefined),
+          },
+        });
       },
     }),
   );
@@ -388,8 +401,9 @@ function EditBody({
         </section>
       ) : null}
 
-      <div className="-ml-3 flex flex-wrap items-center gap-1 border-t border-border pt-4">
+      <div className="flex flex-wrap items-center gap-1 border-t border-border pt-4">
         <ConfirmRemove
+          strong
           what={line.name}
           disabled={remove.isPending}
           onConfirm={() => remove.mutate({ id: line.id })}
