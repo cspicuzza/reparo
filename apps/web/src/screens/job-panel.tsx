@@ -220,7 +220,7 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
             </Button>
           </div>
           {asking && asking.length > 0 ? (
-            <div className="mt-3 flex flex-col gap-3 rounded-xl border border-border bg-background p-3">
+            <div className="mt-3 flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
               <p>
                 Take {listText(asking.map((r) => nameOf(r.roomId)))} off {job.name}?{' '}
                 {asking.length === 1 ? 'Its' : 'Their'} status and spec for this job go.

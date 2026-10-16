@@ -12,6 +12,7 @@ import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { EditPanel } from '@/components/edit-panel';
+import { PanelGroup } from '@/components/panel-group';
 import { PanelNameField } from '@/components/panel-name-field';
 import { FileSection } from '@/components/file-section';
 import { FormError, Input } from '@/components/form';
@@ -201,168 +202,174 @@ function EditBody({
         gridClassName="grid-cols-2 sm:grid-cols-2 lg:grid-cols-2"
       />
 
-      {/* Each field keeps a line under it for Saved, so the gap between fields stays small. */}
-      <MoneyField
-        id={id('price')}
-        label="Price"
-        hint="The whole line, all of them."
-        cents={line.priceCents}
-        field="priceCents"
-        line={line}
-      />
-
-      <PurchaseStatus line={line} />
-
-      {line.status !== 'to_buy' ? (
+      <PanelGroup id={id('buying')} title="Buying">
         <MoneyField
-          id={id('paid')}
-          label="What was paid"
-          hint="Tax and delivery count too."
-          cents={line.paidCents ?? 0}
-          field="paidCents"
+          id={id('price')}
+          label="Price"
+          hint="The whole line, all of them."
+          cents={line.priceCents}
+          field="priceCents"
           line={line}
         />
-      ) : null}
-      {line.status === 'returned' ? (
-        <MoneyField
-          id={id('refund')}
-          label="How much came back"
-          hint="Anything kept back, like a restocking fee, stays spent."
-          cents={line.refundCents ?? 0}
-          field="refundCents"
-          line={line}
-        />
-      ) : null}
 
-      <div>
-        <AutoSaveField
-          id={id('store')}
-          label="Store"
-          hint="Pick one you've used or type a new one."
-          list={id('stores')}
-          initial={line.store}
-          what={`Store for ${line.name}`}
-          validate={(v) => problemWith(shoppingLineCreateSchema.shape.store, v)}
-          onSave={(v) => save({ store: v })}
-        />
-        {/* The browser's own suggestions as you type (OD-69). */}
-        <datalist id={id('stores')}>
-          {(stores.data ?? []).map((st) => (
-            <option key={st.name} value={st.name} />
-          ))}
-        </datalist>
-        {line.store ? (
-          renaming ? (
-            <RenameStore store={line.store} onDone={() => setRenaming(false)} />
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="-ml-3"
-              onClick={() => setRenaming(true)}
-            >
-              Rename this store everywhere
-            </Button>
-          )
+        <PurchaseStatus line={line} />
+
+        {line.status !== 'to_buy' ? (
+          <MoneyField
+            id={id('paid')}
+            label="What was paid"
+            hint="Tax and delivery count too."
+            cents={line.paidCents ?? 0}
+            field="paidCents"
+            line={line}
+          />
         ) : null}
-      </div>
+        {line.status === 'returned' ? (
+          <MoneyField
+            id={id('refund')}
+            label="How much came back"
+            hint="Anything kept back, like a restocking fee, stays spent."
+            cents={line.refundCents ?? 0}
+            field="refundCents"
+            line={line}
+          />
+        ) : null}
 
-      <div>
-        <AutoSaveField
-          id={id('link')}
-          label="Link"
-          type="url"
-          inputMode="url"
-          initial={line.link}
-          what={`Link for ${line.name}`}
-          validate={(v) => problemWith(shoppingLineCreateSchema.shape.link, v)}
-          onSave={(v) => save({ link: v })}
+        <div>
+          <AutoSaveField
+            id={id('store')}
+            label="Store"
+            hint="Pick one you've used or type a new one."
+            list={id('stores')}
+            initial={line.store}
+            what={`Store for ${line.name}`}
+            validate={(v) => problemWith(shoppingLineCreateSchema.shape.store, v)}
+            onSave={(v) => save({ store: v })}
+          />
+          {/* The browser's own suggestions as you type (OD-69). */}
+          <datalist id={id('stores')}>
+            {(stores.data ?? []).map((st) => (
+              <option key={st.name} value={st.name} />
+            ))}
+          </datalist>
+          {line.store ? (
+            renaming ? (
+              <RenameStore store={line.store} onDone={() => setRenaming(false)} />
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                className="-ml-3"
+                onClick={() => setRenaming(true)}
+              >
+                Rename this store everywhere
+              </Button>
+            )
+          ) : null}
+        </div>
+
+        <div>
+          <AutoSaveField
+            id={id('link')}
+            label="Link"
+            type="url"
+            inputMode="url"
+            initial={line.link}
+            what={`Link for ${line.name}`}
+            validate={(v) => problemWith(shoppingLineCreateSchema.shape.link, v)}
+            onSave={(v) => save({ link: v })}
+          />
+          {line.link ? <ProductLink href={line.link} text="Open product page" /> : null}
+        </div>
+      </PanelGroup>
+
+      <PanelGroup id={id('where')} title="Where it goes">
+        <AutoSaveSelect
+          id={id('room')}
+          label="Room"
+          value={line.roomId ?? ''}
+          options={[
+            { value: '', label: 'Whole house' },
+            ...rooms.data.map((r) => ({ value: r.id, label: r.name })),
+          ]}
+          what={`Room for ${line.name}`}
+          onSave={(v) => save({ roomId: v === '' ? null : v })}
         />
-        {line.link ? <ProductLink href={line.link} text="Open product page" /> : null}
-      </div>
+        <AutoSaveSelect
+          id={id('category')}
+          label="Category"
+          value={line.categoryId}
+          options={categories.data.map((c) => ({ value: c.id, label: c.name }))}
+          what={`Category for ${line.name}`}
+          onSave={(v) => save({ categoryId: v })}
+        />
+        <AutoSaveField
+          id={id('qty')}
+          label="How many"
+          inputMode="numeric"
+          inputClassName={SHORT}
+          initial={String(line.quantity)}
+          what={`How many for ${line.name}`}
+          validate={(v) => problemWith(shoppingLineCreateSchema.shape.quantity, Number(v))}
+          onSave={(v) => save({ quantity: Number(v) })}
+        />
+        <AutoSaveSelect
+          id={id('phase')}
+          label="Phase"
+          hint="Planned phases don't count against the money yet."
+          value={line.phaseId}
+          options={phases.data.map((p) => ({
+            value: p.id,
+            label: `${p.name} (${PHASE_STATUS_LABEL[p.status].toLowerCase()})`,
+          }))}
+          what={`Phase for ${line.name}`}
+          onSave={async (phaseId) => {
+            // A line's job must be in its phase, so moving phase lets go of a job left behind.
+            const job = jobs.data.find((j) => j.id === line.jobId);
+            const dropJob = job !== undefined && job.phaseId !== phaseId;
+            await save(dropJob ? { phaseId, jobId: null } : { phaseId });
+            if (dropJob) {
+              toasts.add({
+                title: 'No longer for a job',
+                description: `${job.name} is in another phase, so ${line.name} isn't for it now.`,
+              });
+            }
+          }}
+        />
+        <AutoSaveSelect
+          id={id('job')}
+          label="For a job"
+          hint="Like tile for the flooring job. Only this phase's jobs."
+          value={line.jobId ?? ''}
+          options={[
+            { value: '', label: 'No job' },
+            ...phaseJobs.map((j) => ({ value: j.id, label: j.name })),
+          ]}
+          what={`Job for ${line.name}`}
+          onSave={(v) => save({ jobId: v === '' ? null : v })}
+        />
+      </PanelGroup>
 
-      <AutoSaveSelect
-        id={id('room')}
-        label="Room"
-        value={line.roomId ?? ''}
-        options={[
-          { value: '', label: 'Whole house' },
-          ...rooms.data.map((r) => ({ value: r.id, label: r.name })),
-        ]}
-        what={`Room for ${line.name}`}
-        onSave={(v) => save({ roomId: v === '' ? null : v })}
-      />
-      <AutoSaveSelect
-        id={id('category')}
-        label="Category"
-        value={line.categoryId}
-        options={categories.data.map((c) => ({ value: c.id, label: c.name }))}
-        what={`Category for ${line.name}`}
-        onSave={(v) => save({ categoryId: v })}
-      />
-      <AutoSaveField
-        id={id('qty')}
-        label="How many"
-        inputMode="numeric"
-        inputClassName={SHORT}
-        initial={String(line.quantity)}
-        what={`How many for ${line.name}`}
-        validate={(v) => problemWith(shoppingLineCreateSchema.shape.quantity, Number(v))}
-        onSave={(v) => save({ quantity: Number(v) })}
-      />
-      <AutoSaveSelect
-        id={id('phase')}
-        label="Phase"
-        hint="Planned phases don't count against the money yet."
-        value={line.phaseId}
-        options={phases.data.map((p) => ({
-          value: p.id,
-          label: `${p.name} (${PHASE_STATUS_LABEL[p.status].toLowerCase()})`,
-        }))}
-        what={`Phase for ${line.name}`}
-        onSave={async (phaseId) => {
-          // A line's job must be in its phase, so moving phase lets go of a job left behind.
-          const job = jobs.data.find((j) => j.id === line.jobId);
-          const dropJob = job !== undefined && job.phaseId !== phaseId;
-          await save(dropJob ? { phaseId, jobId: null } : { phaseId });
-          if (dropJob) {
-            toasts.add({
-              title: 'No longer for a job',
-              description: `${job.name} is in another phase, so ${line.name} isn't for it now.`,
-            });
-          }
-        }}
-      />
-      <AutoSaveSelect
-        id={id('job')}
-        label="For a job"
-        hint="Like tile for the flooring job. Only this phase's jobs."
-        value={line.jobId ?? ''}
-        options={[
-          { value: '', label: 'No job' },
-          ...phaseJobs.map((j) => ({ value: j.id, label: j.name })),
-        ]}
-        what={`Job for ${line.name}`}
-        onSave={(v) => save({ jobId: v === '' ? null : v })}
-      />
-      <AutoSaveField
-        id={id('model')}
-        label="Model number"
-        initial={line.modelNumber}
-        what={`Model number for ${line.name}`}
-        validate={(v) => problemWith(shoppingLineCreateSchema.shape.modelNumber, v)}
-        onSave={(v) => save({ modelNumber: v })}
-      />
-      <AutoSaveField
-        id={id('notes')}
-        label="Notes"
-        multiline
-        rows={4}
-        initial={line.notes}
-        what={`Notes for ${line.name}`}
-        validate={(v) => problemWith(shoppingLineCreateSchema.shape.notes, v)}
-        onSave={(v) => save({ notes: v })}
-      />
+      <PanelGroup id={id('more')} title="More">
+        <AutoSaveField
+          id={id('model')}
+          label="Model number"
+          initial={line.modelNumber}
+          what={`Model number for ${line.name}`}
+          validate={(v) => problemWith(shoppingLineCreateSchema.shape.modelNumber, v)}
+          onSave={(v) => save({ modelNumber: v })}
+        />
+        <AutoSaveField
+          id={id('notes')}
+          label="Notes"
+          multiline
+          rows={4}
+          initial={line.notes}
+          what={`Notes for ${line.name}`}
+          validate={(v) => problemWith(shoppingLineCreateSchema.shape.notes, v)}
+          onSave={(v) => save({ notes: v })}
+        />
+      </PanelGroup>
 
       {line.status !== 'to_buy' ? (
         <section aria-labelledby={`receipts-${line.id}`}>

@@ -182,7 +182,7 @@ function NewVendor({
     <div
       role="group"
       aria-labelledby={id('title')}
-      className="mt-3 grid gap-4 rounded-xl border border-border bg-background p-4"
+      className="mt-3 grid gap-4 rounded-xl border border-border bg-card p-4"
       // Enter here adds the vendor rather than submitting the job form around it.
       onKeyDown={(e) => {
         if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
