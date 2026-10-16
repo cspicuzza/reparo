@@ -54,7 +54,6 @@ describe('phases', () => {
       startsOn: null,
       endsOn: null,
       notes: '',
-      sortOrder: 0,
     });
   });
 
@@ -84,7 +83,6 @@ describe('rooms', () => {
       widthIn: null,
       ceilingHeightIn: null,
       notes: '',
-      sortOrder: 0,
     });
   });
 

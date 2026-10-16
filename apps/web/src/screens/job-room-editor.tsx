@@ -32,7 +32,19 @@ export function JobRoomEditor({
   const id = (f: string) => `${idPrefix}-${f}`;
 
   return (
-    <div ref={ref} className="grid gap-4">
+    <div
+      ref={ref}
+      className="grid gap-4"
+      // Escape closes it, like Done (OD-117, Q144). The field in hand is left first, so what was
+      // typed saves the way leaving it always does; focus then goes back to the button that
+      // opened it.
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+        onDone();
+      }}
+    >
       <AutoSaveField
         id={id('spec')}
         label={`Spec for ${roomName}`}

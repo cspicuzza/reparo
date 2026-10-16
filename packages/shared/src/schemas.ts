@@ -84,9 +84,14 @@ export const phaseCreateSchema = z.object({
   startsOn: phaseFields.startsOn.default(null),
   endsOn: phaseFields.endsOn.default(null),
   notes: phaseFields.notes.default(''),
-  sortOrder: phaseFields.sortOrder.default(0),
+  /** Left out: after the last phase (OD-117, Q141). */
+  sortOrder: phaseFields.sortOrder.optional(),
 });
 export const phaseUpdateSchema = z.object(phaseFields).partial().extend({ id: idSchema });
+
+/** Move one row up or down its list (rooms, phases), instead of typing an order (Q141). */
+export const moveSchema = z.object({ id: idSchema, by: z.union([z.literal(-1), z.literal(1)]) });
+export type Move = z.infer<typeof moveSchema>;
 export type PhaseCreate = z.infer<typeof phaseCreateSchema>;
 export type PhaseUpdate = z.infer<typeof phaseUpdateSchema>;
 
@@ -110,7 +115,8 @@ export const roomCreateSchema = z.object({
   widthIn: optionalLength,
   ceilingHeightIn: optionalLength,
   notes: roomFields.notes.default(''),
-  sortOrder: roomFields.sortOrder.default(0),
+  /** Left out: after the last room (OD-117, Q141). */
+  sortOrder: roomFields.sortOrder.optional(),
 });
 export const roomUpdateSchema = z.object(roomFields).partial().extend({ id: idSchema });
 export type RoomCreate = z.infer<typeof roomCreateSchema>;

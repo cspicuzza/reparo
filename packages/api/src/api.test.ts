@@ -272,6 +272,38 @@ describe('@reparo/api', () => {
       expect((await mutate(h, 'editor', 'rooms.create', { name: 'Living Room' })).status).toBe(200);
     }));
 
+  it('rooms and phases: new ones go last; Move up and Move down renumber the list', () =>
+    withSeeded(async (_tx, h) => {
+      const names = async (what: 'rooms' | 'phases') =>
+        rows(await query(h, 'viewer', `${what}.list`))
+          .map((r) => r.name)
+          .filter((n) => n?.startsWith('Ord') || n === 'Phase 1');
+      const a = row(await mutate(h, 'editor', 'rooms.create', { name: 'Ord C' }));
+      const b = row(await mutate(h, 'editor', 'rooms.create', { name: 'Ord A' }));
+      const c = row(await mutate(h, 'editor', 'rooms.create', { name: 'Ord B' }));
+      // Not alphabetical: each new room goes after the last.
+      expect(await names('rooms')).toEqual(['Ord C', 'Ord A', 'Ord B']);
+
+      expect((await mutate(h, 'viewer', 'rooms.move', { id: c.id, by: -1 })).status).toBe(403);
+      expect((await mutate(h, 'editor', 'rooms.move', { id: c.id, by: -1 })).status).toBe(200);
+      expect(await names('rooms')).toEqual(['Ord C', 'Ord B', 'Ord A']);
+      await mutate(h, 'editor', 'rooms.move', { id: a.id, by: 1 });
+      expect(await names('rooms')).toEqual(['Ord B', 'Ord C', 'Ord A']);
+      // At either end it stays put: Ord B is first, Ord A last.
+      await mutate(h, 'editor', 'rooms.move', { id: c.id, by: -1 });
+      await mutate(h, 'editor', 'rooms.move', { id: b.id, by: 1 });
+      expect(await names('rooms')).toEqual(['Ord B', 'Ord C', 'Ord A']);
+      const bad = await mutate(h, 'editor', 'rooms.move', { id: a.id, by: 2 });
+      expect(bad.status).toBe(400);
+
+      const p2 = row(await mutate(h, 'chris', 'phases.create', { name: 'Ord Phase 2' }));
+      await mutate(h, 'chris', 'phases.create', { name: 'Ord Phase 3' });
+      expect(await names('phases')).toEqual(['Phase 1', 'Ord Phase 2', 'Ord Phase 3']);
+      expect((await mutate(h, 'editor', 'phases.move', { id: p2.id, by: -1 })).status).toBe(403);
+      await mutate(h, 'chris', 'phases.move', { id: p2.id, by: -1 });
+      expect(await names('phases')).toEqual(['Ord Phase 2', 'Phase 1', 'Ord Phase 3']);
+    }));
+
   it('phases: Phase 1 is seeded; admin adds, dates are validated, names are unique', () =>
     withSeeded(async (_tx, h) => {
       const seeded = rows(await query(h, 'viewer', 'phases.list'));

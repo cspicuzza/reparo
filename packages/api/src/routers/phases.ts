@@ -1,8 +1,8 @@
-import { idSchema, phaseCreateSchema, phaseUpdateSchema } from '@reparo/shared';
+import { idSchema, moveSchema, phaseCreateSchema, phaseUpdateSchema } from '@reparo/shared';
 import { z } from 'zod';
 import { adminProcedure, memberProcedure, router } from '../trpc';
 import { listPhasesWithProgress } from '../services/phase-progress';
-import { createPhase, getPhase, removePhase, updatePhase } from '../services/phases';
+import { createPhase, getPhase, movePhase, removePhase, updatePhase } from '../services/phases';
 
 /** Phases are admin-managed (ADR-008). */
 export const phasesRouter = router({
@@ -16,6 +16,8 @@ export const phasesRouter = router({
   update: adminProcedure
     .input(phaseUpdateSchema)
     .mutation(({ ctx, input }) => updatePhase(ctx.db, input)),
+  /** One place up or down the list (OD-117, Q141). */
+  move: adminProcedure.input(moveSchema).mutation(({ ctx, input }) => movePhase(ctx.db, input)),
   remove: adminProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removePhase(ctx.db, input.id)),

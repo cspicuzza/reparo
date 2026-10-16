@@ -29,6 +29,7 @@ import { SaveState } from '@/components/save-state';
 import { TapeStrip } from '@/components/tape';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { MoveButtons } from '@/components/move-buttons';
 import { useRefreshPhases } from '@/lib/refresh';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
@@ -49,6 +50,8 @@ export function Phases() {
     }),
   );
   const editingPhase = phases.data?.find((p) => p.id === editingId);
+  const [arranging, setArranging] = useState(false);
+  const move = useMutation(trpc.phases.move.mutationOptions({ onSuccess: () => invalidate() }));
 
   return (
     <section className="flex flex-col gap-8">
@@ -57,10 +60,22 @@ export function Phases() {
         description="The renovation in stages. Work and money belong to a phase."
         action={
           isAdmin ? (
-            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">
-              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              Add a phase
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {phases.data && phases.data.length > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={arranging}
+                  onClick={() => setArranging((v) => !v)}
+                >
+                  {arranging ? 'Done' : 'Change order'}
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">
+                <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                Add a phase
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -108,55 +123,74 @@ export function Phases() {
       ) : null}
       {phases.data && phases.data.length > 0 ? (
         <PanelList>
-          {phases.data.map((phase) => (
-            <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <h2 className="text-2xl">{phase.name}</h2>
+          {phases.data.map((phase, index) =>
+            arranging ? (
+              // Putting the phases in order: each row moves up or down (OD-117, Q141).
+              <li
+                key={phase.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-4 sm:px-5"
+              >
+                <h2 className="text-2xl">{phase.name}</h2>
+                <MoveButtons
+                  id={phase.id}
+                  name={phase.name}
+                  index={index}
+                  count={phases.data.length}
+                  disabled={move.isPending}
+                  onMove={(by) => move.mutateAsync({ id: phase.id, by }).catch(() => undefined)}
+                />
+              </li>
+            ) : (
+              <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <h2 className="text-2xl">{phase.name}</h2>
+                    {isAdmin ? (
+                      <PhaseStatus phase={phase} />
+                    ) : (
+                      <PhaseStatusBadge status={phase.status} />
+                    )}
+                  </div>
                   {isAdmin ? (
-                    <PhaseStatus phase={phase} />
-                  ) : (
-                    <PhaseStatusBadge status={phase.status} />
-                  )}
+                    <Button
+                      type="button"
+                      onClick={() => setEditingId(phase.id)}
+                      data-return-focus={`phase-${phase.id}`}
+                      variant="ghost"
+                    >
+                      <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                      Edit
+                    </Button>
+                  ) : null}
                 </div>
-                {isAdmin ? (
-                  <Button
-                    type="button"
-                    onClick={() => setEditingId(phase.id)}
-                    data-return-focus={`phase-${phase.id}`}
-                    variant="ghost"
-                  >
-                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                    Edit
-                  </Button>
+                {phase.startsOn || phase.endsOn ? (
+                  <p className="text-sm text-muted-foreground">{phaseDates(phase)}</p>
                 ) : null}
-              </div>
-              {phase.startsOn || phase.endsOn ? (
-                <p className="text-sm text-muted-foreground">{phaseDates(phase)}</p>
-              ) : null}
-              <div className="grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem]">
-                {phase.progress.total > 0 ? (
-                  <TapeStrip
-                    mode="progress"
-                    size="sm"
-                    done={phase.progress.done}
-                    total={phase.progress.total}
-                    label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
-                  />
+                <div className="grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                  {phase.progress.total > 0 ? (
+                    <TapeStrip
+                      mode="progress"
+                      size="sm"
+                      done={phase.progress.done}
+                      total={phase.progress.total}
+                      label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
+                    />
+                  ) : null}
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {phaseProgressText(phase.progress)}
+                  </span>
+                </div>
+                {phase.notes ? (
+                  <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
+                    {phase.notes}
+                  </p>
                 ) : null}
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  {phaseProgressText(phase.progress)}
-                </span>
-              </div>
-              {phase.notes ? (
-                <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
-                  {phase.notes}
-                </p>
-              ) : null}
-            </li>
-          ))}
+              </li>
+            ),
+          )}
         </PanelList>
       ) : null}
+      {move.error ? <FormError>{move.error.message}</FormError> : null}
     </section>
   );
 }
@@ -179,7 +213,6 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
       startsOn: phase?.startsOn ?? null,
       endsOn: phase?.endsOn ?? null,
       notes: phase?.notes ?? '',
-      sortOrder: phase?.sortOrder ?? 0,
     },
   });
   const errors = formState.errors;
@@ -211,16 +244,6 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
         </Field>
         <Field label="Ends" htmlFor={id('ends')} error={errors.endsOn?.message}>
           <Input id={id('ends')} type="date" className="max-w-48" {...date('endsOn')} />
-        </Field>
-        <Field label="Order" htmlFor={id('order')} error={errors.sortOrder?.message}>
-          <Input
-            id={id('order')}
-            className="max-w-48"
-            type="number"
-            min={0}
-            step={1}
-            {...register('sortOrder', { valueAsNumber: true })}
-          />
         </Field>
       </div>
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
@@ -329,17 +352,6 @@ function PhasePanelBody({ phase }: { phase: Phase }) {
         what={`End of ${phase.name}`}
         validate={(v) => problemWith(phaseUpdateSchema.shape.endsOn, date(v))}
         onSave={(v) => save({ endsOn: date(v) })}
-      />
-      <AutoSaveField
-        id={id('order')}
-        label="Order"
-        hint="Lower comes first."
-        inputMode="numeric"
-        inputClassName="max-w-48"
-        initial={String(phase.sortOrder)}
-        what={`Order of ${phase.name}`}
-        validate={(v) => problemWith(phaseUpdateSchema.shape.sortOrder, Number(v))}
-        onSave={(v) => save({ sortOrder: Number(v) })}
       />
       <AutoSaveField
         id={id('notes')}

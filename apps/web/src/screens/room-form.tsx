@@ -26,7 +26,6 @@ function toDefaults(room?: Room): Input_ {
     widthIn: room?.widthIn == null ? '' : formatLength(room.widthIn),
     ceilingHeightIn: room?.ceilingHeightIn == null ? '' : formatLength(room.ceilingHeightIn),
     notes: room?.notes ?? '',
-    sortOrder: room?.sortOrder ?? 0,
   };
 }
 
@@ -94,22 +93,6 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
 
       <Field label="Notes" htmlFor={id('notes')} error={errors.notes?.message}>
         <Textarea id={id('notes')} rows={3} {...register('notes')} />
-      </Field>
-
-      <Field
-        label="Order"
-        htmlFor={id('order')}
-        hint="Lower comes first in the list"
-        error={errors.sortOrder?.message}
-      >
-        <Input
-          id={id('order')}
-          type="number"
-          min={0}
-          step={1}
-          className="max-w-48"
-          {...register('sortOrder', { valueAsNumber: true })}
-        />
       </Field>
 
       {serverError ? <FormError id={id('server-error')}>{serverError}</FormError> : null}

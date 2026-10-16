@@ -1,10 +1,17 @@
-import { idSchema, roomCoverSchema, roomCreateSchema, roomUpdateSchema } from '@reparo/shared';
+import {
+  idSchema,
+  moveSchema,
+  roomCoverSchema,
+  roomCreateSchema,
+  roomUpdateSchema,
+} from '@reparo/shared';
 import { z } from 'zod';
 import { editorProcedure, memberProcedure, router } from '../trpc';
 import {
   createRoom,
   getRoomWithProgress,
   listRoomsWithProgress,
+  moveRoom,
   removeRoom,
   restoreRoom,
   updateRoom,
@@ -25,6 +32,8 @@ export const roomsRouter = router({
   remove: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removeRoom(ctx.db, input.id)),
+  /** One place up or down the list (OD-117, Q141). */
+  move: editorProcedure.input(moveSchema).mutation(({ ctx, input }) => moveRoom(ctx.db, input)),
   /** Undo for remove (OD-113, Q142). */
   restore: editorProcedure
     .input(z.object({ id: idSchema }))

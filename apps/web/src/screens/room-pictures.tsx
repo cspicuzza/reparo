@@ -2,6 +2,7 @@ import { fileUpdateSchema, formatIsoDate, isIsoDate, today } from '@reparo/share
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { FileSection } from '@/components/file-section';
+import { FileUpload } from '@/components/file-upload';
 import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { trpcClient, useTRPC } from '@/lib/trpc';
@@ -51,6 +52,23 @@ export function RoomPictures({
   const all = files.data;
   const of = (kind: FileView['kind']) => all.filter((f) => f.kind === kind);
   const jobs: RoomJob[] = (roomJobs.data ?? []).map((jr) => jr.job);
+
+  // With no pictures at all, one row instead of three empty sections (OD-117, Q140).
+  if (all.length === 0) {
+    return canEdit ? (
+      <FirstPictures
+        roomId={roomId}
+        onUploaded={() =>
+          Promise.all([
+            queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
+            refreshCovers(),
+          ])
+        }
+      />
+    ) : (
+      <p className="text-muted-foreground">No pictures of the {roomName} yet.</p>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -215,6 +233,55 @@ function ProgressDetails({
         </Select>
         <SaveProblem mutation={job} onRetry={() => job.mutate(job.variables ?? shownJob)} />
       </div>
+    </div>
+  );
+}
+
+type FirstKind = 'rendering' | 'inspiration' | 'progress_photo';
+
+/**
+ * A room's first pictures (OD-117, Q140): what kind they are, and one upload box. Once there
+ * are pictures, each kind gets its own section.
+ */
+function FirstPictures({
+  roomId,
+  onUploaded,
+}: {
+  roomId: string;
+  onUploaded: () => Promise<unknown>;
+}) {
+  const [kind, setKind] = useState<FirstKind>('rendering');
+  const kindId = useId();
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="sm:max-w-xs">
+        <label htmlFor={kindId} className="block text-sm font-semibold">
+          The new pictures are
+        </label>
+        <Select
+          id={kindId}
+          className="mt-1.5"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as FirstKind)}
+        >
+          <option value="rendering">Renderings: how it will look</option>
+          <option value="inspiration">Inspiration: things we like</option>
+          <option value="progress_photo">Progress photos: the work as it happens</option>
+        </Select>
+      </div>
+      <FileUpload
+        target={() => ({
+          ownerType: 'room',
+          ownerId: roomId,
+          kind,
+          ...(kind === 'progress_photo' ? { takenOn: today(), jobId: null } : {}),
+        })}
+        label="Add pictures"
+        note="No pictures yet"
+        onUploaded={async () => {
+          await onUploaded();
+        }}
+      />
     </div>
   );
 }

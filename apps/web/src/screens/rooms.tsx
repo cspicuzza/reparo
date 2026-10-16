@@ -14,7 +14,9 @@ import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
 import { Button } from '@/components/ui/button';
 import { ListPlaceholder } from '@/components/placeholder';
+import { FormError } from '@/components/form';
 import { LoadError } from '@/components/load-error';
+import { MoveButtons } from '@/components/move-buttons';
 
 export function Rooms() {
   const trpc = useTRPC();
@@ -33,6 +35,16 @@ export function Rooms() {
       },
     }),
   );
+  const [arranging, setArranging] = useState(false);
+  const move = useMutation(
+    trpc.rooms.move.mutationOptions({
+      onSuccess: () =>
+        Promise.all([
+          queryClient.invalidateQueries(trpc.rooms.pathFilter()),
+          queryClient.invalidateQueries(trpc.home.pathFilter()),
+        ]),
+    }),
+  );
 
   return (
     <section className="flex flex-col gap-8">
@@ -45,10 +57,22 @@ export function Rooms() {
         }
         action={
           canEdit ? (
-            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">
-              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              Add a room
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {rooms.data && rooms.data.length > 1 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={arranging}
+                  onClick={() => setArranging((v) => !v)}
+                >
+                  {arranging ? 'Done' : 'Change order'}
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">
+                <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                Add a room
+              </Button>
+            </div>
           ) : null
         }
       />
@@ -95,11 +119,30 @@ export function Rooms() {
       ) : null}
       {rooms.data && rooms.data.length > 0 ? (
         <PanelList>
-          {rooms.data.map((room) => {
+          {rooms.data.map((room, index) => {
             const { dims, sqft } = describeRoom(room);
             const size = dims ? (sqft != null ? `${dims}, ${sqft} sq ft` : dims) : 'Not measured';
             const progress = roomProgressText(room.progress);
             const cover = coverOf.get(room.id);
+            if (arranging) {
+              // Putting the rooms in order: each row moves up or down (OD-117, Q141).
+              return (
+                <li
+                  key={room.id}
+                  className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
+                >
+                  <span className="min-w-0 text-xl font-semibold break-words">{room.name}</span>
+                  <MoveButtons
+                    id={room.id}
+                    name={room.name}
+                    index={index}
+                    count={rooms.data.length}
+                    disabled={move.isPending}
+                    onMove={(by) => move.mutateAsync({ id: room.id, by }).catch(() => undefined)}
+                  />
+                </li>
+              );
+            }
             return (
               <li key={room.id}>
                 <Link
@@ -116,11 +159,16 @@ export function Rooms() {
                       className="h-14 w-20 shrink-0 rounded-lg border border-border bg-inset object-cover"
                     />
                   ) : (
-                    <PlanGrid className="h-14 w-20 shrink-0 rounded-lg p-0" />
+                    // On a phone an empty placeholder only takes the name's width (Q139).
+                    <PlanGrid className="hidden h-14 w-20 shrink-0 rounded-lg p-0 sm:flex" />
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xl font-semibold">{room.name}</span>
+                    <span className="block text-xl font-semibold break-words">{room.name}</span>
                     <span className="block text-sm text-muted-foreground tabular-nums">{size}</span>
+                    {/* On a phone the progress words go on their own line (Q139). */}
+                    <span className="block text-sm text-muted-foreground tabular-nums sm:hidden">
+                      {progress}
+                    </span>
                   </span>
                   <span className="hidden w-40 shrink-0 sm:block">
                     {room.progress.total > 0 ? (
@@ -133,7 +181,7 @@ export function Rooms() {
                       />
                     ) : null}
                   </span>
-                  <span className="shrink-0 text-right text-sm text-muted-foreground tabular-nums sm:w-36 sm:text-left">
+                  <span className="hidden shrink-0 text-sm text-muted-foreground tabular-nums sm:block sm:w-36">
                     {progress}
                   </span>
                   <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
@@ -143,6 +191,7 @@ export function Rooms() {
           })}
         </PanelList>
       ) : null}
+      {move.error ? <FormError>{move.error.message}</FormError> : null}
     </section>
   );
 }

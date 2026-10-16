@@ -125,9 +125,51 @@ export function RoomDetail() {
       </div>
 
       <section
-        aria-label="Size"
+        aria-labelledby="room-jobs"
         className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
       >
+        <h2 id="room-jobs" className="text-2xl">
+          Jobs in this room
+        </h2>
+        <p className="mt-1 text-muted-foreground">
+          Set each job&apos;s status here. Jobs are planned on the Jobs page.
+        </p>
+        <div className="mt-4">
+          <RoomWork roomId={r.id} roomName={r.name} />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="room-buying"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-buying" className="text-2xl">
+          What we&apos;re buying
+        </h2>
+        <div className="mt-4">
+          <RoomShopping roomId={r.id} roomName={r.name} />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="room-pictures"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-pictures" className="text-2xl">
+          Pictures
+        </h2>
+        <div className="mt-4">
+          <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="room-size"
+        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
+      >
+        <h2 id="room-size" className="mb-4 text-2xl">
+          Size and notes
+        </h2>
         {canEdit ? (
           <RoomSizeFields room={r} />
         ) : (
@@ -170,45 +212,6 @@ export function RoomDetail() {
         ) : null}
       </section>
 
-      <section
-        aria-labelledby="room-pictures"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
-        <h2 id="room-pictures" className="text-2xl">
-          Pictures
-        </h2>
-        <div className="mt-4">
-          <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="room-jobs"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
-        <h2 id="room-jobs" className="text-2xl">
-          Jobs in this room
-        </h2>
-        <p className="mt-1 text-muted-foreground">
-          Set each job&apos;s status here. Jobs are planned on the Jobs page.
-        </p>
-        <div className="mt-4">
-          <RoomWork roomId={r.id} roomName={r.name} />
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="room-buying"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
-        <h2 id="room-buying" className="text-2xl">
-          What we&apos;re buying
-        </h2>
-        <div className="mt-4">
-          <RoomShopping roomId={r.id} roomName={r.name} />
-        </div>
-      </section>
-
       {canEdit ? (
         <div className="mt-12 border-t border-border pt-6">
           <ConfirmRemove
@@ -240,22 +243,11 @@ export function RoomDetail() {
         }
         onClose={() => setEditing(false)}
       >
-        <div className="flex flex-col gap-4">
-          <AutoSaveField
-            id={`room-order-${r.id}`}
-            label="Order"
-            hint="Lower comes first in the list."
-            inputMode="numeric"
-            inputClassName="max-w-48"
-            initial={String(r.sortOrder)}
-            what={`Order of ${r.name}`}
-            validate={(v) => problemWith(roomUpdateSchema.shape.sortOrder, Number(v))}
-            onSave={(v) => saveRoom({ id: r.id, sortOrder: Number(v) })}
-          />
-          <p className="text-muted-foreground">
-            The size and notes save right on the room&apos;s page.
-          </p>
-        </div>
+        {/* The order moved to Move up / Move down on the Rooms list (OD-117, Q141). */}
+        <p className="text-muted-foreground">
+          The size and notes save right on the room&apos;s page. To change where it sits in the
+          list, use Change order on the Rooms page.
+        </p>
       </EditPanel>
     </section>
   );
@@ -279,10 +271,11 @@ function RoomCover({ roomId, roomName }: { roomId: string; roomName: string }) {
     );
   }
   const hasRenderings = files.data?.some((f) => f.kind === 'rendering') ?? false;
+  // A slim band, not a tall empty box, until there's a cover (OD-117, Q140).
   return (
-    <PlanGrid className="mt-2 h-48 rounded-xl sm:h-80">
+    <PlanGrid className="mt-2 min-h-14 rounded-xl px-4 py-3 text-center">
       {hasRenderings
-        ? `No cover picture yet. Open a rendering below and make it the cover.`
+        ? 'No cover picture yet. Open a rendering under Pictures and make it the cover.'
         : `No picture of the ${roomName} yet`}
     </PlanGrid>
   );

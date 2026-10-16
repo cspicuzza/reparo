@@ -12,7 +12,8 @@ import {
   sql,
   type Db,
 } from '@reparo/db';
-import type { RoomCreate, RoomUpdate } from '@reparo/shared';
+import type { Move, RoomCreate, RoomUpdate } from '@reparo/shared';
+import { moved } from './order';
 import { conflict, isUniqueViolation, notFound } from './errors';
 
 const live = () => isNull(rooms.deletedAt);
@@ -144,7 +145,12 @@ export async function getRoomWithProgress(db: Db, id: string) {
 
 export async function createRoom(db: Db, input: RoomCreate) {
   try {
-    const [row] = await db.insert(rooms).values(input).returning();
+    // A new room goes after the last one unless it says otherwise (OD-117, Q141).
+    const sortOrder = input.sortOrder ?? (await nextRoomOrder(db));
+    const [row] = await db
+      .insert(rooms)
+      .values({ ...input, sortOrder })
+      .returning();
     if (!row) throw new Error('insert returned no row');
     return row;
   } catch (e) {
@@ -208,4 +214,24 @@ export async function restoreRoom(db: Db, id: string) {
     }
     throw e;
   }
+}
+
+async function nextRoomOrder(db: Db): Promise<number> {
+  const [r] = await db
+    .select({ max: sql<number | null>`max(${rooms.sortOrder})` })
+    .from(rooms)
+    .where(live());
+  return r?.max == null ? 0 : Number(r.max) + 1;
+}
+
+/** Move a room up or down the list (OD-117, Q141): the list is renumbered in its new order. */
+export async function moveRoom(db: Db, { id, by }: Move) {
+  await getRoom(db, id);
+  return db.transaction(async (tx) => {
+    const order = moved(await listRooms(tx), id, by);
+    for (const [i, r] of order.entries()) {
+      if (r.sortOrder !== i) await tx.update(rooms).set({ sortOrder: i }).where(eq(rooms.id, r.id));
+    }
+    return order.map((r, i) => ({ id: r.id, sortOrder: i }));
+  });
 }
