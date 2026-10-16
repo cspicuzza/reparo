@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moneyTicks, progressTicks, tapeFraction } from './tape';
+import { budgetSegments, moneyTicks, progressTicks, tapeFraction } from './tape';
 
 describe('tapeFraction', () => {
   it('is value over total', () => {
@@ -58,5 +58,68 @@ describe('moneyTicks', () => {
     expect(moneyTicks(0, 500)).toEqual([]);
     expect(moneyTicks(1000, 0)).toEqual([]);
     expect(moneyTicks(-1000, 500)).toEqual([]);
+  });
+});
+
+describe('budgetSegments', () => {
+  it('is empty with nothing spent or committed', () => {
+    expect(budgetSegments(0, 0, 1000)).toEqual({
+      scaleCents: 1000,
+      spent: 0,
+      committed: 0,
+      budgetAt: 1,
+      over: 0,
+    });
+  });
+
+  it('splits spent and committed within the budget', () => {
+    expect(budgetSegments(200, 300, 1000)).toEqual({
+      scaleCents: 1000,
+      spent: 0.2,
+      committed: 0.3,
+      budgetAt: 1,
+      over: 0,
+    });
+  });
+
+  it('fills the strip exactly at the budget', () => {
+    expect(budgetSegments(600, 400, 1000)).toEqual({
+      scaleCents: 1000,
+      spent: 0.6,
+      committed: 0.4,
+      budgetAt: 1,
+      over: 0,
+    });
+  });
+
+  it('runs past the budget and marks the overrun', () => {
+    const s = budgetSegments(600, 650, 1000);
+    expect(s.scaleCents).toBe(1250);
+    expect(s.spent).toBeCloseTo(0.48);
+    expect(s.committed).toBeCloseTo(0.32);
+    expect(s.budgetAt).toBeCloseTo(0.8);
+    expect(s.over).toBeCloseTo(0.2);
+    expect(s.spent + s.committed + s.over).toBeCloseTo(1);
+  });
+
+  it('counts spending alone past the budget as overrun', () => {
+    const s = budgetSegments(1500, 0, 1000);
+    expect(s.spent).toBeCloseTo(1000 / 1500);
+    expect(s.committed).toBe(0);
+    expect(s.over).toBeCloseTo(500 / 1500);
+  });
+
+  it('has nothing to draw with no budget and nothing used', () => {
+    expect(budgetSegments(0, 0, 0)).toEqual({
+      scaleCents: 0,
+      spent: 0,
+      committed: 0,
+      budgetAt: 1,
+      over: 0,
+    });
+  });
+
+  it('ignores negative and non-numbers', () => {
+    expect(budgetSegments(-5, Number.NaN, 1000).spent).toBe(0);
   });
 });

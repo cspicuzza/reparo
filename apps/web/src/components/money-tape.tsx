@@ -1,13 +1,17 @@
-import { TapeStrip } from '@/components/tape';
+import { BudgetTapeStrip } from '@/components/tape';
 import { money, moneyStep, shortMoney } from '@/lib/money';
-import { moneyTicks } from '@/lib/tape';
+import { budgetSegments, COMMITTED_STRIPES, moneyTicks } from '@/lib/tape';
 import { cn } from '@/lib/utils';
 
+const SWATCH =
+  'mr-2 inline-block size-3.5 rounded-sm align-[-2px] outline-1 outline-solid outline-tape-edge';
+
 /**
- * The budget as a tape measure (canvas section D): a dollar scale above, the strip filled dark
- * for what's spent or committed and yellow for what's left, and a legend that says the same in
- * words. Every number comes from `money.summary`. Phones show only the ends of the scale, so the
- * labels don't run into each other.
+ * The budget as a tape measure (canvas section D): a dollar scale above, the strip filled for
+ * what's spent (solid) and committed (striped), yellow for what's left, and a legend that says
+ * the same in words. Over budget, the scale runs to everything spent and committed, the
+ * budget's end is marked and labelled, and the overrun is red (OD-109, Q115–Q116). Every number
+ * comes from `money.summary`. Phones show only the labels that matter, so they don't collide.
  */
 export function MoneyTape({
   poolCents,
@@ -22,40 +26,55 @@ export function MoneyTape({
   availableCents: number;
   compact?: boolean;
 }) {
-  const used = spentCents + committedCents;
-  const step = moneyStep(poolCents);
-  const majors = moneyTicks(poolCents, step).filter((t) => t.major);
+  const seg = budgetSegments(spentCents, committedCents, poolCents);
+  const step = moneyStep(seg.scaleCents);
+  const over = seg.over > 0;
+  // Over budget, the budget's own label takes the space near it.
+  const majors = moneyTicks(seg.scaleCents, step).filter(
+    (t) => t.major && (!over || Math.abs(t.at - seg.budgetAt) > 0.15),
+  );
   const marks = compact ? [] : majors;
-  const over = availableCents < 0;
   return (
     <div>
       {poolCents > 0 ? (
         <div
           aria-hidden="true"
-          className="relative mb-1 h-5 text-sm text-muted-foreground tabular-nums"
+          className="relative mb-1 h-5 text-sm whitespace-nowrap text-muted-foreground tabular-nums"
         >
-          <span className="absolute left-0">$0</span>
+          {/* Way over budget, the budget label sits near the start; $0 gives way to it. */}
+          {over && seg.budgetAt < 0.3 ? null : <span className="absolute left-0">$0</span>}
           {marks.map((t) => (
             <span
               key={t.at}
               className="absolute hidden -translate-x-1/2 sm:inline"
               style={{ left: `${t.at * 100}%` }}
             >
-              {shortMoney(Math.round(t.at * poolCents))}
+              {shortMoney(Math.round(t.at * seg.scaleCents))}
             </span>
           ))}
-          <span className="absolute right-0">{shortMoney(poolCents)}</span>
+          {over ? (
+            // Ends at the budget's mark; the far end needs no label, the legend says by how much.
+            <span
+              className={cn(
+                'absolute font-semibold text-foreground',
+                seg.budgetAt < 0.3 ? 'pl-1' : '-translate-x-full pr-1',
+              )}
+              style={{ left: `${seg.budgetAt * 100}%` }}
+            >
+              Budget {shortMoney(poolCents)}
+            </span>
+          ) : (
+            <span className="absolute right-0">{shortMoney(poolCents)}</span>
+          )}
         </div>
       ) : null}
-      <TapeStrip
-        mode="money"
-        usedCents={used}
-        totalCents={poolCents}
+      <BudgetTapeStrip
+        segments={seg}
         stepCents={step}
         label={
-          over
-            ? `Of the ${money(poolCents)} budget, ${money(used)} is spent or committed: ${money(-availableCents)} over`
-            : `Of the ${money(poolCents)} budget, ${money(used)} is spent or committed and ${money(availableCents)} is left`
+          availableCents < 0
+            ? `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent and ${money(committedCents)} committed: ${money(-availableCents)} over`
+            : `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent, ${money(committedCents)} committed and ${money(availableCents)} left`
         }
       />
       <div
@@ -65,30 +84,24 @@ export function MoneyTape({
         )}
       >
         <span>
-          <span
-            aria-hidden="true"
-            className="mr-2 inline-block size-3.5 rounded-sm bg-tape-ink align-[-2px] outline-1 outline-solid outline-tape-edge"
-          />
-          Spent and committed <strong className="font-semibold">{money(used)}</strong>
+          <span aria-hidden="true" className={cn(SWATCH, 'bg-tape-fill')} />
+          Spent <strong className="font-semibold">{money(spentCents)}</strong>
         </span>
         <span>
-          <span
-            aria-hidden="true"
-            className="mr-2 inline-block size-3.5 rounded-sm bg-tape align-[-2px] outline-1 outline-solid outline-tape-edge"
-          />
-          {over ? (
-            <>
-              Over by{' '}
-              <strong className="font-semibold text-destructive">{money(-availableCents)}</strong>
-            </>
-          ) : (
-            <>
-              Left to spend <strong className="font-semibold">{money(availableCents)}</strong>
-            </>
-          )}
+          <span aria-hidden="true" className={SWATCH} style={COMMITTED_STRIPES} />
+          Committed <strong className="font-semibold">{money(committedCents)}</strong>
         </span>
-        {compact ? null : (
-          <span className="text-muted-foreground">Spent so far {money(spentCents)}</span>
+        {availableCents < 0 ? (
+          <span>
+            <span aria-hidden="true" className={cn(SWATCH, 'bg-destructive')} />
+            Over budget by{' '}
+            <strong className="font-semibold text-destructive">{money(-availableCents)}</strong>
+          </span>
+        ) : (
+          <span>
+            <span aria-hidden="true" className={cn(SWATCH, 'bg-tape')} />
+            Left to spend <strong className="font-semibold">{money(availableCents)}</strong>
+          </span>
         )}
       </div>
     </div>

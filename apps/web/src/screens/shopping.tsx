@@ -316,7 +316,7 @@ function ShoppingTape({ sections }: { sections: Section[] }) {
       />
       <div aria-hidden className="mt-3 flex flex-wrap gap-x-5 gap-y-1 tabular-nums">
         <span>
-          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape-ink align-[-2px] outline-1 outline-tape-edge outline-solid" />
+          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape-fill align-[-2px] outline-1 outline-tape-edge outline-solid" />
           Bought <strong className="font-semibold">{money(boughtCents)}</strong>
         </span>
         <span>

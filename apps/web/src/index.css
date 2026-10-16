@@ -51,8 +51,12 @@
   --float-shadow: rgb(30 29 26 / 0.1); /* shadow under things that float (phone bottom bar) */
   --scrim: rgb(30 29 26 / 0.35); /* dims the page behind a slide-out panel */
   --tape: #e8b520; /* yellow: needs someone, the tape, current page. A fill, never text on light. */
-  --tape-ink: #1e1d1a; /* text, ticks and dark fill on the tape, in both modes */
+  --tape-ink: #1e1d1a; /* text and ticks on the tape, in both modes */
   --tape-edge: #1e1d1a; /* light mode: yellow alone is 1.7:1 on panels, so the tape is outlined */
+  /* The tape's fill for what's done or spent, and the gaps between committed's stripes
+     (OD-109). Checked 2026-10-16: the gap is 3.01:1 on the yellow, 2.95:1 against the fill. */
+  --tape-fill: #1e1d1a;
+  --tape-committed-gap: #6a665e;
   --status-idle: #5b5852; /* unstarted, cancelled */
   --status-idle-tint: #e4e2dd;
   --status-progress: #2f5d8a;
@@ -95,6 +99,11 @@
   --tape: #f2c23a;
   --tape-ink: #1e1d1a;
   --tape-edge: var(--tape); /* dark mode: a yellow outline keeps the dark fill visible */
+  /* Dark: a lighter fill so a full tape doesn't read as empty (OD-109, Q117). Checked
+     2026-10-16: 3.03:1 on the yellow, 3.40:1 on the page, 3.03:1 on panels. Committed's
+     stripes are this fill on the page colour. */
+  --tape-fill: #726e68;
+  --tape-committed-gap: #1c1b19;
   --status-idle: #a9a59c;
   --status-idle-tint: #34332f;
   --status-progress: #8db4e0;
@@ -132,6 +141,8 @@
   --color-tape: var(--tape);
   --color-tape-ink: var(--tape-ink);
   --color-tape-edge: var(--tape-edge);
+  --color-tape-fill: var(--tape-fill);
+  --color-tape-committed-gap: var(--tape-committed-gap);
   --color-status-idle: var(--status-idle);
   --color-status-idle-tint: var(--status-idle-tint);
   --color-status-progress: var(--status-progress);

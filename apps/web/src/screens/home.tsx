@@ -100,10 +100,25 @@ function MoneyHeadline({
             <span className={m.availableCents < 0 ? 'text-destructive' : undefined}>{amount}</span>
             {tail}
           </h1>
-          <p className="mt-2 mb-5 text-muted-foreground">
-            That&apos;s what remains of the {formatMoney(m.poolCents)} budget after everything spent
-            {m.countingPhases.length > 0 ? ` and planned for ${listText(m.countingPhases)}` : ''}.
-          </p>
+          {m.availableCents < 0 ? (
+            // Over budget the "what remains" line would contradict the headline (OD-109, Q118).
+            <p className="mt-2 mb-5 text-muted-foreground">
+              Everything spent
+              {m.countingPhases.length > 0
+                ? ` and planned for ${listText(m.countingPhases)}`
+                : ''}{' '}
+              comes to more than the {formatMoney(m.poolCents)} budget.{' '}
+              <Link to="/money" className="text-foreground underline underline-offset-4">
+                See where it goes
+              </Link>
+            </p>
+          ) : (
+            <p className="mt-2 mb-5 text-muted-foreground">
+              That&apos;s what remains of the {formatMoney(m.poolCents)} budget after everything
+              spent
+              {m.countingPhases.length > 0 ? ` and planned for ${listText(m.countingPhases)}` : ''}.
+            </p>
+          )}
           <MoneyTape
             poolCents={m.poolCents}
             spentCents={m.spentCents}

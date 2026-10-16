@@ -1,5 +1,13 @@
+import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
-import { moneyTicks, progressTicks, tapeFraction, type Tick } from '@/lib/tape';
+import {
+  COMMITTED_STRIPES,
+  moneyTicks,
+  progressTicks,
+  tapeFraction,
+  type BudgetSegments,
+  type Tick,
+} from '@/lib/tape';
 
 type Common = {
   /** What the strip shows, in words, for screen readers. Always also written next to it. */
@@ -20,7 +28,8 @@ const SIZES = { md: { h: 30, band: 12 }, sm: { h: 16, band: 6 } } as const;
  * The tape-measure strip: tick marks along the top, a dark fill from the left for work done
  * or money committed, yellow for what's left. Values come from the API (web.md); this only
  * draws them. In light mode the tape is outlined in ink (yellow alone is 1.7:1 on panels);
- * in dark mode the outline is yellow so the dark fill stays visible.
+ * in dark mode the outline is yellow and the fill a lighter grey, so a full tape doesn't
+ * read as empty (OD-109, Q117).
  */
 export function TapeStrip(props: TapeProps) {
   const { label, size = 'md', className } = props;
@@ -56,7 +65,7 @@ export function TapeStrip(props: TapeProps) {
             transformBox: 'fill-box',
             transformOrigin: 'left',
           }}
-          className="fill-tape-ink transition-transform duration-300 ease-out"
+          className="fill-tape-fill transition-transform duration-300 ease-out"
         />
       ) : null}
       {ticks.map((t) => (
@@ -83,5 +92,95 @@ export function TapeStrip(props: TapeProps) {
         vectorEffect="non-scaling-stroke"
       />
     </svg>
+  );
+}
+
+/**
+ * The budget as a tape (OD-109, Q115–Q116): spent (solid), committed (striped), yellow for
+ * what's left. When spending and commitments pass the budget, the strip runs to their total,
+ * the budget's end gets a full-height mark, and the overrun past it is red. Drawn in HTML
+ * rather than SVG so the stripes keep their shape at any width; the ticks are an SVG on top.
+ */
+export function BudgetTapeStrip({
+  segments,
+  stepCents,
+  label,
+  className,
+}: {
+  segments: BudgetSegments;
+  stepCents: number;
+  label: string;
+  className?: string;
+}) {
+  const { h, band } = SIZES.md;
+  const ticks = moneyTicks(segments.scaleCents, stepCents);
+  const part = (start: number, size: number): CSSProperties => ({
+    left: `${start * 100}%`,
+    width: `${size * 100}%`,
+    top: band,
+    bottom: 0,
+  });
+  const fill = 'absolute transition-[left,width] duration-300 ease-out';
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      className={cn('relative overflow-hidden rounded-sm bg-tape', className)}
+      style={{ height: h }}
+    >
+      {segments.spent > 0 ? (
+        <span aria-hidden className={cn(fill, 'bg-tape-fill')} style={part(0, segments.spent)} />
+      ) : null}
+      {segments.committed > 0 ? (
+        <span
+          aria-hidden
+          className={fill}
+          style={{ ...COMMITTED_STRIPES, ...part(segments.spent, segments.committed) }}
+        />
+      ) : null}
+      {segments.over > 0 ? (
+        <span
+          aria-hidden
+          className={cn(fill, 'bg-destructive')}
+          style={{ ...part(segments.budgetAt, segments.over), top: 0 }}
+        />
+      ) : null}
+      <svg
+        aria-hidden
+        viewBox={`0 0 1000 ${h}`}
+        preserveAspectRatio="none"
+        className="absolute inset-0 block size-full overflow-visible"
+      >
+        {ticks.map((t) => (
+          <line
+            key={t.at}
+            x1={t.at * 1000}
+            x2={t.at * 1000}
+            y1="0"
+            y2={t.major ? band - 1 : band * 0.55}
+            className="stroke-tape-ink"
+            strokeWidth={t.major ? 1.6 : 1.1}
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+        {segments.over > 0 ? (
+          // Where the budget ends, the full height of the strip (Q115).
+          <line
+            x1={segments.budgetAt * 1000}
+            x2={segments.budgetAt * 1000}
+            y1="0"
+            y2={h}
+            className="stroke-tape-edge"
+            strokeWidth="2.5"
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
+      </svg>
+      {/* Outline last, so no fill covers it. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-sm border-[1.5px] border-tape-edge"
+      />
+    </div>
   );
 }

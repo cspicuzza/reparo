@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 /**
  * Geometry for the tape-measure strip (Linear → Design system → The tape motif). The numbers
  * themselves (done/total, committed/budget) come from the API; this only turns them into how
@@ -32,3 +34,54 @@ export function moneyTicks(totalCents: number, stepCents: number, majorEvery = 5
     return { at: (k * stepCents) / totalCents, major: majorEvery > 0 && k % majorEvery === 0 };
   });
 }
+
+/** Where each part of the budget tape sits, as fractions of the strip (0–1). */
+export type BudgetSegments = {
+  /** What the strip's full width stands for: the budget, or everything used when that's more. */
+  scaleCents: number;
+  /** Spent within the budget, from the left. */
+  spent: number;
+  /** Committed within the budget, right after spent. */
+  committed: number;
+  /** Where the budget ends: 1 unless spending and commitments run past it. */
+  budgetAt: number;
+  /** Past the budget, from `budgetAt` to the end: the overrun (red). 0 when within budget. */
+  over: number;
+};
+
+/**
+ * The budget tape's parts (OD-109, Q115–Q116). Within budget the strip is the budget: spent,
+ * then committed, then yellow for what's left. Over budget the strip runs to everything spent
+ * and committed, the budget ends at a marked point, and what lies past it is the overrun.
+ */
+export function budgetSegments(
+  spentCents: number,
+  committedCents: number,
+  budgetCents: number,
+): BudgetSegments {
+  const finite = (n: number) => (Number.isFinite(n) ? Math.max(0, n) : 0);
+  const spent = finite(spentCents);
+  const committed = finite(committedCents);
+  const budget = finite(budgetCents);
+  const used = spent + committed;
+  const scale = Math.max(budget, used);
+  if (scale === 0) return { scaleCents: 0, spent: 0, committed: 0, budgetAt: 1, over: 0 };
+  const spentIn = Math.min(spent, budget);
+  const committedIn = Math.min(used, budget) - spentIn;
+  return {
+    scaleCents: scale,
+    spent: spentIn / scale,
+    committed: committedIn / scale,
+    budgetAt: budget / scale,
+    over: Math.max(0, used - budget) / scale,
+  };
+}
+
+/**
+ * Committed money's stripes, on the tape and its legend: the fill colour striped with a gap
+ * colour, so it reads apart from spent by pattern as well as tone (OD-109, Q116).
+ */
+export const COMMITTED_STRIPES: CSSProperties = {
+  backgroundImage:
+    'repeating-linear-gradient(135deg, var(--tape-fill) 0 3px, var(--tape-committed-gap) 3px 6px)',
+};
