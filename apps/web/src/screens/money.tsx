@@ -18,7 +18,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ConfirmRemove } from '@/components/confirm-remove';
-import { Field, FormError, Input, Textarea } from '@/components/form';
+import { Field, FormError, Input, MoneyInput, Textarea } from '@/components/form';
 import { MoneyTape } from '@/components/money-tape';
 import { PageHeader } from '@/components/page-header';
 import { EditPanel } from '@/components/edit-panel';
@@ -378,13 +378,7 @@ function BudgetForm({
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4">
         <Field label="Starting balance" htmlFor="pool-start" error={errors.startingCents?.message}>
-          <Input
-            id="pool-start"
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('startingCents')}
-          />
+          <MoneyInput id="pool-start" className="max-w-48" {...register('startingCents')} />
         </Field>
         <Field label="As of" htmlFor="pool-asof" error={errors.asOf?.message}>
           <Input
@@ -453,13 +447,7 @@ function AdjustmentForm({
           hint="A minus sign takes money out, like -5,000."
           error={errors.amountCents?.message}
         >
-          <Input
-            id={id('amount')}
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('amountCents')}
-          />
+          <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
         </Field>
         <Field label="On" htmlFor={id('on')} error={errors.on?.message}>
           <Input id={id('on')} type="date" className="max-w-48" {...register('on')} />

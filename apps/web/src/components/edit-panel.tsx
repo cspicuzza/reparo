@@ -1,6 +1,7 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { useRef, useState, type ReactNode } from 'react';
+import { DiscardQuestion } from '@/components/discard-question';
 import { buttonVariants } from '@/components/ui/button';
 import { PanelDirtyContext } from '@/lib/panel-dirty';
 
@@ -45,14 +46,20 @@ export function EditPanel({
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const [dirty, setDirty] = useState(false);
+  // Closing with unsaved changes asks in the panel, not in the browser's dialog (Q138).
+  const [asking, setAsking] = useState(false);
+  const close = useRef<HTMLButtonElement>(null);
 
   return (
     <Dialog.Root
       open={open}
       onOpenChange={(next) => {
         if (next) return;
-        if (dirty && !window.confirm('Close without saving your changes?')) return;
-        setDirty(false);
+        if (dirty) {
+          setAsking(true);
+          return;
+        }
+        setAsking(false);
         onClose();
       }}
     >
@@ -74,7 +81,10 @@ export function EditPanel({
               {title}
             </Dialog.Title>
             {heading ? <div className="min-w-0 flex-1">{heading}</div> : null}
-            <Dialog.Close className={buttonVariants({ variant: 'ghost', className: '-mr-2' })}>
+            <Dialog.Close
+              ref={close}
+              className={buttonVariants({ variant: 'ghost', className: '-mr-2' })}
+            >
               <X aria-hidden className="size-5" />
               Close
             </Dialog.Close>
@@ -82,6 +92,20 @@ export function EditPanel({
           {/* The body is the darker page tone so the light fields stand out against it; the
               header keeps the panel colour (OD-100, Q88). */}
           <div className="@container min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background px-4 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6">
+            {asking ? (
+              <DiscardQuestion
+                className="mb-5"
+                onDiscard={() => {
+                  setAsking(false);
+                  setDirty(false);
+                  onClose();
+                }}
+                onKeep={() => {
+                  setAsking(false);
+                  close.current?.focus();
+                }}
+              />
+            ) : null}
             <PanelDirtyContext value={setDirty}>{children}</PanelDirtyContext>
           </div>
         </Dialog.Popup>

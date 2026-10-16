@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FileText, Image } from 'lucide-react';
+import { ExternalLink, FileText, Image } from 'lucide-react';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { FileUpload } from '@/components/file-upload';
 import { FormError } from '@/components/form';
@@ -48,7 +48,14 @@ export function AttachedFiles({
                   <FileText aria-hidden className="size-4 shrink-0" />
                 )}
                 <span className="truncate">{f.caption || f.originalName}</span>
-                {f.url ? null : <span className="text-muted-foreground">(missing)</span>}
+                {f.url ? (
+                  <>
+                    <ExternalLink aria-hidden className="size-4 shrink-0" />
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">(missing)</span>
+                )}
               </a>
               {canEdit ? (
                 <ConfirmRemove

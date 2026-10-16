@@ -116,7 +116,6 @@ function JobRow({
               id={`status-${j.id}`}
               label={what}
               value={shown}
-              disabled={setStatus.isPending}
               onChange={(status) => setStatus.mutate({ id: j.id, status })}
             />
             <SaveState

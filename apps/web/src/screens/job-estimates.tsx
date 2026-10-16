@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
-import { Field, FormError, Input, Textarea } from '@/components/form';
+import { Field, FormError, Input, MoneyInput, Textarea } from '@/components/form';
 import { EstimateStatusBadge } from '@/components/money';
 import { EditPanel } from '@/components/edit-panel';
 import { Panel } from '@/components/panel';
@@ -427,13 +427,7 @@ function EstimateForm({
           hint={requested ? 'Leave blank until it comes in' : 'The total they quoted'}
           error={errors.amountCents?.message}
         >
-          <Input
-            id={id('amount')}
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('amountCents')}
-          />
+          <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
         </Field>
         <Field label="Received on" htmlFor={id('received')} error={errors.receivedOn?.message}>
           <Input id={id('received')} type="date" className="max-w-48" {...register('receivedOn')} />

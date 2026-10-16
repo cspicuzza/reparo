@@ -26,7 +26,9 @@ export function PanelNameField({
       labelClassName="sr-only"
       initial={initial}
       what={what}
-      inputClassName="-mx-2 border-transparent bg-transparent px-2 text-2xl [font-stretch:74%] font-[640] tracking-[-0.01em] hover:border-input focus:border-input"
+      // A faint underline at rest says it can be edited; hover and focus show the full field
+      // (OD-114, Q132).
+      inputClassName="-mx-2 border-transparent border-b-border bg-transparent px-2 text-2xl [font-stretch:74%] font-[640] tracking-[-0.01em] hover:border-input focus:border-input"
       validate={validate}
       onSave={onSave}
     />

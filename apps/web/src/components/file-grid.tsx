@@ -1,5 +1,5 @@
 import { formatIsoDate, isIsoDate } from '@reparo/shared';
-import { FileText, ImageOff } from 'lucide-react';
+import { ExternalLink, FileText, ImageOff } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatSize, type FileView } from '@/lib/upload';
@@ -77,8 +77,10 @@ export function FileGrid({
                   {f.url ? (
                     <>
                       <FileText aria-hidden className="size-8 text-muted-foreground" />
-                      <span className="text-sm font-semibold underline-offset-4 group-hover:underline">
+                      <span className="inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-4 group-hover:underline">
                         Open PDF
+                        <ExternalLink aria-hidden className="size-4 shrink-0" />
+                        <span className="sr-only"> (opens in a new tab)</span>
                       </span>
                     </>
                   ) : (

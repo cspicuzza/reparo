@@ -21,7 +21,7 @@ import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { EditPanel } from '@/components/edit-panel';
-import { Field, FormError, Input } from '@/components/form';
+import { Field, FormError, Input, MoneyInput } from '@/components/form';
 import { PaymentBadge, ShoppingStatusBadge } from '@/components/money';
 import { Panel } from '@/components/panel';
 import { TapeStrip } from '@/components/tape';
@@ -352,13 +352,7 @@ function CostLineForm({
           <Input id={id('description')} autoComplete="off" {...register('description')} />
         </Field>
         <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
-          <Input
-            id={id('amount')}
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('amountCents')}
-          />
+          <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
         </Field>
       </div>
       {serverError ? <FormError>{serverError}</FormError> : null}
@@ -570,13 +564,7 @@ function PaymentForm({
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4">
         <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
-          <Input
-            id={id('amount')}
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('amountCents')}
-          />
+          <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
         </Field>
         <Field label="Paid on" htmlFor={id('date')} error={errors.paidOn?.message}>
           <Input id={id('date')} type="date" className="max-w-48" {...register('paidOn')} />

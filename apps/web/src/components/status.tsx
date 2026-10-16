@@ -26,6 +26,13 @@ const STATUS: Record<
   cancelled: { icon: CircleSlash, bg: 'bg-status-idle-tint', fg: 'text-status-idle' },
 };
 
+/**
+ * The idle tint matches the row hover colour, so idle chips carry a faint ring of their own
+ * text colour to stay visible on a hovered row (OD-114, Q150).
+ */
+const idleRing = (s: WorkStatusInput) =>
+  s === 'unstarted' || s === 'cancelled' ? 'ring-1 ring-inset ring-current/25' : undefined;
+
 /** The status as a chip: icon, word, tint. */
 export function StatusBadge({ status }: { status: WorkStatusInput }) {
   const { icon: Icon, bg, fg } = STATUS[status];
@@ -35,6 +42,7 @@ export function StatusBadge({ status }: { status: WorkStatusInput }) {
         'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150',
         bg,
         fg,
+        idleRing(status),
       )}
     >
       <Icon aria-hidden className="size-4 shrink-0" />
@@ -46,19 +54,18 @@ export function StatusBadge({ status }: { status: WorkStatusInput }) {
 /**
  * Status as a dropdown that saves the moment a new one is picked (Chris, 2026-10-14: no
  * Edit → Save just to mark a room done). `label` names what it's for, for screen readers.
+ * It stays usable while a save is on its way; the last pick wins (OD-114, Q131).
  * A native select, so it works the same with touch, mouse, keyboard and screen readers.
  */
 export function StatusSelect({
   id,
   label,
   value,
-  disabled,
   onChange,
 }: {
   id: string;
   label: string;
   value: WorkStatusInput;
-  disabled?: boolean;
   onChange: (status: WorkStatusInput) => void;
 }) {
   const { icon: Icon, bg, fg } = STATUS[value];
@@ -71,10 +78,9 @@ export function StatusSelect({
       <select
         id={id}
         value={value}
-        disabled={disabled}
         onChange={(e) => onChange(e.target.value as WorkStatusInput)}
         className={cn(
-          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
+          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
           bg,
           fg,
         )}
@@ -105,6 +111,7 @@ export function PhaseStatusBadge({ status }: { status: PhaseStatusInput }) {
         'inline-flex min-h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150',
         bg,
         fg,
+        idleRing(PHASE[status]),
       )}
     >
       <Icon aria-hidden className="size-4 shrink-0" />
@@ -121,13 +128,11 @@ export function PhaseStatusSelect({
   id,
   label,
   value,
-  disabled,
   onChange,
 }: {
   id: string;
   label: string;
   value: PhaseStatusInput;
-  disabled?: boolean;
   onChange: (status: PhaseStatusInput) => void;
 }) {
   const { icon: Icon, bg, fg } = STATUS[PHASE[value]];
@@ -140,10 +145,9 @@ export function PhaseStatusSelect({
       <select
         id={id}
         value={value}
-        disabled={disabled}
         onChange={(e) => onChange(e.target.value as PhaseStatusInput)}
         className={cn(
-          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150 disabled:opacity-50',
+          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
           bg,
           fg,
         )}

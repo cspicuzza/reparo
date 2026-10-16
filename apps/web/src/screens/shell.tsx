@@ -6,8 +6,6 @@ import {
   Hammer,
   House,
   LayoutGrid,
-  ListChecks,
-  LogOut,
   Menu as MenuIcon,
   ShoppingBag,
   Wallet,
@@ -182,14 +180,10 @@ export function Shell() {
                     aria-current={onManage ? 'page' : undefined}
                     className={cn(onManage && 'font-semibold shadow-[inset_3px_0_0_var(--tape)]')}
                   >
-                    <ListChecks aria-hidden />
                     Manage lists
                   </DropdownMenuItem>
                 ) : null}
-                <DropdownMenuItem onClick={() => void onSignOut()}>
-                  <LogOut aria-hidden />
-                  Sign out
-                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => void onSignOut()}>Sign out</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -298,7 +292,6 @@ function MenuPanel({
                   'aria-current': 'page',
                 }}
               >
-                <ListChecks aria-hidden className="size-5" />
                 Manage lists
               </Link>
             ) : null}
@@ -311,7 +304,6 @@ function MenuPanel({
                 void onSignOut();
               }}
             >
-              <LogOut aria-hidden className="size-5" />
               Sign out
             </Button>
           </div>

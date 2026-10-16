@@ -267,7 +267,6 @@ function PhaseStatus({ phase }: { phase: Phase }) {
         id={`phase-status-${phase.id}`}
         label={what}
         value={(save.isPending ? save.variables.status : undefined) ?? phase.status}
-        disabled={save.isPending}
         onChange={(status) => save.mutate({ id: phase.id, status })}
       />
       <SaveState

@@ -1,6 +1,6 @@
 import { Dialog } from '@base-ui/react/dialog';
 import { useMutation } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, FileText, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { ConfirmRemove } from '@/components/confirm-remove';
@@ -155,8 +155,9 @@ function ViewerBody({
               rel="noreferrer"
               className={buttonVariants({ variant: 'outline' })}
             >
-              <FileText aria-hidden className="size-4" />
               Open the PDF
+              <ExternalLink aria-hidden className="size-4" />
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
           ) : (
             <p className="text-muted-foreground">This file is missing from storage.</p>

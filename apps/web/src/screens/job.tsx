@@ -180,7 +180,6 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
                   (jobStatus.isPending ? jobStatus.variables.status : undefined) ??
                   job.progress.status
                 }
-                disabled={jobStatus.isPending}
                 onChange={(status) => jobStatus.mutate({ id: job.id, status })}
               />
               <SaveState
@@ -374,7 +373,6 @@ function RoomStatus({
         id={`room-status-${jobRoomId}`}
         label={what}
         value={(save.isPending ? save.variables.status : undefined) ?? status}
-        disabled={save.isPending}
         onChange={(next) => save.mutate({ id: jobRoomId, status: next })}
       />
       <SaveState

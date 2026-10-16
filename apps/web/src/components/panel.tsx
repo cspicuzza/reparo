@@ -11,12 +11,15 @@ export function Panel({ className, ...props }: ComponentProps<'section'>) {
   );
 }
 
-/** Rows on a panel, separated by divider lines. */
+/**
+ * Rows on a panel, separated by divider lines. The corners clip the rows' hover tint, so focus
+ * rings inside are drawn inward, where the clipping can't cut them off (OD-114, Q150).
+ */
 export function PanelList({ className, ...props }: ComponentProps<'ul'>) {
   return (
     <ul
       className={cn(
-        'divide-y divide-border overflow-hidden rounded-xl border border-border bg-card',
+        'divide-y divide-border overflow-hidden rounded-xl border border-border bg-card [&_:focus-visible]:-outline-offset-2',
         className,
       )}
       {...props}

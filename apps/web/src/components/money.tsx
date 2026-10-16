@@ -15,14 +15,25 @@ type Look = {
   fg: string;
 };
 
-const IDLE: Look = { icon: Circle, bg: 'bg-status-idle-tint', fg: 'text-status-idle' };
+// Idle tints match the row hover colour, so they carry a faint ring of their own text colour
+// to stay visible on a hovered row (OD-114, Q150).
+const RING = 'ring-1 ring-inset ring-current/25';
+const IDLE: Look = { icon: Circle, bg: cn('bg-status-idle-tint', RING), fg: 'text-status-idle' };
 const PROGRESS: Look = {
   icon: Contrast,
   bg: 'bg-status-progress-tint',
   fg: 'text-status-progress',
 };
-const DONE: Look = { icon: CircleCheck, bg: 'bg-status-done-tint', fg: 'text-status-done' };
-const OFF: Look = { icon: CircleSlash, bg: 'bg-status-idle-tint', fg: 'text-status-idle' };
+/**
+ * Paid in full, Chosen, Purchased: settled, but not "done" work, so not the Completed green,
+ * which is for work and saves only (OD-114, Q130).
+ */
+const SETTLED: Look = { icon: CircleCheck, bg: cn('bg-inset', RING), fg: 'text-foreground' };
+const OFF: Look = {
+  icon: CircleSlash,
+  bg: cn('bg-status-idle-tint', RING),
+  fg: 'text-status-idle',
+};
 
 /** A chip in the same shape as the work-status chips: icon, words, tint (colour never alone). */
 function Chip({ look, children }: { look: Look; children: string }) {
@@ -43,12 +54,12 @@ function Chip({ look, children }: { look: Look; children: string }) {
 
 /** Unpaid / Deposit paid (with %) / Paid in full. Nothing yellow: paying isn't a "needs you". */
 export function PaymentBadge({ status }: { status: PaymentStatus }) {
-  const look = status.kind === 'paid' ? DONE : status.kind === 'deposit' ? PROGRESS : IDLE;
+  const look = status.kind === 'paid' ? SETTLED : status.kind === 'deposit' ? PROGRESS : IDLE;
   return <Chip look={look}>{paymentText(status)}</Chip>;
 }
 
 export function ShoppingStatusBadge({ status }: { status: ShoppingStatusInput }) {
-  const look = status === 'purchased' ? DONE : status === 'returned' ? OFF : IDLE;
+  const look = status === 'purchased' ? SETTLED : status === 'returned' ? OFF : IDLE;
   return <Chip look={look}>{SHOPPING_STATUS_LABEL[status]}</Chip>;
 }
 
@@ -56,7 +67,7 @@ export function ShoppingStatusBadge({ status }: { status: ShoppingStatusInput })
 export function EstimateStatusBadge({ status }: { status: EstimateStatusInput }) {
   const look =
     status === 'chosen'
-      ? DONE
+      ? SETTLED
       : status === 'declined'
         ? OFF
         : status === 'received'
