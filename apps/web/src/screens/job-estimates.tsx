@@ -93,8 +93,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
               Estimates
             </h2>
             <p className="mt-1 max-w-prose text-muted-foreground">
-              Quotes from vendors, side by side. Choosing one makes it the job&apos;s price and
-              vendor; estimates that aren&apos;t chosen don&apos;t count toward the money.
+              Choosing one makes it the job&apos;s price and vendor.
             </p>
           </div>
         )}

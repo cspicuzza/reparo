@@ -91,9 +91,6 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         <h3 id="job-costs" className="text-xl">
           What it costs
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The vendor&apos;s price first, then any permit, fee or extra work.
-        </p>
         {costs.data ? (
           <CostLines jobId={job.id} lines={costs.data} canEdit={canEdit} />
         ) : costs.error ? (

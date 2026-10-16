@@ -33,7 +33,6 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
         <FileSection
           id="drawings"
           title="Drawings"
-          description="Mockups and spec drawings: what the work should look like."
           files={all.filter((f) => f.kind === 'mockup' || f.kind === 'spec_drawing')}
           target={() => ({ ownerType: 'job', ownerId: jobId, kind: drawingKind })}
           uploadLabel="Add drawings"
@@ -76,7 +75,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
         <FileSection
           id="paperwork"
           title="Paperwork"
-          description="The contract, permits, invoices and lien waivers. Add a caption to say which is which."
+          description="Add a caption to say which is which."
           files={all.filter((f) => f.kind === 'paperwork')}
           target={() => ({ ownerType: 'job', ownerId: jobId, kind: 'paperwork' })}
           uploadLabel="Add paperwork"

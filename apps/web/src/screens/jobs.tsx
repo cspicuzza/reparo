@@ -41,11 +41,7 @@ export function Jobs() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Jobs"
-        description={
-          <>
-            The work, phase by phase. Each job says who&apos;s doing it and which rooms it covers.
-          </>
-        }
+        description={<>The work, phase by phase.</>}
         action={
           // Vendors sits beside Add a job, not wrapped under the description (OD-129, Q184).
           <div className="flex flex-wrap gap-2">

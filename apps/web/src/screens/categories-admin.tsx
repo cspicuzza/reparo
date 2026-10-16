@@ -36,7 +36,7 @@ export function CategoriesAdmin() {
         Categories
       </h2>
       <p className="mt-1 text-muted-foreground">
-        How the list is grouped and totalled. Merging moves every line into the other category.
+        Merging moves every line into the other category.
       </p>
       {categories.isPending ? (
         <LinesPlaceholder label="Loading categories" lines={4} className="mt-3" />

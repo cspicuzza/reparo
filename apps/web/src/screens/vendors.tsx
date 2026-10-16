@@ -80,7 +80,7 @@ export function Vendors() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Vendors"
-        description="The people you hire. Add them here or right from a job."
+        description="The people you hire."
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-vendor">

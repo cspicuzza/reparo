@@ -59,10 +59,7 @@ export function Money() {
 
   return (
     <section className="flex flex-col gap-8">
-      <PageHeader
-        title="Money"
-        description="The budget, what's spent, what's committed and what's left."
-      />
+      <PageHeader title="Money" />
       {summary.isPending || budget.isPending ? (
         <Loading label="Loading the money">
           <div className="flex flex-col gap-8">
@@ -144,9 +141,7 @@ function Headline({ s }: { s: Summary }) {
         />
       </dl>
       <p className="mt-3 text-sm text-muted-foreground">
-        Committed is what jobs still cost (their price less what&apos;s been paid) and the price of
-        everything still to buy, in phases that have started. Planned phases come in when they
-        start.
+        Committed is what jobs still cost and what&apos;s still to buy, in phases that have started.
       </p>
     </Panel>
   );

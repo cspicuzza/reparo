@@ -138,9 +138,7 @@ export function RoomDetail() {
         <h2 id="room-jobs" className="text-2xl">
           Jobs in this room
         </h2>
-        <p className="mt-1 text-muted-foreground">
-          Set each job&apos;s status here. Jobs are planned on the Jobs page.
-        </p>
+        <p className="mt-1 text-muted-foreground">Set each job&apos;s status here.</p>
         <div className="mt-4">
           <RoomWork roomId={r.id} roomName={r.name} />
         </div>
@@ -324,7 +322,7 @@ function RoomSizeFields({ room: r }: { room: Room }) {
         area={<FloorArea sqft={sqft} dims={dims} />}
       />
       <p className="text-sm text-muted-foreground">
-        Feet and inches, like 14&apos; 6 1/2&quot;, or plain inches. Saves when you leave the field.
+        Feet and inches, like 14&apos; 6 1/2&quot;, or plain inches.
       </p>
     </div>
   );

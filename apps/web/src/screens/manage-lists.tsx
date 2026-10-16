@@ -13,10 +13,7 @@ export function ManageLists() {
   const { isAdmin, member } = useMe();
   return (
     <section className="flex flex-col gap-8">
-      <PageHeader
-        title="Manage lists"
-        description="How things are grouped across the house. Only the admin changes these."
-      />
+      <PageHeader title="Manage lists" />
       {member === undefined ? (
         <PanelPlaceholder label="Loading" lines={5} />
       ) : isAdmin ? (

@@ -117,7 +117,6 @@ export function RoomPictures({
       <FileSection
         id="inspiration"
         title="Inspiration"
-        description="Pictures of things we like, from anywhere."
         files={of('inspiration')}
         target={() => ({ ownerType: 'room', ownerId: roomId, kind: 'inspiration' })}
         uploadLabel="Add inspiration"
@@ -128,7 +127,7 @@ export function RoomPictures({
       <FileSection
         id="progress"
         title="Progress"
-        description="Photos of the work as it happens, newest first."
+        description="Newest first."
         files={of('progress_photo')}
         target={() => ({
           ownerType: 'room',

@@ -231,6 +231,24 @@
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
+  /* Light text on a dark surface reads a touch thin in Archivo: a little more tracking for body
+     text, and 14px text one step heavier (OD-130, Q186). Base-layer rules, so a weight or
+     tracking utility on an element still wins. `.ink` is the dark surface in light mode, and
+     the light one in dark mode, so it follows the surface rather than the page. */
+  :root[data-theme='dark'] body,
+  :root:not([data-theme='dark']) .ink {
+    letter-spacing: 0.01em;
+  }
+  :root[data-theme='dark'] .text-sm,
+  :root:not([data-theme='dark']) .ink .text-sm {
+    font-weight: 450;
+  }
+  :root[data-theme='dark'] .ink {
+    letter-spacing: normal;
+  }
+  :root[data-theme='dark'] .ink .text-sm {
+    font-weight: 400;
+  }
 }
 
 /* Reduced motion keeps short opacity fades and drops movement, scale and blur (Workflow polish,

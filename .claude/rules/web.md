@@ -38,7 +38,7 @@ Decisions and reasons: Linear → *Design system* doc. Values: `src/index.css` (
 
 **Colour and money.** Money is in the normal text colour, with `tabular-nums`. Red (`text-destructive`) only when money goes negative or over budget. No green for "good" money; the Saved green is about the save, not the amount.
 
-**Type.** Archivo (self-hosted). `h1`–`h3` get the narrow heading width from the base styles — use real heading elements rather than styling a `div`. Sizes: `text-4xl` 44, `text-3xl` 32, `text-2xl` 24, `text-xl` 20, `text-lg` 18 (a row's name, such as a shopping line or vendor; OD-114, Q135), `text-base` 16 (body), `text-sm` 14 (smallest). Nothing below 14px. Sentence case; no all-caps labels.
+**Type.** Archivo (self-hosted). `h1`–`h3` get the narrow heading width from the base styles — use real heading elements rather than styling a `div`. Sizes: `text-4xl` 44, `text-3xl` 32, `text-2xl` 24, `text-xl` 20, `text-lg` 18 (a row's name, such as a shopping line or vendor; OD-114, Q135), `text-base` 16 (body), `text-sm` 14 (smallest). Nothing below 14px. Sentence case; no all-caps labels. On a dark surface (dark mode, or `.ink` in light mode) body text gets 0.01em tracking and 14px text weight 450, from base styles in `index.css` (OD-130, Q186). Explainer sentences under headings are kept only when they prevent a mistake or say something the heading doesn't, and then in one line (OD-130, Q185).
 
 **Shape and depth.** `rounded-lg` (6px) on controls and chips, `rounded-xl` (10px) on panels. Separate sections with tone and a thin border, not a shadow on every card. Shadows only on things that float (menus, dialogs, the phone bottom bar).
 
