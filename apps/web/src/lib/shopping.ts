@@ -1,15 +1,17 @@
 import type { RouterOutputs } from '@reparo/api';
-import { SHOPPING_STATUSES, type ShoppingStatusInput } from '@reparo/shared';
+import type { ShoppingStatusInput } from '@reparo/shared';
 
 export type ShoppingLine = RouterOutputs['shoppingLines']['list'][number];
 
-/** The Shopping page's filters, as they sit in the URL (shareable, web.md). */
+/**
+ * The Shopping page's filters, as they sit in the URL (shareable, web.md). There's no status:
+ * the sections do that job, and an old link's `status` is dropped (OD-106, Q110).
+ */
 export type ShoppingSearch = {
   /** A room id, or "house" for whole-house lines. */
   room?: string;
   category?: string;
   phase?: string;
-  status?: ShoppingStatusInput;
   job?: string;
   /** A store name, as the list shows it (OD-75). */
   store?: string;
@@ -29,10 +31,6 @@ export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearc
   if (category) out.category = category;
   const phase = id(raw['phase']);
   if (phase) out.phase = phase;
-  const status = raw['status'];
-  if (typeof status === 'string' && (SHOPPING_STATUSES as readonly string[]).includes(status)) {
-    out.status = status as ShoppingStatusInput;
-  }
   const job = id(raw['job']);
   if (job) out.job = job;
   const store = raw['store'];
@@ -50,7 +48,6 @@ export function shoppingFilter(s: ShoppingSearch) {
     ...(s.room === 'house' ? { roomId: null } : s.room ? { roomId: s.room } : {}),
     ...(s.category ? { categoryId: s.category } : {}),
     ...(s.phase ? { phaseId: s.phase } : {}),
-    ...(s.status ? { status: s.status } : {}),
     ...(s.job ? { jobId: s.job } : {}),
     ...(s.store ? { store: s.store } : {}),
     ...(s.q ? { q: s.q } : {}),

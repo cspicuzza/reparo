@@ -21,8 +21,9 @@ describe('shopping filters', () => {
         phase: 'nope',
         x: 1,
       }),
-    ).toEqual({ room: 'house', category: ID, status: 'purchased' });
-    expect(parseShoppingSearch({ status: 'bought', job: ID })).toEqual({ job: ID });
+    ).toEqual({ room: 'house', category: ID });
+    // Status was a filter once; an old link's status is dropped (OD-106).
+    expect(parseShoppingSearch({ status: 'to_buy', job: ID })).toEqual({ job: ID });
     expect(parseShoppingSearch({ store: ' Wayfair ' })).toEqual({ store: 'Wayfair' });
     expect(parseShoppingSearch({ store: '   ' })).toEqual({});
     expect(parseShoppingSearch({ q: ' fan ' })).toEqual({ q: 'fan' });
@@ -30,10 +31,7 @@ describe('shopping filters', () => {
   });
 
   it('turns them into the API filter; "house" means whole-house lines', () => {
-    expect(shoppingFilter({ room: 'house', status: 'to_buy' })).toEqual({
-      roomId: null,
-      status: 'to_buy',
-    });
+    expect(shoppingFilter({ room: 'house' })).toEqual({ roomId: null });
     expect(shoppingFilter({ room: ID, job: ID })).toEqual({ roomId: ID, jobId: ID });
     expect(shoppingFilter({})).toEqual({});
     expect(shoppingFilter({ store: 'Wayfair' })).toEqual({ store: 'Wayfair' });

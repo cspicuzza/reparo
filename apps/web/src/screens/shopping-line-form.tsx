@@ -9,7 +9,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { Field, FormError, Input, Select, Textarea } from '@/components/form';
+import { Field, FormError, Input, MoneyInput, Select, Textarea } from '@/components/form';
 import { Reveal } from '@/components/reveal';
 import { Button } from '@/components/ui/button';
 import { centsToInput } from '@/lib/money';
@@ -158,13 +158,7 @@ function LineFields({
           hint="The whole line, all of them."
           error={errors.priceCents?.message}
         >
-          <Input
-            id={id('price')}
-            className="max-w-48"
-            inputMode="decimal"
-            autoComplete="off"
-            {...register('priceCents')}
-          />
+          <MoneyInput id={id('price')} className="max-w-48" {...register('priceCents')} />
         </Field>
       </div>
       <div className="grid gap-5">

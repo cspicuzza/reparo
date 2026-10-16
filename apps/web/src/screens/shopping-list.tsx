@@ -5,7 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
-import { Field, FormError, Input } from '@/components/form';
+import { Field, FormError, MoneyInput } from '@/components/form';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
@@ -124,6 +124,7 @@ function ShoppingRow({
   const [buying, setBuying] = useState(false);
   // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
   const [leaving, setLeaving] = useState(false);
+  const [brokenThumb, setBrokenThumb] = useState<string | null>(null);
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
   const receipts = files.filter((f) => f.kind === 'receipt');
@@ -214,12 +215,16 @@ function ShoppingRow({
             <span className="sr-only">Select {line.name}</span>
           </label>
         ) : null}
-        {thumb?.url ? (
+        {thumb?.url && brokenThumb === thumb.url ? (
+          // A picture that won't load leaves a plain tile, not a gap (OD-106, Q110).
+          <span aria-hidden className="size-14 shrink-0 rounded-lg border border-border bg-inset" />
+        ) : thumb?.url ? (
           <img
             src={thumb.url}
             alt=""
             loading="lazy"
             decoding="async"
+            onError={() => setBrokenThumb(thumb.url)}
             className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
           />
         ) : pictureColumn ? (
@@ -243,9 +248,14 @@ function ShoppingRow({
           </button>
           <LineFacts line={line} />
         </div>
-        <span className="text-right text-xl font-semibold whitespace-nowrap tabular-nums">
-          {lineAmountText(line)}
-        </span>
+        {line.status === 'to_buy' && line.priceCents === 0 ? (
+          // No price yet reads as that, not as something free (OD-106, Q105).
+          <span className="text-right whitespace-nowrap text-muted-foreground">No price yet</span>
+        ) : (
+          <span className="text-right text-xl font-semibold whitespace-nowrap tabular-nums">
+            {lineAmountText(line)}
+          </span>
+        )}
         {actions ? <div className="col-span-full sm:col-span-1">{actions}</div> : null}
       </div>
       {buying ? (
@@ -388,13 +398,7 @@ export function AmountForm({
         hint={hint}
         error={formState.errors.amount?.message}
       >
-        <Input
-          id={`${idPrefix}-amount`}
-          inputMode="decimal"
-          autoComplete="off"
-          className="sm:max-w-48"
-          {...register('amount')}
-        />
+        <MoneyInput id={`${idPrefix}-amount`} className="sm:max-w-48" {...register('amount')} />
       </Field>
       {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">

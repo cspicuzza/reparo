@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ListFilter, Plus, Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Select, inputClass } from '@/components/form';
+import { FormError, Select, inputClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -185,10 +185,10 @@ export function Shopping() {
         search={search}
         select={
           canEdit ? (
+            // The label says the state (Select, then Done), so it isn't also an on/off button.
             <Button
               type="button"
               variant="outline"
-              aria-pressed={selecting}
               onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
             >
               {selecting ? 'Done' : 'Select'}
@@ -206,7 +206,22 @@ export function Shopping() {
         </Loading>
       ) : null}
       {lines.error || totals.error ? (
-        <p role="alert">Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}</p>
+        <div role="alert" className="flex flex-col items-start gap-2">
+          <FormError>
+            Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}
+          </FormError>
+          {/* A way back that isn't reloading the page (OD-106, Q109). */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              void lines.refetch();
+              void totals.refetch();
+            }}
+          >
+            Try again
+          </Button>
+        </div>
       ) : null}
       {lines.data && lines.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
@@ -244,6 +259,7 @@ export function Shopping() {
               <ShoppingSection
                 key={section.status}
                 section={section}
+                alone={totals.data.filter((s) => s.count > 0).length === 1}
                 lines={lines.data.filter((l) => l.status === section.status)}
                 files={files.data ?? []}
                 canEdit={canEdit}
@@ -279,6 +295,7 @@ export function Shopping() {
  */
 function ShoppingSection({
   section,
+  alone,
   lines,
   files,
   canEdit,
@@ -287,6 +304,8 @@ function ShoppingSection({
   onPickAll,
 }: {
   section: Section;
+  /** The only section with anything in it. */
+  alone: boolean;
   lines: ShoppingLine[];
   files: FileView[];
   canEdit: boolean;
@@ -317,9 +336,12 @@ function ShoppingSection({
           <h2 id={headingId} className="text-2xl">
             {SECTION_TITLE[section.status]}
           </h2>
-          <span className="text-muted-foreground tabular-nums">
-            {groupText(section.status, section.count, section.totalCents, money)}
-          </span>
+          {/* With only To buy showing, the page's opening sentence already says this (Q106). */}
+          {alone && section.status === 'to_buy' ? null : (
+            <span className="text-muted-foreground tabular-nums">
+              {groupText(section.status, section.count, section.totalCents, money)}
+            </span>
+          )}
         </div>
         {foldable ? (
           <Button
@@ -463,7 +485,7 @@ function SearchBox({
         id="shopping-search"
         type="search"
         autoComplete="off"
-        placeholder="Search names, stores, model numbers, notes"
+        placeholder="Search the list"
         value={text}
         onChange={(e) => setText(e.target.value)}
         className={cn(inputClass, 'pr-20 pl-10 [&::-webkit-search-cancel-button]:hidden')}
@@ -516,12 +538,10 @@ function Filters({ search, select }: { search: ShoppingSearch; select: ReactNode
     phase: (v) => phases.data?.find((p) => p.id === v)?.name,
     store: (v) => v,
     job: (v) => jobs.data?.find((j) => j.id === v)?.name,
-    status: (v) => SECTION_TITLE[v as ShoppingStatusInput],
   };
   const chipLabel: Record<FilterKey, string> = {
     ...FILTER_LABEL,
     job: 'For',
-    status: 'Status',
   };
   // Search has its own box, so it isn't a chip or counted as a filter.
   const active = (Object.keys(search) as (keyof ShoppingSearch)[]).filter(

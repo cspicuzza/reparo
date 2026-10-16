@@ -15,7 +15,7 @@ import { EditPanel } from '@/components/edit-panel';
 import { PanelGroup } from '@/components/panel-group';
 import { PanelNameField } from '@/components/panel-name-field';
 import { FileSection } from '@/components/file-section';
-import { FormError, Input } from '@/components/form';
+import { DollarBox, FormError, Input } from '@/components/form';
 import { ShoppingStatusBadge } from '@/components/money';
 import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
@@ -127,7 +127,8 @@ function MoneyField({
       {...(hint ? { hint } : {})}
       initial={centsToInput(cents)}
       inputMode="decimal"
-      inputClassName={SHORT}
+      inputClassName={cn(SHORT, 'pl-7')}
+      wrap={(field) => <DollarBox>{field}</DollarBox>}
       what={`${label} for ${line.name}`}
       validate={(v) => problemWith(moneyInputSchema, v)}
       onSave={async (v) => {
@@ -204,17 +205,6 @@ function EditBody({
 
   return (
     <div className="flex flex-col gap-4">
-      <FileSection
-        id={`panel-pictures-${line.id}`}
-        title="Pictures"
-        files={pictures}
-        target={() => ({ ownerType: 'shopping_line', ownerId: line.id, kind: 'product_image' })}
-        uploadLabel="Add pictures"
-        emptyText="No pictures yet. Copy one from the store's page and paste it here."
-        canEdit
-        gridClassName="grid-cols-2 sm:grid-cols-2 lg:grid-cols-2"
-      />
-
       <PanelGroup id={id('buying')} title="Buying">
         <MoneyField
           id={id('price')}
@@ -223,6 +213,18 @@ function EditBody({
           cents={line.priceCents}
           field="priceCents"
           line={line}
+        />
+
+        {/* How many sits with the price it multiplies (OD-106, Q108). */}
+        <AutoSaveField
+          id={id('qty')}
+          label="How many"
+          inputMode="numeric"
+          inputClassName={SHORT}
+          initial={String(line.quantity)}
+          what={`How many for ${line.name}`}
+          validate={(v) => problemWith(shoppingLineCreateSchema.shape.quantity, Number(v))}
+          onSave={(v) => save({ quantity: Number(v) })}
         />
 
         <PurchaseStatus line={line} />
@@ -296,6 +298,18 @@ function EditBody({
         </div>
       </PanelGroup>
 
+      {/* Below Buying, so price and status are the first thing the panel shows (Q108). */}
+      <FileSection
+        id={`panel-pictures-${line.id}`}
+        title="Pictures"
+        files={pictures}
+        target={() => ({ ownerType: 'shopping_line', ownerId: line.id, kind: 'product_image' })}
+        uploadLabel="Add pictures"
+        emptyText="No pictures yet. Copy one from the store's page and paste it here."
+        canEdit
+        gridClassName="grid-cols-2 sm:grid-cols-2 lg:grid-cols-2"
+      />
+
       <PanelGroup id={id('where')} title="Where it goes">
         <AutoSaveSelect
           id={id('room')}
@@ -315,16 +329,6 @@ function EditBody({
           options={categories.data.map((c) => ({ value: c.id, label: c.name }))}
           what={`Category for ${line.name}`}
           onSave={(v) => save({ categoryId: v })}
-        />
-        <AutoSaveField
-          id={id('qty')}
-          label="How many"
-          inputMode="numeric"
-          inputClassName={SHORT}
-          initial={String(line.quantity)}
-          what={`How many for ${line.name}`}
-          validate={(v) => problemWith(shoppingLineCreateSchema.shape.quantity, Number(v))}
-          onSave={(v) => save({ quantity: Number(v) })}
         />
         <AutoSaveSelect
           id={id('phase')}

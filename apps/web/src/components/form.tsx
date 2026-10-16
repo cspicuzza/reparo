@@ -88,6 +88,34 @@ export function Input({ className, ...props }: ComponentProps<'input'>) {
   return <input {...NOT_A_LOGIN} {...props} className={cn(inputClass, className)} />;
 }
 
+/**
+ * A dollar sign inside a money field (OD-106, Q110), so an amount reads as money before it's
+ * typed. It's drawn, not typed: the value stays plain digits, and the field's label already says
+ * what it is to a screen reader. The field inside needs `pl-7` to clear it.
+ */
+export function DollarBox({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground"
+      >
+        $
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** An `Input` for money, with the dollar sign drawn inside it. */
+export function MoneyInput({ className, ...props }: ComponentProps<'input'>) {
+  return (
+    <DollarBox>
+      <Input className={cn('pl-7', className)} inputMode="decimal" autoComplete="off" {...props} />
+    </DollarBox>
+  );
+}
+
 export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
   return <textarea {...NOT_A_LOGIN} {...props} className={cn(inputClass, className)} />;
 }
