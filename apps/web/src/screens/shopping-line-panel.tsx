@@ -502,7 +502,16 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
       <div className="relative mt-1.5 flex rounded-lg border border-input bg-inset p-0.5">
         <span
           aria-hidden
-          className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md bg-card shadow-sm transition-transform duration-200 ease-out"
+          // Purchased is green and Returned red, here only; list chips stay neutral (OD-132,
+          // Q192–Q193).
+          className={cn(
+            'absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md shadow-sm transition-[transform,background-color] duration-200 ease-out',
+            shown === 'purchased'
+              ? 'bg-status-done-tint'
+              : shown === 'returned'
+                ? 'bg-destructive-tint'
+                : 'bg-card',
+          )}
           style={{ transform: `translateX(${index * 100}%)` }}
         />
         {SHOPPING_STATUSES.map((st) => {
@@ -512,7 +521,13 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
               key={st}
               className={cn(
                 'relative z-10 flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-base transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
-                shown === st ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                shown !== st
+                  ? 'text-muted-foreground'
+                  : st === 'purchased'
+                    ? 'font-semibold text-status-done'
+                    : st === 'returned'
+                      ? 'font-semibold text-destructive'
+                      : 'font-semibold text-foreground',
                 off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-foreground',
               )}
             >

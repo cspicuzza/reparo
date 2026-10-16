@@ -164,7 +164,9 @@ export function Shell() {
               >
                 {me.data.member.displayName}
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              {/* Wide enough for the longest Appearance wording, so switching it doesn't
+                  change the menu's width (OD-132, Q191). */}
+              <DropdownMenuContent className="min-w-80">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>
                     Signed in as {me.data.member.displayName}

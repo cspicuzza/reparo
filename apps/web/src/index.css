@@ -70,6 +70,9 @@
   --status-progress-tint: #dce5ee;
   --status-done: #2f6b45;
   --status-done-tint: #dce9df;
+  /* Behind brick-red text: the Returned position of a line's purchase switch (OD-132, Q192).
+     Checked 2026-10-16: destructive text 5.11:1 on it. */
+  --destructive-tint: #f2dfd9;
 
   --radius: 0.375rem; /* 6px: buttons, fields, chips */
 }
@@ -118,6 +121,7 @@
   --status-progress-tint: #22303d;
   --status-done: #8ccb9f;
   --status-done-tint: #1f3127;
+  --destructive-tint: #3b2521; /* dark: destructive text 5.58:1 on it */
 }
 
 @theme inline {
@@ -157,6 +161,7 @@
   --color-status-progress-tint: var(--status-progress-tint);
   --color-status-done: var(--status-done);
   --color-status-done-tint: var(--status-done-tint);
+  --color-destructive-tint: var(--destructive-tint);
 
   /* Corners: 6px on controls (sm–lg), 10px on panels (xl). */
   --radius-sm: calc(var(--radius) - 2px);
