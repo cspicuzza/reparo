@@ -105,8 +105,14 @@ export function Jobs() {
   );
 }
 
+/**
+ * One job: name and vendor on the left; the price in a right-aligned column at 20px with what's
+ * paid beneath it, so prices can be scanned down the list like Shopping's (OD-91); then where
+ * the work stands. On a phone the price sits above the status, at the right.
+ */
 function JobRow({ job }: { job: Job }) {
   const progress = progressText(job.progress, job.rooms.length);
+  const priced = job.money.costCents > 0;
   return (
     <Link
       to="/jobs/$jobId"
@@ -118,11 +124,6 @@ function JobRow({ job }: { job: Job }) {
         <span className="block text-sm text-muted-foreground">
           {job.vendor ? job.vendor.name : 'No vendor yet'}
         </span>
-        {job.money.costCents > 0 ? (
-          <span className="block text-sm text-muted-foreground tabular-nums">
-            Paid {money(job.money.paidCents)} of {money(job.money.costCents)}
-          </span>
-        ) : null}
         {job.estimates.total > 0 && !job.estimates.chosen ? (
           <span className="block text-sm font-semibold">
             {job.estimates.total === 1 ? '1 estimate' : `${job.estimates.total} estimates`}, none
@@ -130,24 +131,40 @@ function JobRow({ job }: { job: Job }) {
           </span>
         ) : null}
       </span>
-      <span className="flex w-28 shrink-0 flex-col items-end gap-1 sm:w-56">
-        {job.rooms.length > 0 ? (
-          <>
-            <TapeStrip
-              mode="progress"
-              size="sm"
-              done={job.progress.done}
-              total={job.progress.total}
-              label={`${job.name}: ${progress}`}
-              className="hidden w-full sm:block"
-            />
-            <span className="text-right text-sm text-muted-foreground tabular-nums">
-              {progress}
-            </span>
-          </>
-        ) : (
-          <StatusBadge status={job.progress.status} />
-        )}
+      <span className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-6">
+        <span className="flex flex-col items-end tabular-nums sm:w-36">
+          {priced ? (
+            <>
+              <span className="text-xl font-semibold whitespace-nowrap">
+                {money(job.money.costCents)}
+              </span>
+              <span className="text-sm whitespace-nowrap text-muted-foreground">
+                {money(job.money.paidCents)} paid
+              </span>
+            </>
+          ) : (
+            <span className="text-sm text-muted-foreground">No price yet</span>
+          )}
+        </span>
+        <span className="flex w-28 flex-col items-end gap-1 sm:w-56">
+          {job.rooms.length > 0 ? (
+            <>
+              <TapeStrip
+                mode="progress"
+                size="sm"
+                done={job.progress.done}
+                total={job.progress.total}
+                label={`${job.name}: ${progress}`}
+                className="hidden w-full sm:block"
+              />
+              <span className="text-right text-sm text-muted-foreground tabular-nums">
+                {progress}
+              </span>
+            </>
+          ) : (
+            <StatusBadge status={job.progress.status} />
+          )}
+        </span>
       </span>
       <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
     </Link>
