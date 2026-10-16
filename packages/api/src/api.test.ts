@@ -1278,6 +1278,125 @@ describe('@reparo/api', () => {
       expect((await mutate(h, 'editor', 'files.create', { ...base, path })).status).toBe(409);
     }));
 
+  it('files: pictures get a thumbnail link at upload; a bad or missing one falls back', () =>
+    withSeeded(async (_tx, h) => {
+      const den = row(await mutate(h, 'editor', 'rooms.create', { name: 'Thumb Den' }));
+      const other = row(await mutate(h, 'editor', 'rooms.create', { name: 'Thumb Other' }));
+      const pic = {
+        ownerType: 'room',
+        ownerId: den.id,
+        kind: 'rendering',
+        originalName: 'big.png',
+        mimeType: 'image/png',
+        sizeBytes: 3_900_000,
+      };
+      type Start = { path: string; thumbPath: string | null; thumbUploadUrl: string | null };
+      type WithThumb = FileRow & { thumbUrl: string | null };
+
+      // A PDF gets no thumbnail link.
+      const phase = rows(await query(h, 'viewer', 'phases.list'))[0];
+      if (!phase) throw new Error('no phase');
+      const job = row(await mutate(h, 'editor', 'jobs.create', { phaseId: phase.id, name: 'TJ' }));
+      const pdf = await mutate(h, 'editor', 'files.uploadLink', {
+        ...pic,
+        ownerType: 'job',
+        ownerId: job.id,
+        kind: 'mockup',
+        mimeType: 'application/pdf',
+      });
+      expect(pdf.status).toBe(200);
+      expect((pdf.data as Start).thumbPath).toBeNull();
+
+      // A picture with its thumbnail: lists carry both links.
+      const start = (await mutate(h, 'editor', 'files.uploadLink', pic)).data as Start;
+      expect(start.thumbPath).toMatch(/^room\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.thumb\.jpg$/);
+      expect(start.thumbUploadUrl).toBe(`fake://files/upload/${start.thumbPath}`);
+      storage.put(start.path, 3_900_000, 'image/png');
+      storage.put(start.thumbPath ?? '', 40_000, 'image/jpeg');
+      const made = await mutate(h, 'editor', 'files.create', {
+        ...pic,
+        path: start.path,
+        thumbPath: start.thumbPath,
+      });
+      expect(made.status).toBe(200);
+      expect((made.data as WithThumb).thumbUrl).toBe(
+        `fake://files/${start.thumbPath}?expires=3600`,
+      );
+
+      // Never arrived, the wrong type, or another room's path: the upload still saves, without.
+      const tries: [string, string | null, number][] = [
+        ['missing', null, 0],
+        ['png', 'image/png', 40_000],
+        ['huge', 'image/jpeg', 2 * 1024 * 1024],
+      ];
+      for (const [, type, size] of tries) {
+        const s2 = (await mutate(h, 'editor', 'files.uploadLink', pic)).data as Start;
+        storage.put(s2.path, 1000, 'image/png');
+        if (type) storage.put(s2.thumbPath ?? '', size, type);
+        const r = await mutate(h, 'editor', 'files.create', {
+          ...pic,
+          path: s2.path,
+          thumbPath: s2.thumbPath,
+        });
+        expect([r.status, (r.data as WithThumb).thumbUrl]).toEqual([200, null]);
+      }
+      const s3 = (await mutate(h, 'editor', 'files.uploadLink', pic)).data as Start;
+      const theirs = (
+        (await mutate(h, 'editor', 'files.uploadLink', { ...pic, ownerId: other.id })).data as Start
+      ).thumbPath;
+      storage.put(s3.path, 1000, 'image/png');
+      storage.put(theirs ?? '', 1000, 'image/jpeg');
+      const borrowed = await mutate(h, 'editor', 'files.create', {
+        ...pic,
+        path: s3.path,
+        thumbPath: theirs,
+      });
+      expect((borrowed.data as WithThumb).thumbUrl).toBeNull();
+    }));
+
+  it('files: the admin makes thumbnails for pictures from before them', () =>
+    withSeeded(async (_tx, h) => {
+      const nook = row(await mutate(h, 'editor', 'rooms.create', { name: 'Backfill Nook' }));
+      const pic = {
+        ownerType: 'room',
+        ownerId: nook.id,
+        kind: 'inspiration',
+        originalName: 'old.png',
+        mimeType: 'image/png',
+        sizeBytes: 2000,
+      };
+      const old = row(await upload(h, 'editor', pic));
+      type Missing = { id: string; url: string | null };
+      const waiting = async () =>
+        ((await query(h, 'chris', 'files.withoutThumbs')).data as Missing[]).map((f) => f.id);
+      expect(await waiting()).toContain(old.id);
+
+      expect((await query(h, 'editor', 'files.withoutThumbs')).status).toBe(403);
+      expect((await mutate(h, 'editor', 'files.thumbLink', { id: old.id })).status).toBe(403);
+
+      const link = (await mutate(h, 'chris', 'files.thumbLink', { id: old.id })).data as {
+        thumbPath: string;
+      };
+      const early = await mutate(h, 'chris', 'files.setThumb', {
+        id: old.id,
+        thumbPath: link.thumbPath,
+      });
+      expect([early.status, early.message]).toEqual([
+        400,
+        'The thumbnail didn’t arrive. Try again.',
+      ]);
+      storage.put(link.thumbPath, 30_000, 'image/jpeg');
+      expect(
+        (await mutate(h, 'chris', 'files.setThumb', { id: old.id, thumbPath: link.thumbPath }))
+          .status,
+      ).toBe(200);
+      expect(await waiting()).not.toContain(old.id);
+      const listed = (
+        await query(h, 'viewer', 'files.list', { ownerType: 'room', ownerId: nook.id })
+      ).data as (FileRow & { thumbUrl: string | null })[];
+      expect(listed[0]?.thumbUrl).toBe(`fake://files/${link.thumbPath}?expires=3600`);
+    }));
+
   it('files: progress photos carry a date and a job that covers the room; captions change', () =>
     withSeeded(async (_tx, h) => {
       const phase = rows(await query(h, 'viewer', 'phases.list'))[0];

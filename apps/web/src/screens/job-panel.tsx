@@ -1,5 +1,5 @@
 import { jobUpdateSchema } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
@@ -14,20 +14,16 @@ import { problemWith } from '@/lib/problem';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { vendorOptions } from '@/lib/vendors';
 import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
+import { useRefreshJobs } from '@/lib/refresh';
 
 type JobPatch = Omit<Parameters<typeof trpcClient.jobs.update.mutate>[0], 'id'>;
 
 /** Save part of a job, then refresh everything that shows it. */
 function useSaveJob(id: string) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshJobs();
   return async (patch: JobPatch) => {
     await trpcClient.jobs.update.mutate({ id, ...patch });
-    await Promise.all([
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
+    await refresh();
   };
 }
 
@@ -159,18 +155,13 @@ type Change = { add: string[]; remove: { roomId: string; jobRoomId: string }[] }
  * None, asks first: taking a room off removes its status and spec for this job.
  */
 function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string }[] }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshJobs();
   const [asking, setAsking] = useState<Change['remove'] | null>(null);
   const change = useMutation({
     mutationFn: async ({ add, remove }: Change) => {
       for (const roomId of add) await trpcClient.jobRooms.create.mutate({ jobId: job.id, roomId });
       for (const r of remove) await trpcClient.jobRooms.remove.mutate({ id: r.jobRoomId });
-      await Promise.all([
-        queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-        queryClient.invalidateQueries(trpc.rooms.pathFilter()),
-        queryClient.invalidateQueries(trpc.home.pathFilter()),
-      ]);
+      await refresh();
     },
   });
   const onJob = new Map(job.rooms.map((r) => [r.roomId, r.id]));

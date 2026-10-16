@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/page-header';
 import { useMe } from '@/lib/me';
 import { CategoriesAdmin } from './categories-admin';
+import { ThumbnailsAdmin } from './thumbnails-admin';
 import { PanelPlaceholder } from '@/components/placeholder';
 
 /**
@@ -19,7 +20,10 @@ export function ManageLists() {
       {member === undefined ? (
         <PanelPlaceholder label="Loading" lines={5} />
       ) : isAdmin ? (
-        <CategoriesAdmin />
+        <>
+          <CategoriesAdmin />
+          <ThumbnailsAdmin />
+        </>
       ) : (
         <p>Only the admin manages these lists.</p>
       )}

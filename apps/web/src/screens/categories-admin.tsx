@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FormError, Input, Select } from '@/components/form';
 import { LoadError } from '@/components/load-error';
@@ -7,6 +7,7 @@ import { Panel } from '@/components/panel';
 import { LinesPlaceholder } from '@/components/placeholder';
 import { Button } from '@/components/ui/button';
 import { useTRPC } from '@/lib/trpc';
+import { useRefreshShopping } from '@/lib/refresh';
 
 /**
  * The admin's category list (M3, OD-52; Q21): add, rename, and merge one into another, which
@@ -14,14 +15,8 @@ import { useTRPC } from '@/lib/trpc';
  */
 export function CategoriesAdmin() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const categories = useQuery(trpc.categories.list.queryOptions());
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.categories.pathFilter()),
-      queryClient.invalidateQueries(trpc.shoppingLines.pathFilter()),
-      queryClient.invalidateQueries(trpc.money.pathFilter()),
-    ]);
+  const invalidate = useRefreshShopping();
   const [name, setName] = useState('');
   const create = useMutation(
     trpc.categories.create.mutationOptions({

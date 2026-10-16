@@ -177,6 +177,8 @@ export async function attachImages(
         caption: '',
         takenOn: null,
         jobId: null,
+        // The server can't shrink pictures; the admin's backfill in Manage makes these (Q170).
+        thumbPath: null,
       });
       done += 1;
       onProgress(done);

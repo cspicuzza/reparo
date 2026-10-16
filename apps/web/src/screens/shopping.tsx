@@ -26,7 +26,7 @@ import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { NOT_A_LOGIN } from '@/lib/fields';
 import type { FileView } from '@/lib/upload';
-import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { useRefreshShopping } from '@/lib/refresh';
 import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingLinePanel } from './shopping-line-panel';
 import { BatchBar } from './shopping-batch';
@@ -73,7 +73,7 @@ export function Shopping() {
   const [openId, setOpenId] = useState<string | null>(null);
   useReturnFocus(openId);
   const openLine = lines.data?.find((l) => l.id === openId);
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-line' : null);
   // Batch editing (OD-101): Select turns on checkboxes; the picked lines stay picked through

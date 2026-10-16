@@ -274,8 +274,20 @@ export const fileFinishSchema = fileStartSchema.extend({
   takenOn: isoDateSchema.nullable().default(null),
   /** Progress photos: the job the photo shows. */
   jobId: idSchema.nullable().default(null),
+  /**
+   * Pictures: where the browser put the small JPEG it made (from `uploadLink`), or null when
+   * it couldn't make one; the original is shown then (OD-115, Q169).
+   */
+  thumbPath: z.string().min(1).max(500).nullable().default(null),
 });
 export type FileFinish = z.infer<typeof fileFinishSchema>;
+
+/** A thumbnail made later for a picture that has none (the backfill in Manage, Q170). */
+export const fileThumbSchema = z.object({ id: idSchema, thumbPath: z.string().min(1).max(500) });
+export type FileThumb = z.infer<typeof fileThumbSchema>;
+
+/** A thumbnail is a JPEG of at most this many bytes (640px at 0.82 is 10–80 KB; Q171). */
+export const THUMB_MAX_BYTES = 1024 * 1024;
 export type FileFinishInput = z.input<typeof fileFinishSchema>;
 
 export const fileUpdateSchema = z.object({

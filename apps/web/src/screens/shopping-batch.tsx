@@ -7,7 +7,7 @@ import { listText, money } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
-import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { useRefreshShopping } from '@/lib/refresh';
 
 type Change = { id: string; roomId?: string | null; categoryId?: string; jobId?: string | null };
 type Field = 'roomId' | 'categoryId' | 'jobId';
@@ -33,7 +33,7 @@ export function BatchBar({
 }) {
   const trpc = useTRPC();
   const toasts = useToasts();
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const categories = useQuery(trpc.categories.list.queryOptions());
   const jobs = useQuery(trpc.jobs.list.queryOptions());

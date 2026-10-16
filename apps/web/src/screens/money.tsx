@@ -14,7 +14,7 @@ import {
   type BudgetUpdate,
   type BudgetUpdateInput,
 } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { ConfirmRemove } from '@/components/confirm-remove';
@@ -31,6 +31,7 @@ import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshMoney } from '@/lib/refresh';
 
 type Summary = RouterOutputs['money']['summary'];
 type Budget = RouterOutputs['budget']['get'];
@@ -38,17 +39,8 @@ type Adjustment = Budget['adjustments'][number];
 
 const dateText = (d: string | null) => (d && isIsoDate(d) ? formatIsoDate(d) : '');
 
-/** Everything a change to the pool can move. */
-function useInvalidatePool() {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.budget.pathFilter()),
-      queryClient.invalidateQueries(trpc.money.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
-}
+/** Everything a change to the pool can move: the shared money list (OD-115, Q137). */
+const useInvalidatePool = useRefreshMoney;
 
 /**
  * The Money page (M3, OD-53; Q24): the headline and tape, the pool and its adjustments (the

@@ -9,7 +9,7 @@ import {
   type PhaseCreate,
   type PhaseCreateInput,
 } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
@@ -29,17 +29,17 @@ import { SaveState } from '@/components/save-state';
 import { TapeStrip } from '@/components/tape';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshPhases } from '@/lib/refresh';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
 export function Phases() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { isAdmin } = useMe();
   const phases = useQuery(trpc.phases.list.queryOptions());
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   useReturnFocus(adding ? 'add-phase' : editingId ? `phase-${editingId}` : null);
-  const invalidate = () => queryClient.invalidateQueries(trpc.phases.pathFilter());
+  const invalidate = useRefreshPhases();
   const create = useMutation(
     trpc.phases.create.mutationOptions({
       onSuccess: async () => {
@@ -248,18 +248,8 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
  */
 function PhaseStatus({ phase }: { phase: Phase }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const save = useMutation(
-    trpc.phases.update.mutationOptions({
-      onSuccess: () =>
-        Promise.all([
-          queryClient.invalidateQueries(trpc.phases.pathFilter()),
-          queryClient.invalidateQueries(trpc.money.pathFilter()),
-          queryClient.invalidateQueries(trpc.home.pathFilter()),
-          queryClient.invalidateQueries(trpc.shoppingLines.pathFilter()),
-        ]),
-    }),
-  );
+  const refresh = useRefreshPhases();
+  const save = useMutation(trpc.phases.update.mutationOptions({ onSuccess: () => refresh() }));
   const what = `Status of ${phase.name}`;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -282,16 +272,10 @@ type PhasePatch = Omit<Parameters<typeof trpcClient.phases.update.mutate>[0], 'i
 
 /** Save part of a phase, then refresh everything that shows phases. */
 function useSavePhase(id: string) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshPhases();
   return async (patch: PhasePatch) => {
     await trpcClient.phases.update.mutate({ id, ...patch });
-    await Promise.all([
-      queryClient.invalidateQueries(trpc.phases.pathFilter()),
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.money.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
+    await refresh();
   };
 }
 

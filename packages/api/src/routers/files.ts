@@ -3,18 +3,22 @@ import {
   fileListManySchema,
   fileListSchema,
   fileStartSchema,
+  fileThumbSchema,
   fileUpdateSchema,
   idSchema,
 } from '@reparo/shared';
 import { z } from 'zod';
-import { editorProcedure, memberProcedure, router } from '../trpc';
+import { adminProcedure, editorProcedure, memberProcedure, router } from '../trpc';
 import {
+  finishThumb,
   finishUpload,
   listFiles,
+  listPicturesWithoutThumbs,
   listJobProgressPhotos,
   listManyFiles,
   listRoomCovers,
   removeFile,
+  startThumb,
   startUpload,
   updateFile,
 } from '../services/files';
@@ -48,4 +52,12 @@ export const filesRouter = router({
   remove: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removeFile(ctx.db, input.id)),
+  /** Pictures from before thumbnails, for the admin's backfill in Manage (OD-115, Q170). */
+  withoutThumbs: adminProcedure.query(({ ctx }) => listPicturesWithoutThumbs(ctx.db, ctx.storage)),
+  thumbLink: adminProcedure
+    .input(z.object({ id: idSchema }))
+    .mutation(({ ctx, input }) => startThumb(ctx.db, ctx.storage, input.id)),
+  setThumb: adminProcedure
+    .input(fileThumbSchema)
+    .mutation(({ ctx, input }) => finishThumb(ctx.db, ctx.storage, input)),
 });

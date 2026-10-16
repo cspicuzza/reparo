@@ -14,7 +14,7 @@ import {
   type PaymentCreate,
   type PaymentCreateInput,
 } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -31,23 +31,13 @@ import { useTRPC } from '@/lib/trpc';
 import type { Job } from '@/lib/work';
 import { LinesPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshMoney } from '@/lib/refresh';
 
 type CostLine = RouterOutputs['costLines']['list'][number];
 type Payment = RouterOutputs['payments']['list'][number];
 
-/** Everything a money change on a job can move: the job, the lists, the totals. */
-function useInvalidateMoney() {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.costLines.pathFilter()),
-      queryClient.invalidateQueries(trpc.payments.pathFilter()),
-      queryClient.invalidateQueries(trpc.money.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
-}
+/** Everything a money change on a job can move: the shared money list (OD-115, Q137). */
+const useInvalidateMoney = useRefreshMoney;
 
 /**
  * A job's money (M3, OD-51; Q10): what it costs (cost lines), what's been paid toward it

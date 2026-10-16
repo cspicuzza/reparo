@@ -7,7 +7,7 @@ import { EditPanel } from '@/components/edit-panel';
 import { Button } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
-import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { useRefreshShopping } from '@/lib/refresh';
 import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingLinePanel } from './shopping-line-panel';
 import { ShoppingRows } from './shopping-list';
@@ -20,7 +20,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
   const trpc = useTRPC();
   const { canEdit } = useMe();
   const lines = useQuery(trpc.shoppingLines.list.queryOptions({ roomId }));
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const [adding, setAdding] = useState(false);
   const files = useLineFiles(lines.data);
   const [openId, setOpenId] = useState<string | null>(null);

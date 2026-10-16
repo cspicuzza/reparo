@@ -27,7 +27,7 @@ import { lineWhere, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
-import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { useRefreshShopping } from '@/lib/refresh';
 import { cn } from '@/lib/utils';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
 
@@ -78,7 +78,7 @@ export function ShoppingLinePanel({
 
 /** Save part of a line, then refresh everything that shows it. Returns the saved line. */
 function useSaveLine(id: string) {
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   return async (patch: LinePatch) => {
     const saved = await trpcClient.shoppingLines.update.mutate({ id, ...patch });
     await invalidate();
@@ -160,7 +160,7 @@ function EditBody({
 }) {
   const trpc = useTRPC();
   const toasts = useToasts();
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const save = useSaveLine(line.id);
   const phases = useQuery(trpc.phases.list.queryOptions());
   const rooms = useQuery(trpc.rooms.list.queryOptions());
@@ -641,7 +641,7 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
 /** "Rename this store everywhere" (OD-69): fixes the spelling on every line that uses it. */
 function RenameStore({ store, onDone }: { store: string; onDone: () => void }) {
   const trpc = useTRPC();
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const [to, setTo] = useState(store);
   const rename = useMutation(
     trpc.shoppingLines.renameStore.mutationOptions({

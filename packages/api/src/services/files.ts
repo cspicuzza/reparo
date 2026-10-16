@@ -21,6 +21,8 @@ import {
 import {
   FILE_KINDS_BY_OWNER,
   fileProblem,
+  PICTURE_KINDS,
+  THUMB_MAX_BYTES,
   today,
   type FileFinish,
   type FileKindInput,
@@ -28,6 +30,7 @@ import {
   type FileOwnerRef,
   type FileOwnerRefs,
   type FileStart,
+  type FileThumb,
   type FileUpdate,
   type RoomCover,
 } from '@reparo/shared';
@@ -58,6 +61,33 @@ function pathFor(owner: FileOwner, ownerId: string, mimeType: string): string {
 }
 
 const PATH_RE = /^([a-z_]+)\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/;
+
+/** A picture's thumbnail sits beside it under its own id: `room/<uuid>/<uuid>.thumb.jpg`. */
+function thumbPathFor(owner: string, ownerId: string): string {
+  return `${owner}/${ownerId}/${randomUUID()}.thumb.jpg`;
+}
+
+const THUMB_RE = /^([a-z_]+)\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.thumb\.jpg$/;
+
+/**
+ * The thumbnail path to record, or null (OD-115, Q169): it has to sit beside this owner's
+ * files and storage has to hold a small JPEG there. A bad or missing thumbnail never fails the
+ * upload itself; the original is shown instead.
+ */
+async function checkedThumb(
+  storage: Storage,
+  owner: string,
+  ownerId: string,
+  thumbPath: string | null,
+): Promise<string | null> {
+  if (!thumbPath) return null;
+  const m = THUMB_RE.exec(thumbPath);
+  if (!m || m[1] !== owner || m[2] !== ownerId) return null;
+  const stored = await storage.stat(thumbPath);
+  if (!stored || stored.mimeType !== 'image/jpeg') return null;
+  if (stored.sizeBytes <= 0 || stored.sizeBytes > THUMB_MAX_BYTES) return null;
+  return thumbPath;
+}
 
 function assertKind(owner: FileOwner, kind: FileKindInput) {
   const kinds: readonly FileKindInput[] = FILE_KINDS_BY_OWNER[owner];
@@ -147,7 +177,13 @@ export async function startUpload(db: Db, storage: Storage, input: FileStart) {
   await assertOwner(db, input.ownerType, input.ownerId);
   const path = pathFor(input.ownerType, input.ownerId, input.mimeType);
   const { url } = await storage.createUploadUrl(path);
-  return { path, uploadUrl: url };
+  if (!PICTURE_KINDS.includes(input.kind)) {
+    return { path, uploadUrl: url, thumbPath: null, thumbUploadUrl: null };
+  }
+  // Pictures also get a link for the small JPEG the browser makes (OD-115, Q169).
+  const thumbPath = thumbPathFor(input.ownerType, input.ownerId);
+  const thumb = await storage.createUploadUrl(thumbPath);
+  return { path, uploadUrl: url, thumbPath, thumbUploadUrl: thumb.url };
 }
 
 /** Step 3: record the file, going by what storage actually holds (size and type). */
@@ -171,6 +207,9 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
     .from(files)
     .where(and(eq(files.bucket, storage.bucket), eq(files.path, input.path)));
   if (existing.length > 0) throw conflict('That file is already saved');
+  const thumbPath = PICTURE_KINDS.includes(input.kind)
+    ? await checkedThumb(storage, input.ownerType, input.ownerId, input.thumbPath)
+    : null;
 
   const [row] = await db
     .insert(files)
@@ -178,6 +217,7 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
       kind: input.kind,
       bucket: storage.bucket,
       path: input.path,
+      thumbPath,
       mimeType: stored.mimeType,
       sizeBytes: stored.sizeBytes,
       originalName: input.originalName,
@@ -197,10 +237,13 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
 
 type Row = { file: File; jobName: string | null };
 
-/** What the web gets for each file: the row's useful fields plus a short-lived view link. */
+/**
+ * What the web gets for each file: the row's useful fields plus short-lived view links for the
+ * file and, for pictures, its thumbnail. Both are signed in the same storage call.
+ */
 async function withUrls(storage: Storage, rows: Row[], coverId: string | null) {
   const urls = await storage.createViewUrls(
-    rows.map((r) => r.file.path),
+    rows.flatMap((r) => (r.file.thumbPath ? [r.file.path, r.file.thumbPath] : [r.file.path])),
     VIEW_SECONDS,
   );
   return rows.map(({ file: f, jobName }) => ({
@@ -220,6 +263,8 @@ async function withUrls(storage: Storage, rows: Row[], coverId: string | null) {
     isCover: f.id === coverId,
     /** Null when storage no longer has the object; the web shows a "missing" tile. */
     url: urls.get(f.path) ?? null,
+    /** The small JPEG for lists and tiles; null when there's none, so lists use `url`. */
+    thumbUrl: f.thumbPath ? (urls.get(f.thumbPath) ?? null) : null,
   }));
 }
 
@@ -304,17 +349,25 @@ export async function setRoomCover(db: Db, { roomId, fileId }: RoomCover) {
 /** Each room's cover picture link, for the Rooms list (Q16). Rooms without one are absent. */
 export async function listRoomCovers(db: Db, storage: Storage) {
   const rows = await db
-    .select({ roomId: rooms.id, path: files.path, caption: files.caption })
+    .select({
+      roomId: rooms.id,
+      fileId: files.id,
+      path: files.path,
+      thumbPath: files.thumbPath,
+      caption: files.caption,
+    })
     .from(rooms)
     .innerJoin(files, and(eq(files.id, rooms.coverFileId), live()))
     .where(isNull(rooms.deletedAt));
   const urls = await storage.createViewUrls(
-    rows.map((r) => r.path),
+    rows.flatMap((r) => (r.thumbPath ? [r.path, r.thumbPath] : [r.path])),
     VIEW_SECONDS,
   );
   return rows.flatMap((r) => {
     const url = urls.get(r.path);
-    return url ? [{ roomId: r.roomId, url, caption: r.caption }] : [];
+    // Covers are only ever shown small, so the thumbnail is the link when there is one.
+    const thumb = r.thumbPath ? urls.get(r.thumbPath) : null;
+    return url ? [{ roomId: r.roomId, id: r.fileId, url: thumb ?? url, caption: r.caption }] : [];
   });
 }
 
@@ -344,4 +397,46 @@ export async function listJobProgressPhotos(db: Db, storage: Storage, jobId: str
     .orderBy(desc(files.takenOn), desc(files.createdAt), asc(files.id));
   const views = await withUrls(storage, rows, null);
   return views.map((v, i) => ({ ...v, roomName: rows[i]?.roomName ?? '' }));
+}
+
+/**
+ * Pictures that have no thumbnail yet, oldest first, with a link to the original so the
+ * admin's browser can make one (the backfill in Manage; OD-115, Q170).
+ */
+export async function listPicturesWithoutThumbs(db: Db, storage: Storage) {
+  const rows = await db
+    .select({ file: files, jobName: sql<string | null>`null` })
+    .from(files)
+    .where(
+      and(
+        live(),
+        isNull(files.thumbPath),
+        inArray(files.kind, [...PICTURE_KINDS]),
+        sql`${files.mimeType} like 'image/%'`,
+      ),
+    )
+    .orderBy(asc(files.createdAt), asc(files.id));
+  return withUrls(storage, rows, null);
+}
+
+/** A link for one picture's thumbnail, made later (Q170). */
+export async function startThumb(db: Db, storage: Storage, id: string) {
+  const f = await getLive(db, id);
+  if (!PICTURE_KINDS.includes(f.kind)) throw badRequest('Only pictures get a thumbnail');
+  const thumbPath = thumbPathFor(f.ownerType, f.ownerId);
+  const { url } = await storage.createUploadUrl(thumbPath);
+  return { thumbPath, uploadUrl: url };
+}
+
+/** Record a thumbnail made later, once storage holds it (Q170). */
+export async function finishThumb(db: Db, storage: Storage, { id, thumbPath }: FileThumb) {
+  const f = await getLive(db, id);
+  const checked = await checkedThumb(storage, f.ownerType, f.ownerId, thumbPath);
+  if (!checked) throw badRequest('The thumbnail didn’t arrive. Try again.');
+  const [row] = await db
+    .update(files)
+    .set({ thumbPath: checked })
+    .where(eq(files.id, f.id))
+    .returning();
+  return { id: row?.id ?? f.id, thumbPath: checked };
 }

@@ -57,6 +57,12 @@ export const files = pgTable(
     bucket: text('bucket').notNull(),
     /** Object path inside the bucket. Unique per bucket. */
     path: text('path').notNull(),
+    /**
+     * Pictures: a small JPEG made in the browser at upload (640px on the longest side), shown
+     * in lists and tiles; the original stays for the viewer. Null for files and for pictures
+     * from before thumbnails, which show the original (OD-115, Q136; Q169–Q171).
+     */
+    thumbPath: text('thumb_path'),
     mimeType: text('mime_type').notNull(),
     sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
     originalName: text('original_name').notNull(),

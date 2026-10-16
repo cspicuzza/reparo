@@ -14,7 +14,7 @@ import { lineDetails, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
-import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
+import { useRefreshShopping } from '@/lib/refresh';
 import { cn } from '@/lib/utils';
 
 /**
@@ -127,6 +127,8 @@ function ShoppingRow({
   const [brokenThumb, setBrokenThumb] = useState<string | null>(null);
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
+  // The small JPEG when there is one; the original before thumbnails (OD-115, Q136).
+  const thumbSrc = thumb ? (thumb.thumbUrl ?? thumb.url) : null;
   const receipts = files.filter((f) => f.kind === 'receipt');
 
   const details = (
@@ -196,10 +198,10 @@ function ShoppingRow({
         className={cn(
           'grid items-start gap-x-3 gap-y-3 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:gap-x-4',
           selection
-            ? thumb?.url
+            ? thumbSrc
               ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
               : 'grid-cols-[auto_minmax(0,1fr)_auto]'
-            : thumb?.url
+            : thumbSrc
               ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
               : 'grid-cols-[minmax(0,1fr)_auto]',
         )}
@@ -215,16 +217,16 @@ function ShoppingRow({
             <span className="sr-only">Select {line.name}</span>
           </label>
         ) : null}
-        {thumb?.url && brokenThumb === thumb.url ? (
+        {thumbSrc && brokenThumb === thumbSrc ? (
           // A picture that won't load leaves a plain tile, not a gap (OD-106, Q110).
           <span aria-hidden className="size-14 shrink-0 rounded-lg border border-border bg-inset" />
-        ) : thumb?.url ? (
+        ) : thumbSrc ? (
           <img
-            src={thumb.url}
+            src={thumbSrc}
             alt=""
             loading="lazy"
             decoding="async"
-            onError={() => setBrokenThumb(thumb.url)}
+            onError={() => setBrokenThumb(thumbSrc)}
             className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
           />
         ) : pictureColumn ? (
@@ -327,7 +329,7 @@ function PurchaseForm({
   onLeaving: (refresh: () => Promise<unknown>) => Promise<void>;
 }) {
   const trpc = useTRPC();
-  const invalidate = useInvalidateShopping();
+  const invalidate = useRefreshShopping();
   const toasts = useToasts();
   const update = useMutation(trpc.shoppingLines.update.mutationOptions());
   const undo = useMutation(trpc.shoppingLines.update.mutationOptions({ onSuccess: invalidate }));

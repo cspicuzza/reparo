@@ -2,7 +2,7 @@ import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { jobCreateSchema, type JobCreate, type JobCreateInput } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useController, useForm, useWatch } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { VendorPicker } from '@/components/vendor-picker';
@@ -12,6 +12,7 @@ import { PHASE_STATUS_LABEL } from '@/lib/work';
 import { Button } from '@/components/ui/button';
 import { FormPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshJobs } from '@/lib/refresh';
 
 type Props = {
   idPrefix: string;
@@ -27,17 +28,11 @@ type Props = {
  */
 export function JobEditor({ idPrefix, onSaved, onCancel }: Props) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const phases = useQuery(trpc.phases.list.queryOptions());
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const vendors = useQuery(trpc.vendors.list.queryOptions());
 
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
+  const invalidate = useRefreshJobs();
   const create = useMutation(trpc.jobs.create.mutationOptions());
   const error = create.error;
 

@@ -1,6 +1,6 @@
 import { Pencil } from 'lucide-react';
 import { useReturnFocus } from '@/lib/editor-focus';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { StatusBadge, StatusSelect } from '@/components/status';
@@ -13,6 +13,7 @@ import { celebrateMended } from '@/lib/mended';
 import { SaveState } from '@/components/save-state';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshJobs } from '@/lib/refresh';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -76,14 +77,14 @@ function JobRow({
   onDone: () => void;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshJobs();
   // Each row saves on its own, so one save never locks or hides another row (OD-72).
   const setStatus = useMutation(
     trpc.jobRooms.update.mutationOptions({
       onSuccess: (_data, vars) => {
         if (vars.status === 'completed') celebrateMended();
         // Returning the refetch keeps the save pending until the new status is on screen.
-        return queryClient.invalidateQueries(trpc.jobs.pathFilter());
+        return refresh();
       },
     }),
   );

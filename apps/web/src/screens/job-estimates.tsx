@@ -11,7 +11,7 @@ import {
   type EstimateForm as EstimateFormValues,
   type EstimateFormInput,
 } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
@@ -28,6 +28,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { vendorOptions } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
+import { useRefreshMoney } from '@/lib/refresh';
 
 type Estimate = RouterOutputs['estimates']['list'][number];
 
@@ -41,7 +42,6 @@ const date = (d: string | null) => (d && isIsoDate(d) ? formatIsoDate(d) : null)
  */
 export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const estimates = useQuery(trpc.estimates.list.queryOptions({ jobId: job.id }));
   const quotes = useQuery({
     ...trpc.files.listMany.queryOptions({
@@ -53,14 +53,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   useReturnFocus(adding ? `add-estimate-${job.id}` : editing ? `estimate-${editing}` : null);
-  const refresh = () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.estimates.pathFilter()),
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.costLines.pathFilter()),
-      queryClient.invalidateQueries(trpc.money.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-    ]);
+  const refresh = useRefreshMoney();
   const create = useMutation(trpc.estimates.create.mutationOptions());
   const update = useMutation(trpc.estimates.update.mutationOptions());
 

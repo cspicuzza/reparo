@@ -33,6 +33,7 @@ import type { Job } from '@/lib/work';
 import { LinesPlaceholder, ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
+import { useRefreshJobs } from '@/lib/refresh';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
 type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
@@ -259,14 +260,10 @@ function VendorRow({
 
 /** Save part of a vendor, then refresh vendors and the jobs that show them. */
 function useSaveVendor(id: string) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshJobs();
   return async (patch: Omit<VendorUpdateInput, 'id'>) => {
     await trpcClient.vendors.update.mutate({ id, ...patch });
-    await Promise.all([
-      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-    ]);
+    await refresh();
   };
 }
 
@@ -306,14 +303,9 @@ function VendorBody({
   onArchived: () => void;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const save = useSaveVendor(vendor.id);
   const toasts = useToasts();
-  const refresh = () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-    ]);
+  const refresh = useRefreshJobs();
   // Archiving offers Undo for 10 seconds, through the same restore as the archived list
   // (OD-113, Q129).
   const archive = useMutation(

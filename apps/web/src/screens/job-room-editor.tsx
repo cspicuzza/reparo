@@ -1,10 +1,11 @@
 import { jobRoomUpdateSchema } from '@reparo/shared';
-import { useQueryClient } from '@tanstack/react-query';
+
 import { AutoSaveField } from '@/components/auto-save-field';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstField } from '@/lib/editor-focus';
 import { problemWith } from '@/lib/problem';
-import { trpcClient, useTRPC } from '@/lib/trpc';
+import { trpcClient } from '@/lib/trpc';
+import { useRefreshJobs } from '@/lib/refresh';
 
 /**
  * One room's own spec and notes on a job. A blank spec means "same as the job" — the room
@@ -24,13 +25,10 @@ export function JobRoomEditor({
   roomName: string;
   onDone: () => void;
 }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshJobs();
   const ref = useFocusFirstField<HTMLDivElement>();
   const save = (input: { spec?: string; notes?: string }) =>
-    trpcClient.jobRooms.update
-      .mutate({ id: jobRoom.id, ...input })
-      .then(() => queryClient.invalidateQueries(trpc.jobs.pathFilter()));
+    trpcClient.jobRooms.update.mutate({ id: jobRoom.id, ...input }).then(refresh);
   const id = (f: string) => `${idPrefix}-${f}`;
 
   return (

@@ -20,10 +20,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Re-run route guards and refetch when the session changes (sign-in return, sign-out, refresh).
-supabase.auth.onAuthStateChange(() => {
-  void queryClient.invalidateQueries();
-  void router.invalidate();
+// Re-run route guards and refetch only when who's signed in changes: signing in as someone,
+// or signing out (OD-115, Q136). Not on the hourly TOKEN_REFRESHED, which used to refetch
+// everything and re-sign every picture link. SIGNED_IN also fires "when refocusing a tab"
+// (@supabase/auth-js 2.117.3 onAuthStateChange docs, read from node_modules), so it only counts
+// when the user is a different one.
+let signedInAs: string | null = null;
+supabase.auth.onAuthStateChange((event, session) => {
+  const who = session?.user.id ?? null;
+  const changed = who !== signedInAs;
+  signedInAs = who;
+  if (event === 'INITIAL_SESSION') return;
+  if (event === 'SIGNED_OUT' || (event === 'SIGNED_IN' && changed)) {
+    void queryClient.invalidateQueries();
+    void router.invalidate();
+  }
 });
 
 const container = document.getElementById('root');

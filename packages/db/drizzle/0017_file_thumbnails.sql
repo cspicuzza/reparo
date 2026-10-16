@@ -1,0 +1,1 @@
+ALTER TABLE "files" ADD COLUMN "thumb_path" text;

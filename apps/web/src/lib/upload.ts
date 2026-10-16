@@ -8,6 +8,7 @@ import {
 } from '@reparo/shared';
 import type { RouterOutputs } from '@reparo/api';
 import { env } from './env';
+import { makeThumbnail } from './thumbnail';
 import { trpcClient } from './trpc';
 
 // Uploading one file (M4, OD-56): ask the API for a link, send the bytes straight to storage
@@ -51,7 +52,7 @@ export function nameFor(file: Pick<File, 'name' | 'type'>, now = new Date()): st
   return `Pasted picture ${stamp}.${ext === 'jpeg' ? 'jpg' : ext}`;
 }
 
-function put(url: string, file: File, onProgress: (fraction: number) => void): Promise<void> {
+function put(url: string, file: Blob, onProgress: (fraction: number) => void): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
@@ -85,8 +86,12 @@ export async function uploadFile(
     mimeType: file.type,
     sizeBytes: file.size,
   };
-  const { path, uploadUrl } = await trpcClient.files.uploadLink.mutate(base);
+  const { path, uploadUrl, thumbPath, thumbUploadUrl } =
+    await trpcClient.files.uploadLink.mutate(base);
   await put(uploadUrl, file, onProgress);
+  // Pictures also send a small JPEG for lists and tiles (OD-115, Q169). If it can't be made or
+  // sent, the picture is saved anyway and lists show the original.
+  const thumb = thumbUploadUrl ? await sendThumbnail(file, thumbUploadUrl) : false;
   onProgress(1);
   return trpcClient.files.create.mutate({
     ...base,
@@ -94,7 +99,19 @@ export async function uploadFile(
     caption: target.caption ?? '',
     takenOn: target.takenOn ?? null,
     jobId: target.jobId ?? null,
+    thumbPath: thumb ? thumbPath : null,
   });
+}
+
+/** Make a picture's thumbnail and send it; false when either step fails. */
+export async function sendThumbnail(source: Blob, uploadUrl: string): Promise<boolean> {
+  try {
+    const thumb = await makeThumbnail(source);
+    await put(uploadUrl, thumb, () => {});
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** "2.4 MB", "830 KB": sizes as people read them. */

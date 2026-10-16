@@ -1,5 +1,5 @@
 import { useReturnFocus } from '@/lib/editor-focus';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, Mail, Pencil, Phone } from 'lucide-react';
 import { useState } from 'react';
@@ -26,6 +26,7 @@ import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
+import { useRefreshJobs } from '@/lib/refresh';
 
 /**
  * One job (M2, OD-46; replaces the item page): who's doing it, the house-wide spec, and each
@@ -118,18 +119,11 @@ function BackToJobs() {
 
 function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
   useReturnFocus(editingRoom ? `jr-${editingRoom}` : null);
   const toasts = useToasts();
-  const invalidate = () =>
-    Promise.all([
-      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-      queryClient.invalidateQueries(trpc.home.pathFilter()),
-      queryClient.invalidateQueries(trpc.rooms.pathFilter()),
-      queryClient.invalidateQueries(trpc.phases.pathFilter()),
-    ]);
+  const invalidate = useRefreshJobs();
   const mendIfCompleted = (vars: { status?: string | undefined }) => {
     if (vars.status === 'completed') celebrateMended();
   };

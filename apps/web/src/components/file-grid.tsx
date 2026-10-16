@@ -51,7 +51,8 @@ export function FileGrid({
                 <span className="relative block aspect-[4/3] overflow-hidden rounded-lg border border-border bg-inset">
                   {f.url ? (
                     <img
-                      src={f.url}
+                      // The small JPEG when there is one; the original before thumbnails (Q136).
+                      src={f.thumbUrl ?? f.url}
                       alt=""
                       loading="lazy"
                       decoding="async"
