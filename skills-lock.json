@@ -89,6 +89,12 @@
       "sourceType": "github",
       "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
       "computedHash": "27b1e8c953e26f962e3314281601959b04787edf3fd7fccadce176ff844c688d"
+    },
+    "uizze-ui": {
+      "source": "uizze/uizze",
+      "sourceType": "github",
+      "skillPath": "skills/uizze-ui/SKILL.md",
+      "computedHash": "c4a04e7f240a9583c17f9277e8c6ebd0400a7be6bc07c4b29d2c9b1446558e2b"
     }
   }
 }
