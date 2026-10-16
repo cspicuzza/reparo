@@ -53,21 +53,22 @@ export function TapeStrip(props: TapeProps) {
       style={{ height: h }}
     >
       <rect x="0" y="0" width="1000" height={h} rx="3" className="fill-tape" />
-      {filled > 0 ? (
-        <rect
-          x="0"
-          y={band}
-          width="1000"
-          height={h - band}
-          // Scaled rather than resized, so a new value slides in (OD-81) without layout work.
-          style={{
-            transform: `scaleX(${filled})`,
-            transformBox: 'fill-box',
-            transformOrigin: 'left',
-          }}
-          className="fill-tape-fill transition-transform duration-300 ease-out"
-        />
-      ) : null}
+      {/* Scaled rather than resized, so a new value slides in (OD-81) without layout work.
+          Always drawn, even empty, so the first payment or purchase slides in from zero rather
+          than popping in (OD-131, Q188). A tape that first appears already filled doesn't move:
+          nothing animates on page load. Reduced motion drops the slide (index.css). */}
+      <rect
+        x="0"
+        y={band}
+        width="1000"
+        height={h - band}
+        style={{
+          transform: `scaleX(${filled})`,
+          transformBox: 'fill-box',
+          transformOrigin: 'left',
+        }}
+        className="fill-tape-fill transition-transform duration-300 ease-out"
+      />
       {ticks.map((t) => (
         <line
           key={t.at}
@@ -128,23 +129,19 @@ export function BudgetTapeStrip({
       className={cn('relative overflow-hidden rounded-sm bg-tape', className)}
       style={{ height: h }}
     >
-      {segments.spent > 0 ? (
-        <span aria-hidden className={cn(fill, 'bg-tape-fill')} style={part(0, segments.spent)} />
-      ) : null}
-      {segments.committed > 0 ? (
-        <span
-          aria-hidden
-          className={fill}
-          style={{ ...COMMITTED_STRIPES, ...part(segments.spent, segments.committed) }}
-        />
-      ) : null}
-      {segments.over > 0 ? (
-        <span
-          aria-hidden
-          className={cn(fill, 'bg-destructive')}
-          style={{ ...part(segments.budgetAt, segments.over), top: 0 }}
-        />
-      ) : null}
+      {/* Every part is drawn even at zero width, so a first payment or a first overrun slides
+          in rather than popping in (OD-131, Q188). */}
+      <span aria-hidden className={cn(fill, 'bg-tape-fill')} style={part(0, segments.spent)} />
+      <span
+        aria-hidden
+        className={fill}
+        style={{ ...COMMITTED_STRIPES, ...part(segments.spent, segments.committed) }}
+      />
+      <span
+        aria-hidden
+        className={cn(fill, 'bg-destructive')}
+        style={{ ...part(segments.budgetAt, segments.over), top: 0 }}
+      />
       <svg
         aria-hidden
         viewBox={`0 0 1000 ${h}`}
