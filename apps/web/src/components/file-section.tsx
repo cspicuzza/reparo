@@ -54,6 +54,7 @@ export function FileSection({
   const queryClient = useQueryClient();
   const [open, setOpen] = useState<number | null>(null);
   const Heading = headingLevel;
+  const uploading = canEdit && target !== undefined && uploadLabel !== undefined;
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
@@ -69,6 +70,8 @@ export function FileSection({
         </Heading>
         {description ? <p className="mt-1 text-muted-foreground">{description}</p> : null}
       </div>
+      {/* With nothing here yet, an editor gets just the upload box, which says so, rather than
+          an empty grid above a separate box (OD-95). */}
       {files.length > 0 ? (
         <FileGrid
           files={files}
@@ -78,13 +81,18 @@ export function FileSection({
           badge={badge}
           className={gridClassName}
         />
-      ) : (
+      ) : uploading ? null : (
         <PlanGrid className="h-32 rounded-xl">{emptyText}</PlanGrid>
       )}
-      {canEdit && target && uploadLabel ? (
+      {uploading ? (
         <div className="flex flex-col gap-3">
           {beforeUpload}
-          <FileUpload target={target} label={uploadLabel} onUploaded={refresh} />
+          <FileUpload
+            target={target}
+            label={uploadLabel}
+            note={files.length === 0 ? emptyText : undefined}
+            onUploaded={refresh}
+          />
         </div>
       ) : null}
       <PictureViewer

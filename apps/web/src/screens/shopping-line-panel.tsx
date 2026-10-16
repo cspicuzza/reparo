@@ -198,7 +198,7 @@ function EditBody({
         files={pictures}
         target={() => ({ ownerType: 'shopping_line', ownerId: line.id, kind: 'product_image' })}
         uploadLabel="Add pictures"
-        emptyText="No pictures yet. Copy one from the store's page and paste it below."
+        emptyText="No pictures yet. Copy one from the store's page and paste it here."
         canEdit
         gridClassName="grid-cols-2 sm:grid-cols-2 lg:grid-cols-2"
       />

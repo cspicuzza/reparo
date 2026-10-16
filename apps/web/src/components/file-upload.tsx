@@ -18,6 +18,7 @@ export function FileUpload({
   label,
   onUploaded,
   compact = false,
+  note,
   className,
 }: {
   /** Where the files go. Read when each upload starts, so a job picked just before counts. */
@@ -27,6 +28,8 @@ export function FileUpload({
   onUploaded: (file: FileView) => void | Promise<void>;
   /** Just the button, for a row (a payment's receipt): no drop box or paste hint. */
   compact?: boolean;
+  /** Said first inside the box, e.g. that nothing is here yet (OD-95). */
+  note?: string | undefined;
   className?: string;
 }) {
   const inputId = useId();
@@ -109,6 +112,7 @@ export function FileUpload({
           <Upload aria-hidden className="size-4" />
           {label}
         </Button>
+        {note && !compact ? <p className="text-sm text-muted-foreground">{note}</p> : null}
         {compact ? null : (
           <p className="hidden text-sm text-muted-foreground sm:block">
             Or drop files here. To paste a copied picture, click this box and paste.
