@@ -9,7 +9,7 @@ import {
   type VendorCreateInput,
 } from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { Mail, PanelRightOpen, Phone, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -58,6 +58,9 @@ export function Vendors() {
   });
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-vendor' : null);
+  // The open vendor lives in the address, so it can be linked to (OD-112, Q127).
+  const search = useSearch({ from: '/_app/vendors/' });
+  const navigate = useNavigate({ from: '/vendors/' });
   const invalidate = () => queryClient.invalidateQueries(trpc.vendors.pathFilter());
   const create = useMutation(
     trpc.vendors.create.mutationOptions({
@@ -136,6 +139,9 @@ export function Vendors() {
                 jobs={jobs.data?.filter((j) => j.vendorId === v.id) ?? []}
                 documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
                 sources={{ jobs, docs }}
+                open={search.vendor === v.id}
+                onOpen={() => void navigate({ search: { vendor: v.id } })}
+                onClose={() => void navigate({ search: {}, replace: true })}
                 canEdit={canEdit}
                 isAdmin={isAdmin}
               />
@@ -191,6 +197,9 @@ function VendorRow({
   jobs,
   documents,
   sources,
+  open,
+  onOpen,
+  onClose,
   canEdit,
   isAdmin,
 }: {
@@ -199,10 +208,13 @@ function VendorRow({
   documents: FileView[];
   /** Where the jobs and documents came from, so the panel shows loading honestly (OD-110). */
   sources: { jobs: QuerySource; docs: QuerySource };
+  /** Whether the panel is open: `?vendor=` names this vendor. */
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
   canEdit: boolean;
   isAdmin: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   useReturnFocus(open ? `vendor-${vendor.id}` : null);
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -215,7 +227,7 @@ function VendorRow({
         type="button"
         variant="ghost"
         className="-mr-3"
-        onClick={() => setOpen(true)}
+        onClick={onOpen}
         data-return-focus={`vendor-${vendor.id}`}
       >
         <PanelRightOpen aria-hidden absoluteStrokeWidth strokeWidth={2} />
@@ -227,7 +239,7 @@ function VendorRow({
         title={vendor.name}
         focusFirstField={false}
         heading={canEdit ? <VendorNameField vendor={vendor} /> : undefined}
-        onClose={() => setOpen(false)}
+        onClose={onClose}
       >
         <VendorBody
           vendor={vendor}
@@ -236,7 +248,7 @@ function VendorRow({
           sources={sources}
           canEdit={canEdit}
           isAdmin={isAdmin}
-          onArchived={() => setOpen(false)}
+          onArchived={onClose}
         />
       </EditPanel>
     </div>

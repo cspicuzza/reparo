@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jobCountText, matchesVendor, telHref, vendorOptions } from './vendors';
+import { jobCountText, matchesVendor, parseVendorsSearch, telHref, vendorOptions } from './vendors';
 
 describe('vendor helpers', () => {
   it('matches the name or trade, ignoring case and spaces around the text', () => {
@@ -21,6 +21,14 @@ describe('vendor helpers', () => {
   it('makes tel: links from typed numbers', () => {
     expect(telHref('(904) 555-0142')).toBe('tel:9045550142');
     expect(telHref(' +1 904 555 0142 ')).toBe('tel:+19045550142');
+  });
+
+  it('keeps a vendor id in the address and drops anything else', () => {
+    const id = '0b9a2d4e-5f61-4c7a-9d3e-2a1b4c5d6e7f';
+    expect(parseVendorsSearch({ vendor: id })).toEqual({ vendor: id });
+    expect(parseVendorsSearch({ vendor: 'nope' })).toEqual({});
+    expect(parseVendorsSearch({ vendor: 3, other: 'x' })).toEqual({});
+    expect(parseVendorsSearch({})).toEqual({});
   });
 
   it('says how many jobs a vendor is on', () => {

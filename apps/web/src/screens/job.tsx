@@ -399,6 +399,7 @@ function VendorBlock({ vendor }: { vendor: Job['vendor'] }) {
     <div className="mt-3">
       <Link
         to="/vendors"
+        search={{ vendor: vendor.id }}
         className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
       >
         {vendor.name}

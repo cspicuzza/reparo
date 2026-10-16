@@ -6,12 +6,13 @@ paths:
 # Web (apps/web)
 
 - Routes are files under `src/routes` (TanStack Router, file-based). `routeTree.gen.ts` is generated and committed. Route files export only `Route`; screens live in `src/screens/`. `_app.tsx` is the signed-in layout; `sign-in.tsx` is the only public route.
-- Put anything shareable in the URL (which room, which filter).
+- Put anything shareable in the URL (which room, which filter, which vendor's panel is open: `/vendors?vendor=<id>`, OD-112).
 - Server state via TanStack Query through `@trpc/tanstack-react-query` (`useTRPC()` → `useQuery(trpc.x.y.queryOptions())`). One Supabase client (`src/lib/supabase.ts`, PKCE); the tRPC link attaches the access token. Zustand only for UI state that must outlive a route. No Redux, no context-as-store.
 - Forms: react-hook-form + the shared Zod schema via `zodResolver` — the same schema the API validates with.
 - Derived values (areas, totals, progress) come from the API, not computed in React.
 - Tailwind v4 utilities in JSX. Extract a component when the same cluster appears three times. No CSS modules or styled-components.
 - Phone and laptop are equal: every screen works at 375px wide and on a laptop. Touch targets at least 44px; nothing depends on a mouse.
+- Vendors has no tab in the laptop top bar; it's reached from Jobs, so Jobs is marked current on /vendors (OD-112, Q126).
 - The laptop top bar starts at 768px (`md:`); below that, the phone's bottom bar and Menu panel. Anything that sits above the bottom bar (toasts, the batch bar) switches at `md:` too (OD-111, Q125).
 - Every page names the browser tab, most specific first ("Kitchen, Rooms, Reparo"): `PageHeader` does it from its title (`tabTitle` for a page inside a section), other pages render `PageTitle`. After moving to another page, focus goes to its `h1`. Unknown addresses show `NotHere` (in the shell) or `NotHerePage` (outside it); a page that breaks shows `PageError` (OD-111, Q123–Q124).
 - Accessibility: semantic elements, a label on every input, keyboard-reachable actions, visible focus. Colour never carries meaning alone.

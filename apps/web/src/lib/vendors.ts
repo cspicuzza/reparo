@@ -1,3 +1,14 @@
+/** The Vendors page's address: `?vendor=<id>` opens that vendor's panel (OD-112, Q127). */
+export type VendorsSearch = { vendor?: string };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Keep `vendor` only when it's an id; anything else in the URL is dropped. */
+export function parseVendorsSearch(raw: Record<string, unknown>): VendorsSearch {
+  const vendor = raw['vendor'];
+  return typeof vendor === 'string' && UUID.test(vendor) ? { vendor } : {};
+}
+
 /** What a vendor picker or list needs to show a vendor. */
 export type VendorOption = { id: string; name: string; trade: string; archived: boolean };
 

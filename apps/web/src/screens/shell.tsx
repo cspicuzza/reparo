@@ -129,22 +129,27 @@ export function Shell() {
           </Link>
           <nav aria-label="Sections" className="hidden md:block">
             <ul className="flex items-center gap-1">
-              {TOP_BAR.map(({ name, to }) => (
-                <li key={name}>
-                  <Link
-                    to={to}
-                    activeOptions={{ exact: to === '/' }}
-                    className="inline-flex min-h-11 items-center px-3.5 text-muted-foreground hover:text-foreground"
-                    activeProps={{
-                      className:
-                        'font-semibold text-foreground! shadow-[inset_0_-3px_0_var(--tape)]',
-                      'aria-current': 'page',
-                    }}
-                  >
-                    {name}
-                  </Link>
-                </li>
-              ))}
+              {TOP_BAR.map(({ name, to }) => {
+                // Vendors has no tab on a laptop; it's reached from Jobs, so Jobs is the
+                // current section there (OD-112, Q126).
+                const current =
+                  isIn(pathname, to) || (to === '/jobs' && isIn(pathname, '/vendors'));
+                return (
+                  <li key={name}>
+                    <Link
+                      to={to}
+                      className={cn(
+                        'inline-flex min-h-11 items-center px-3.5 text-muted-foreground hover:text-foreground',
+                        current &&
+                          'font-semibold text-foreground! shadow-[inset_0_-3px_0_var(--tape)]',
+                      )}
+                      aria-current={current ? (pathname === to ? 'page' : 'true') : undefined}
+                    >
+                      {name}
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </nav>
           {me.data ? (
