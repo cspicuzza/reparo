@@ -1,8 +1,9 @@
 import { sumCents } from '@reparo/shared';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
+import { savePictureFromLink } from '@/lib/link-picture';
 import { listText, money } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
@@ -23,15 +24,19 @@ const items = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`;
 export function BatchBar({
   selected,
   shownIds,
+  pictured,
   onClear,
 }: {
   selected: ReadonlyMap<string, ShoppingLine>;
   /** The lines on screen now, to say how many picked ones are hidden. */
   shownIds: ReadonlySet<string>;
+  /** Lines that already have a picture, so "Get pictures from links" skips them (OD-127). */
+  pictured: ReadonlySet<string>;
   /** Clear the selection (after an action, or Done). */
   onClear: () => void;
 }) {
   const trpc = useTRPC();
+  const queryClient = useQueryClient();
   const toasts = useToasts();
   const invalidate = useRefreshShopping();
   const rooms = useQuery(trpc.rooms.list.queryOptions());
@@ -98,8 +103,42 @@ export function BatchBar({
       undo: before(field),
       done,
     });
-  const busy = update.isPending || remove.isPending;
-  const error = update.error ?? remove.error;
+  // Pictures from links (OD-127, Q178): one line at a time, saying how far it's got. Adding a
+  // picture changes nothing else, so there's no Undo; each picture can be removed on its own.
+  const fetchable = lines.filter((l) => l.link && !pictured.has(l.id));
+  const [fetched, setFetched] = useState<number | null>(null);
+  const pictures = useMutation({
+    mutationFn: async (todo: ShoppingLine[]) => {
+      const failed: { line: ShoppingLine; why: string }[] = [];
+      for (const [i, line] of todo.entries()) {
+        setFetched(i);
+        await savePictureFromLink(line.id).catch((e: unknown) =>
+          failed.push({ line, why: e instanceof Error ? e.message : 'It didn’t work' }),
+        );
+      }
+      await queryClient.invalidateQueries(trpc.files.pathFilter());
+      return { got: todo.length - failed.length, failed };
+    },
+    onSettled: () => setFetched(null),
+    onSuccess: ({ got, failed }) => {
+      onClear();
+      toasts.add({
+        title:
+          got === 0
+            ? 'No pictures this time'
+            : `Got ${got === 1 ? '1 picture' : `${got} pictures`} from links`,
+        description:
+          failed.length === 0
+            ? undefined
+            : failed.length === 1
+              ? `${failed[0]?.line.name}: ${failed[0]?.why}`
+              : `${failed.length} didn't work: ${listText(failed.map((f) => f.line.name))}. Open one to see why.`,
+        timeout: 10_000,
+      });
+    },
+  });
+  const busy = update.isPending || remove.isPending || pictures.isPending;
+  const error = update.error ?? remove.error ?? pictures.error;
 
   return (
     <div
@@ -173,6 +212,18 @@ export function BatchBar({
                 )
               }
             />
+            {fetchable.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => pictures.mutate(fetchable)}
+              >
+                {fetched === null
+                  ? 'Get pictures from links'
+                  : `Getting pictures… ${fetched + 1} of ${fetchable.length}`}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="destructive"

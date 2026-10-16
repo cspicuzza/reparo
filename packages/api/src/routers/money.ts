@@ -18,6 +18,7 @@ import {
   storeRenameSchema,
 } from '@reparo/shared';
 import { z } from 'zod';
+import { pictureFromLink } from '../services/link-picture';
 import { adminProcedure, editorProcedure, memberProcedure, router } from '../trpc';
 import {
   createAdjustment,
@@ -117,6 +118,13 @@ export const shoppingLinesRouter = router({
   renameStore: editorProcedure
     .input(storeRenameSchema)
     .mutation(({ ctx, input }) => renameStore(ctx.db, input)),
+  /**
+   * The line's picture from its product link (OD-127): the API reads the page and returns the
+   * picture's bytes; the browser saves them through the normal upload. Nothing is stored here.
+   */
+  pictureFromLink: editorProcedure
+    .input(z.object({ id: idSchema }))
+    .mutation(({ ctx, input }) => pictureFromLink(ctx.db, input.id)),
 });
 
 /** What a job costs: the vendor's price, permits, fees, extras. */

@@ -5,7 +5,7 @@ import {
   shoppingLineCreateSchema,
   type ShoppingStatusInput as ShoppingStatus,
 } from '@reparo/shared';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { AttachedFiles } from '@/components/attached-files';
 import { AutoSaveField } from '@/components/auto-save-field';
@@ -22,6 +22,7 @@ import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { LoadError } from '@/components/load-error';
 import { centsToInput, lineAmountText, money, SHOPPING_STATUS_LABEL } from '@/lib/money';
+import { savePictureFromLink } from '@/lib/link-picture';
 import { problemWith } from '@/lib/problem';
 import { lineWhere, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
@@ -329,6 +330,9 @@ function EditBody({
         emptyText="No pictures yet. Copy one from the store's page and paste it here."
         canEdit
         gridClassName="grid-cols-2 sm:grid-cols-2 lg:grid-cols-2"
+        beforeUpload={
+          line.link && pictures.length === 0 ? <PictureFromLink lineId={line.id} /> : undefined
+        }
       />
 
       <PanelGroup id={id('where')} title="Where it goes">
@@ -649,6 +653,28 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
           </div>
         </section>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * "Get the picture from the link" (OD-127, Q178): shown while a line with a link has no
+ * pictures. When the store won't be read, it says so and the Add pictures box stays right
+ * below (Q179).
+ */
+function PictureFromLink({ lineId }: { lineId: string }) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const get = useMutation({
+    mutationFn: () => savePictureFromLink(lineId),
+    onSuccess: () => queryClient.invalidateQueries(trpc.files.pathFilter()),
+  });
+  return (
+    <div>
+      <Button type="button" variant="outline" disabled={get.isPending} onClick={() => get.mutate()}>
+        {get.isPending ? 'Getting the picture…' : 'Get the picture from the link'}
+      </Button>
+      {get.error ? <FormError>{get.error.message}</FormError> : null}
     </div>
   );
 }

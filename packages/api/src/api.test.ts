@@ -1803,6 +1803,26 @@ describe('@reparo/api', () => {
       expect((await summary()).committedCents).toBe(before - 40000);
     }));
 
+  it('shoppingLines.pictureFromLink: editors only, and only with a link (OD-127)', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const line = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase1.id,
+          categoryId: cat('Rugs'),
+          name: 'Linkless rug',
+        }),
+      );
+      expect(
+        (await mutate(h, 'viewer', 'shoppingLines.pictureFromLink', { id: line.id })).status,
+      ).toBe(403);
+      // No link: it says so without reaching out anywhere (fetching itself is tested in
+      // link-picture.test.ts against a pretend network).
+      const none = await mutate(h, 'editor', 'shoppingLines.pictureFromLink', { id: line.id });
+      expect(none.status).toBe(400);
+      expect(none.message).toBe('This line has no link yet.');
+    }));
+
   it('a form mistake reads as words, not JSON (OD-125, Q164)', () =>
     withSeeded(async (_tx, h) => {
       const bad = await mutate(h, 'editor', 'vendors.create', { name: '   ' });
