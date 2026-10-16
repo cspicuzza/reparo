@@ -12,6 +12,7 @@ import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { EditPanel } from '@/components/edit-panel';
+import { PanelNameField } from '@/components/panel-name-field';
 import { FileSection } from '@/components/file-section';
 import { FormError, Input } from '@/components/form';
 import { ShoppingStatusBadge } from '@/components/money';
@@ -87,13 +88,10 @@ function useSaveLine(id: string) {
 function NameField({ line }: { line: ShoppingLine }) {
   const save = useSaveLine(line.id);
   return (
-    <AutoSaveField
+    <PanelNameField
       id={`line-name-${line.id}`}
-      label="Name"
-      labelClassName="sr-only"
       initial={line.name}
       what={`Name of ${line.name}`}
-      inputClassName="-mx-2 border-transparent bg-transparent px-2 text-2xl [font-stretch:74%] font-[640] tracking-[-0.01em] hover:border-input focus:border-input"
       validate={(v) => problemWith(shoppingLineCreateSchema.shape.name, v)}
       onSave={(v) => save({ name: v })}
     />

@@ -16,7 +16,7 @@ import { useMe } from '@/lib/me';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
-import { JobEditor } from './job-editor';
+import { JobNameField, JobPanelBody } from './job-panel';
 import { JobEstimates } from './job-estimates';
 import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
@@ -77,13 +77,15 @@ export function JobDetail() {
 
       <JobBody job={j} canEdit={canEdit} />
 
-      <EditPanel open={editing} title={`Edit ${j.name}`} onClose={() => setEditing(false)}>
-        <JobEditor
-          idPrefix={`job-${j.id}`}
-          job={j}
-          onSaved={() => setEditing(false)}
-          onCancel={() => setEditing(false)}
-        />
+      {/* Edited in place: every change saves as it's made (OD-89). */}
+      <EditPanel
+        open={editing}
+        title={j.name}
+        focusFirstField={false}
+        heading={<JobNameField job={j} />}
+        onClose={() => setEditing(false)}
+      >
+        <JobPanelBody job={j} />
       </EditPanel>
     </section>
   );

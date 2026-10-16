@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   PHASE_STATUSES,
   phaseCreateSchema,
+  phaseUpdateSchema,
   type PhaseCreate,
   type PhaseCreateInput,
 } from '@reparo/shared';
@@ -13,11 +14,15 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { useMe } from '@/lib/me';
-import { useTRPC } from '@/lib/trpc';
+import { problemWith } from '@/lib/problem';
+import { trpcClient, useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL, phaseDates, phaseProgressText, type Phase } from '@/lib/work';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
+import { AutoSaveField } from '@/components/auto-save-field';
+import { AutoSaveSelect } from '@/components/auto-save-select';
 import { EditPanel } from '@/components/edit-panel';
+import { PanelNameField } from '@/components/panel-name-field';
 import { PanelList } from '@/components/panel';
 import { PhaseStatusBadge, PhaseStatusSelect } from '@/components/status';
 import { SaveState } from '@/components/save-state';
@@ -42,15 +47,6 @@ export function Phases() {
       },
     }),
   );
-  const update = useMutation(
-    trpc.phases.update.mutationOptions({
-      onSuccess: async () => {
-        await invalidate();
-        setEditingId(null);
-      },
-    }),
-  );
-
   const editingPhase = phases.data?.find((p) => p.id === editingId);
 
   return (
@@ -89,29 +85,17 @@ export function Phases() {
           }}
         />
       </EditPanel>
+      {/* Edited in place: every change saves as it's made (OD-89). */}
       <EditPanel
         open={editingPhase !== undefined}
-        title={editingPhase ? `Edit ${editingPhase.name}` : 'Edit phase'}
-        onClose={() => {
-          update.reset();
-          setEditingId(null);
-        }}
+        title={editingPhase?.name ?? 'Phase'}
+        focusFirstField={false}
+        heading={
+          editingPhase ? <PhaseNameField key={editingPhase.id} phase={editingPhase} /> : undefined
+        }
+        onClose={() => setEditingId(null)}
       >
-        {editingPhase ? (
-          <PhaseForm
-            idPrefix={`phase-${editingPhase.id}`}
-            phase={editingPhase}
-            submitLabel="Save phase"
-            serverError={update.error?.message}
-            onCancel={() => {
-              update.reset();
-              setEditingId(null);
-            }}
-            onSubmit={async (values) => {
-              await update.mutateAsync({ id: editingPhase.id, ...values }).catch(() => undefined);
-            }}
-          />
-        ) : null}
+        {editingPhase ? <PhasePanelBody key={editingPhase.id} phase={editingPhase} /> : null}
       </EditPanel>
 
       {phases.isPending ? <ListPlaceholder label="Loading phases" rows={3} /> : null}
@@ -137,10 +121,7 @@ export function Phases() {
                 {isAdmin ? (
                   <Button
                     type="button"
-                    onClick={() => {
-                      update.reset();
-                      setEditingId(phase.id);
-                    }}
+                    onClick={() => setEditingId(phase.id)}
                     data-return-focus={`phase-${phase.id}`}
                     variant="ghost"
                   >
@@ -294,5 +275,97 @@ function PhaseStatus({ phase }: { phase: Phase }) {
         onRetry={() => save.mutate(save.variables ?? { id: phase.id })}
       />
     </span>
+  );
+}
+
+type PhasePatch = Omit<Parameters<typeof trpcClient.phases.update.mutate>[0], 'id'>;
+
+/** Save part of a phase, then refresh everything that shows phases. */
+function useSavePhase(id: string) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  return async (patch: PhasePatch) => {
+    await trpcClient.phases.update.mutate({ id, ...patch });
+    await Promise.all([
+      queryClient.invalidateQueries(trpc.phases.pathFilter()),
+      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+      queryClient.invalidateQueries(trpc.money.pathFilter()),
+      queryClient.invalidateQueries(trpc.home.pathFilter()),
+    ]);
+  };
+}
+
+function PhaseNameField({ phase }: { phase: Phase }) {
+  const save = useSavePhase(phase.id);
+  return (
+    <PanelNameField
+      id={`phase-name-${phase.id}`}
+      initial={phase.name}
+      what={`Name of ${phase.name}`}
+      validate={(v) => problemWith(phaseUpdateSchema.shape.name, v)}
+      onSave={(v) => save({ name: v })}
+    />
+  );
+}
+
+/**
+ * A phase edited in place (OD-89): status saves when picked; dates, order and notes when you
+ * leave them. An empty date means "no date".
+ */
+function PhasePanelBody({ phase }: { phase: Phase }) {
+  const save = useSavePhase(phase.id);
+  const id = (f: string) => `phase-${phase.id}-${f}`;
+  const date = (v: string) => (v === '' ? null : v);
+  return (
+    <div className="flex flex-col gap-4">
+      <AutoSaveSelect
+        id={id('status')}
+        label="Status"
+        value={phase.status}
+        options={PHASE_STATUSES.map((st) => ({ value: st, label: PHASE_STATUS_LABEL[st] }))}
+        what={`Status of ${phase.name}`}
+        onSave={(v) => save({ status: v as PhasePatch['status'] })}
+      />
+      <AutoSaveField
+        id={id('starts')}
+        label="Starts"
+        type="date"
+        inputClassName="max-w-48"
+        initial={phase.startsOn ?? ''}
+        what={`Start of ${phase.name}`}
+        validate={(v) => problemWith(phaseUpdateSchema.shape.startsOn, date(v))}
+        onSave={(v) => save({ startsOn: date(v) })}
+      />
+      <AutoSaveField
+        id={id('ends')}
+        label="Ends"
+        type="date"
+        inputClassName="max-w-48"
+        initial={phase.endsOn ?? ''}
+        what={`End of ${phase.name}`}
+        validate={(v) => problemWith(phaseUpdateSchema.shape.endsOn, date(v))}
+        onSave={(v) => save({ endsOn: date(v) })}
+      />
+      <AutoSaveField
+        id={id('order')}
+        label="Order"
+        hint="Lower comes first."
+        inputMode="numeric"
+        inputClassName="max-w-48"
+        initial={String(phase.sortOrder)}
+        what={`Order of ${phase.name}`}
+        validate={(v) => problemWith(phaseUpdateSchema.shape.sortOrder, Number(v))}
+        onSave={(v) => save({ sortOrder: Number(v) })}
+      />
+      <AutoSaveField
+        id={id('notes')}
+        label="Notes"
+        multiline
+        initial={phase.notes}
+        what={`Notes for ${phase.name}`}
+        validate={(v) => problemWith(phaseUpdateSchema.shape.notes, v)}
+        onSave={(v) => save({ notes: v })}
+      />
+    </div>
   );
 }

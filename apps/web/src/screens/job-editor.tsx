@@ -8,36 +8,28 @@ import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { VendorPicker } from '@/components/vendor-picker';
 import { vendorOptions, type VendorOption } from '@/lib/vendors';
 import { useTRPC } from '@/lib/trpc';
-import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
+import { PHASE_STATUS_LABEL } from '@/lib/work';
 import { Button } from '@/components/ui/button';
 import { FormPlaceholder } from '@/components/placeholder';
 
 type Props = {
   idPrefix: string;
-  /** The job to edit; omitted → a new job. */
-  job?: Job;
-  /** After saving: the job's id (new or edited). */
+  /** After saving: the new job's id. */
   onSaved: (jobId: string) => void;
   onCancel: () => void;
 };
 
 /**
- * Name, phase, vendor, house-wide spec, notes, and the rooms the job covers (checkboxes, with
- * All rooms / None). Unchecking a room takes it off the job; checking it again brings it back as
- * Unstarted. A job's status comes from its rooms, so it isn't edited here.
+ * A new job: name, phase, vendor, house-wide spec, notes, and the rooms it covers (checkboxes,
+ * with All rooms / None), added with one button. A job that exists is edited in place in its
+ * panel (job-panel.tsx, OD-89). A job's status comes from its rooms, so it isn't set here.
  */
-export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
+export function JobEditor({ idPrefix, onSaved, onCancel }: Props) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const phases = useQuery(trpc.phases.list.queryOptions());
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const vendors = useQuery(trpc.vendors.list.queryOptions());
-  // Which vendor the chosen estimate brought in, so the form can say so (OD-86).
-  const estimates = useQuery({
-    ...trpc.estimates.list.queryOptions({ jobId: job?.id ?? '' }),
-    enabled: job !== undefined && job.estimates.chosen,
-  });
-  const chosenVendorId = estimates.data?.find((e) => e.status === 'chosen')?.vendor.id ?? null;
 
   const invalidate = () =>
     Promise.all([
@@ -46,10 +38,7 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
       queryClient.invalidateQueries(trpc.home.pathFilter()),
     ]);
   const create = useMutation(trpc.jobs.create.mutationOptions());
-  const update = useMutation(trpc.jobs.update.mutationOptions());
-  const addRoom = useMutation(trpc.jobRooms.create.mutationOptions());
-  const removeRoom = useMutation(trpc.jobRooms.remove.mutationOptions());
-  const error = create.error ?? update.error ?? addRoom.error ?? removeRoom.error;
+  const error = create.error;
 
   if (phases.isPending || rooms.isPending || vendors.isPending) {
     return <FormPlaceholder label="Loading the form" fields={5} />;
@@ -66,33 +55,11 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
 
   async function save(values: JobCreate) {
     try {
-      let savedId: string;
-      if (!job) {
-        savedId = (await create.mutateAsync(values)).id;
-      } else {
-        savedId = job.id;
-        await update.mutateAsync({
-          id: job.id,
-          name: values.name,
-          phaseId: values.phaseId,
-          // Leave an archived vendor in place unless someone picks another.
-          ...(values.vendorId !== job.vendorId ? { vendorId: values.vendorId } : {}),
-          spec: values.spec,
-          notes: values.notes,
-        });
-        const before = new Map(job.rooms.map((r) => [r.roomId, r.id]));
-        const after = new Set(values.roomIds);
-        for (const roomId of after) {
-          if (!before.has(roomId)) await addRoom.mutateAsync({ jobId: job.id, roomId });
-        }
-        for (const [roomId, jobRoomId] of before) {
-          if (!after.has(roomId)) await removeRoom.mutateAsync({ id: jobRoomId });
-        }
-      }
+      const savedId = (await create.mutateAsync(values)).id;
       await invalidate();
       onSaved(savedId);
     } catch {
-      await invalidate(); // shown via `error`; refresh in case part of an edit went through
+      await invalidate(); // shown via `error`
     }
   }
 
@@ -101,17 +68,16 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
       idPrefix={idPrefix}
       phases={phases.data}
       rooms={rooms.data}
-      vendors={vendorOptions(vendors.data, job?.vendor ?? null)}
-      chosenVendorId={chosenVendorId}
+      vendors={vendorOptions(vendors.data, null)}
       defaults={{
-        name: job?.name ?? '',
-        phaseId: job?.phaseId ?? active?.id ?? '',
-        vendorId: job?.vendorId ?? null,
-        spec: job?.spec ?? '',
-        notes: job?.notes ?? '',
-        roomIds: job?.rooms.map((r) => r.roomId) ?? [],
+        name: '',
+        phaseId: active?.id ?? '',
+        vendorId: null,
+        spec: '',
+        notes: '',
+        roomIds: [],
       }}
-      submitLabel={job ? 'Save job' : 'Add job'}
+      submitLabel="Add job"
       serverError={error?.message}
       onSubmit={save}
       onCancel={onCancel}
@@ -124,7 +90,6 @@ function JobForm({
   phases,
   rooms,
   vendors,
-  chosenVendorId,
   defaults,
   submitLabel,
   serverError,
@@ -135,8 +100,6 @@ function JobForm({
   phases: { id: string; name: string; status: 'planned' | 'active' | 'complete' }[];
   rooms: { id: string; name: string }[];
   vendors: VendorOption[];
-  /** The chosen estimate's vendor, if the job has one. */
-  chosenVendorId: string | null;
   defaults: JobCreateInput;
   submitLabel: string;
   serverError: string | undefined;
@@ -194,11 +157,7 @@ function JobForm({
       <Field
         label="Vendor"
         htmlFor={id('vendor')}
-        hint={
-          chosenVendorId !== null && vendorField.field.value === chosenVendorId
-            ? "From the chosen estimate. Choosing another estimate changes who's doing it."
-            : "Who's doing it. Search by name or what they do, or type a new name to add them. Leave empty for work you do yourselves."
-        }
+        hint="Who's doing it. Search by name or what they do, or type a new name to add them. Leave empty for work you do yourselves."
         error={errors.vendorId?.message}
       >
         <VendorPicker
@@ -266,9 +225,6 @@ function JobForm({
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Taking a room off removes its status and spec for this job.
-            </p>
           </>
         )}
         {errors.roomIds?.message ? <FormError>{errors.roomIds.message}</FormError> : null}

@@ -16,7 +16,7 @@ import { DimensionFrame, DimensionLine } from '@/components/dimension';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
 import { PlanGrid } from '@/components/plan-grid';
-import { RoomForm } from './room-form';
+import { PanelNameField } from '@/components/panel-name-field';
 import { RoomPictures } from './room-pictures';
 import { RoomShopping } from './room-shopping';
 import { RoomWork } from './room-work';
@@ -36,14 +36,6 @@ export function RoomDetail() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const invalidate = () => queryClient.invalidateQueries(trpc.rooms.pathFilter());
-  const update = useMutation(
-    trpc.rooms.update.mutationOptions({
-      onSuccess: async () => {
-        await invalidate();
-        setEditing(false);
-      },
-    }),
-  );
   const remove = useMutation(
     trpc.rooms.remove.mutationOptions({
       onSuccess: async () => {
@@ -218,27 +210,39 @@ export function RoomDetail() {
           )}
         </div>
       ) : null}
+      {/* Edited in place (OD-89). Size and notes already save on this page, so the panel
+          doesn't repeat them. */}
       <EditPanel
         open={editing}
-        title={`Edit ${r.name}`}
-        onClose={() => {
-          update.reset();
-          setEditing(false);
-        }}
+        title={r.name}
+        focusFirstField={false}
+        heading={
+          <PanelNameField
+            id={`room-name-${r.id}`}
+            initial={r.name}
+            what={`Name of ${r.name}`}
+            validate={(v) => problemWith(roomUpdateSchema.shape.name, v)}
+            onSave={(v) => saveRoom({ id: r.id, name: v })}
+          />
+        }
+        onClose={() => setEditing(false)}
       >
-        <RoomForm
-          idPrefix="edit-room"
-          room={r}
-          submitLabel="Save room"
-          serverError={update.error?.message}
-          onCancel={() => {
-            update.reset();
-            setEditing(false);
-          }}
-          onSubmit={async (values) => {
-            await update.mutateAsync({ id: r.id, ...values }).catch(() => undefined);
-          }}
-        />
+        <div className="flex flex-col gap-4">
+          <AutoSaveField
+            id={`room-order-${r.id}`}
+            label="Order"
+            hint="Lower comes first in the list."
+            inputMode="numeric"
+            inputClassName="max-w-48"
+            initial={String(r.sortOrder)}
+            what={`Order of ${r.name}`}
+            validate={(v) => problemWith(roomUpdateSchema.shape.sortOrder, Number(v))}
+            onSave={(v) => saveRoom({ id: r.id, sortOrder: Number(v) })}
+          />
+          <p className="text-muted-foreground">
+            The size and notes save right on the room&apos;s page.
+          </p>
+        </div>
       </EditPanel>
     </section>
   );
