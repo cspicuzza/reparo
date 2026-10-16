@@ -110,3 +110,7 @@ export function plannedPhaseText(p: { name: string; toComeCents: number; leavesC
     short,
   };
 }
+
+/** Biggest first: what's spent and committed together (OD-121, Q152). */
+export const bySize = <T extends { spentCents: number; committedCents: number }>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => b.spentCents + b.committedCents - (a.spentCents + a.committedCents));

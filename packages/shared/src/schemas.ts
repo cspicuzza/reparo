@@ -601,6 +601,23 @@ export type AdjustmentCreate = z.infer<typeof adjustmentCreateSchema>;
 export type AdjustmentCreateInput = z.input<typeof adjustmentCreateSchema>;
 export type AdjustmentUpdate = z.infer<typeof adjustmentUpdateSchema>;
 
+/**
+ * The Money in / Money out form (OD-121, Q151): which way, and an amount with no sign. Out
+ * becomes a negative amount, so the API keeps one signed `amountCents`.
+ */
+export const adjustmentFormSchema = z
+  .object({
+    direction: z.enum(['in', 'out']),
+    amountCents: moneyInputSchema,
+    on: isoDateSchema,
+    note: shortText(200, 'note').default(''),
+  })
+  .transform(({ direction, amountCents, ...rest }) => ({
+    ...rest,
+    amountCents: direction === 'out' && amountCents !== 0 ? -amountCents : amountCents,
+  }));
+export type AdjustmentFormInput = z.input<typeof adjustmentFormSchema>;
+
 // --- spreadsheet import (OD-36) ---------------------------------------------------------------
 
 /** Blank cells come through as ''. */

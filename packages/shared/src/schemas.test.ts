@@ -14,6 +14,7 @@ import {
   vendorListSchema,
   vendorUpdateSchema,
   adjustmentCreateSchema,
+  adjustmentFormSchema,
   categoryMergeSchema,
   MONEY_HELP,
   moneyInputSchema,
@@ -250,6 +251,22 @@ describe('shopping lines', () => {
     expect(
       adjustmentCreateSchema.parse({ amountCents: '-1,500', on: '2026-09-15' }).amountCents,
     ).toBe(-150000);
+  });
+
+  it('money in or out takes an amount with no sign and gives it one (OD-121)', () => {
+    const base = { on: '2026-09-15', note: '401K loan' };
+    expect(adjustmentFormSchema.parse({ ...base, direction: 'out', amountCents: '5,000' })).toEqual(
+      { ...base, amountCents: -500000 },
+    );
+    expect(
+      adjustmentFormSchema.parse({ ...base, direction: 'in', amountCents: '5,000' }).amountCents,
+    ).toBe(500000);
+    expect(
+      adjustmentFormSchema.parse({ ...base, direction: 'out', amountCents: '0' }).amountCents,
+    ).toBe(0);
+    expect(
+      adjustmentFormSchema.safeParse({ ...base, direction: 'out', amountCents: '-5' }).success,
+    ).toBe(false);
   });
 });
 

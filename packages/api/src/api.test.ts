@@ -1122,6 +1122,8 @@ describe('@reparo/api', () => {
         note: '401K loan',
       });
       expect((adj.data as { poolCents: number }).poolCents).toBe(29500000);
+      // It says which row it made, so the page can offer Undo (OD-121).
+      expect((adj.data as { createdId: string | null }).createdId).toMatch(/^[0-9a-f-]{36}$/);
 
       // Phase 1: a $35,000 job with a $10,000 deposit, a rug bought for $850, a $5,000 couch to buy.
       const paint = row(

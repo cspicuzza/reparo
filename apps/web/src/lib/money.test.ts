@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  bySize,
   centsToInput,
   headline,
   lineAmountText,
@@ -77,5 +78,17 @@ describe('money sentences', () => {
     expect(plannedPhaseText({ name: 'Phase 4', toComeCents: 0, leavesCents: 0 }).text).toBe(
       'Nothing is planned for Phase 4 yet.',
     );
+  });
+});
+
+describe('bySize (OD-121)', () => {
+  it('puts the biggest first, counting spent and committed together', () => {
+    const rows = [
+      { name: 'Rug', spentCents: 100, committedCents: 0 },
+      { name: 'Paint', spentCents: 50, committedCents: 200 },
+      { name: 'Tile', spentCents: 0, committedCents: 150 },
+    ];
+    expect(bySize(rows).map((r) => r.name)).toEqual(['Paint', 'Tile', 'Rug']);
+    expect(rows[0]?.name).toBe('Rug');
   });
 });

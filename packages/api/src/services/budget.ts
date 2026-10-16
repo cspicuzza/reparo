@@ -52,9 +52,13 @@ async function getAdjustment(db: Db, id: string) {
   return row;
 }
 
+/** Adds money in or out; says which row it made, so the page can offer Undo (OD-121). */
 export async function createAdjustment(db: Db, input: AdjustmentCreate) {
-  await db.insert(budgetAdjustments).values(input);
-  return getBudget(db);
+  const [made] = await db
+    .insert(budgetAdjustments)
+    .values(input)
+    .returning({ id: budgetAdjustments.id });
+  return { ...(await getBudget(db)), createdId: made?.id ?? null };
 }
 
 export async function updateAdjustment(db: Db, { id, ...patch }: AdjustmentUpdate) {

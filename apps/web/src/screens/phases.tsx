@@ -141,7 +141,12 @@ export function Phases() {
                 />
               </li>
             ) : (
-              <li key={phase.id} className="flex flex-col gap-3 px-4 py-4 sm:px-5">
+              // The id is where Money's By phase links land (OD-121, Q152).
+              <li
+                key={phase.id}
+                id={`phase-${phase.id}`}
+                className="flex scroll-mt-24 flex-col gap-3 px-4 py-4 sm:px-5"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                   <div className="flex min-w-0 flex-wrap items-center gap-3">
                     <h2 className="text-2xl">{phase.name}</h2>

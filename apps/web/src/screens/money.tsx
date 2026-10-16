@@ -4,13 +4,14 @@ import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
 import {
-  adjustmentCreateSchema,
+  adjustmentFormSchema,
   budgetUpdateSchema,
+  cents,
   formatIsoDate,
   isIsoDate,
   today,
   type AdjustmentCreate,
-  type AdjustmentCreateInput,
+  type AdjustmentFormInput,
   type BudgetUpdate,
   type BudgetUpdateInput,
 } from '@reparo/shared';
@@ -26,12 +27,16 @@ import { Panel } from '@/components/panel';
 import { PhaseStatusBadge } from '@/components/status';
 import { Button } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
-import { centsToInput, headline, money, plannedPhaseText } from '@/lib/money';
+import { bySize, centsToInput, headline, money, plannedPhaseText } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { useRefreshMoney } from '@/lib/refresh';
+import { useToasts } from '@/lib/toasts';
+import type { ShoppingSearch } from '@/lib/shopping';
+import { Link } from '@tanstack/react-router';
+import { trpcClient } from '@/lib/trpc';
 
 type Summary = RouterOutputs['money']['summary'];
 type Budget = RouterOutputs['budget']['get'];
@@ -88,6 +93,7 @@ export function Money() {
               title="Shopping by category"
               rows={summary.data.byCategory}
               empty="Nothing on the shopping list yet."
+              filter={(r) => (r.id ? { category: r.id } : {})}
             />
             <Totals
               id="by-room"
@@ -95,6 +101,7 @@ export function Money() {
               note="Jobs aren't split by room; one job can cover many."
               rows={summary.data.byRoom}
               empty="Nothing on the shopping list yet."
+              filter={(r) => ({ room: r.id ?? 'house' })}
             />
           </div>
         </>
@@ -173,6 +180,7 @@ function Pool({ budget }: { budget: Budget }) {
     trpc.budgetAdjustments.remove.mutationOptions({ onSuccess: invalidate }),
   );
   const editingAdjustment = budget.adjustments.find((a) => a.id === editingAdj);
+  const toasts = useToasts();
 
   return (
     <Panel aria-labelledby="pool">
@@ -203,6 +211,12 @@ function Pool({ budget }: { budget: Budget }) {
               {budget.asOf ? (
                 <span className="block text-sm text-muted-foreground">
                   As of {dateText(budget.asOf)}
+                </span>
+              ) : null}
+              {/* The notes were saved but never shown (OD-121, Q153). */}
+              {budget.notes ? (
+                <span className="mt-1 block max-w-prose text-sm whitespace-pre-wrap text-muted-foreground">
+                  {budget.notes}
                 </span>
               ) : null}
             </th>
@@ -296,6 +310,7 @@ function Pool({ budget }: { budget: Budget }) {
             <AdjustmentForm
               idPrefix="new-adj"
               submitLabel="Add to the budget"
+              namesResult
               serverError={createAdj.error?.message}
               onCancel={() => {
                 createAdj.reset();
@@ -304,9 +319,30 @@ function Pool({ budget }: { budget: Budget }) {
               onSubmit={async (v) => {
                 await createAdj
                   .mutateAsync(v)
-                  .then(async () => {
+                  .then(async (made) => {
                     await invalidate();
                     setAdding(false);
+                    const amount = money(Math.abs(v.amountCents));
+                    toasts.add({
+                      title:
+                        v.amountCents < 0
+                          ? `Took ${amount} out of the budget`
+                          : `Put ${amount} into the budget`,
+                      description: v.note || undefined,
+                      timeout: 10_000,
+                      ...(made.createdId
+                        ? {
+                            actionProps: {
+                              children: 'Undo',
+                              onClick: () =>
+                                void trpcClient.budgetAdjustments.remove
+                                  .mutate({ id: made.createdId ?? '' })
+                                  .then(invalidate)
+                                  .catch(() => undefined),
+                            },
+                          }
+                        : {}),
+                    });
                   })
                   .catch(() => undefined);
               }}
@@ -328,11 +364,29 @@ function Pool({ budget }: { budget: Budget }) {
                 serverError={updateAdj.error?.message}
                 onCancel={() => setEditingAdj(null)}
                 onSubmit={async (v) => {
+                  const before = editingAdjustment;
                   await updateAdj
-                    .mutateAsync({ id: editingAdjustment.id, ...v })
+                    .mutateAsync({ id: before.id, ...v })
                     .then(async () => {
                       await invalidate();
                       setEditingAdj(null);
+                      toasts.add({
+                        title: `Saved ${v.note || 'the adjustment'}`,
+                        timeout: 10_000,
+                        actionProps: {
+                          children: 'Undo',
+                          onClick: () =>
+                            void trpcClient.budgetAdjustments.update
+                              .mutate({
+                                id: before.id,
+                                amountCents: before.amountCents,
+                                on: before.on,
+                                note: before.note,
+                              })
+                              .then(invalidate)
+                              .catch(() => undefined),
+                        },
+                      });
                     })
                     .catch(() => undefined);
                 }}
@@ -387,7 +441,7 @@ function BudgetForm({
       {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>
-          Save the budget
+          Save the starting balance
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
@@ -400,10 +454,23 @@ function BudgetForm({
   );
 }
 
+/** What the button says the form will do: "Take $5,000.00 out" (OD-121, Q151). */
+function resultLabel(direction: 'in' | 'out', typed: unknown): string | null {
+  if (typeof typed !== 'string' || typed.trim() === '') return null;
+  try {
+    const c = cents(typed);
+    if (c <= 0) return null;
+    return direction === 'out' ? `Take ${money(c)} out` : `Put ${money(c)} in`;
+  } catch {
+    return null;
+  }
+}
+
 function AdjustmentForm({
   idPrefix,
   adjustment,
   submitLabel,
+  namesResult = false,
   serverError,
   onSubmit,
   onCancel,
@@ -411,18 +478,21 @@ function AdjustmentForm({
   idPrefix: string;
   adjustment?: Adjustment;
   submitLabel: string;
+  /** The button says what saving does ("Take $5,000.00 out") once there's an amount. */
+  namesResult?: boolean;
   serverError: string | undefined;
   onSubmit: (v: AdjustmentCreate) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { register, handleSubmit, formState } = useForm<
-    AdjustmentCreateInput,
+  const { register, handleSubmit, formState, watch } = useForm<
+    AdjustmentFormInput,
     unknown,
     AdjustmentCreate
   >({
-    resolver: zodResolver(adjustmentCreateSchema),
+    resolver: zodResolver(adjustmentFormSchema),
     defaultValues: {
-      amountCents: adjustment ? centsToInput(adjustment.amountCents) : '',
+      direction: adjustment && adjustment.amountCents < 0 ? 'out' : 'in',
+      amountCents: adjustment ? centsToInput(Math.abs(adjustment.amountCents)) : '',
       on: adjustment?.on ?? today(),
       note: adjustment?.note ?? '',
     },
@@ -430,15 +500,40 @@ function AdjustmentForm({
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
   const formRef = useFocusFirstField<HTMLFormElement>();
+  const direction = watch('direction');
+  const label = (namesResult ? resultLabel(direction, watch('amountCents')) : null) ?? submitLabel;
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4">
-        <Field
-          label="Amount"
-          htmlFor={id('amount')}
-          hint="A minus sign takes money out, like -5,000."
-          error={errors.amountCents?.message}
-        >
+        {/* Which way as a switch, then an amount with no sign (OD-121, Q151). */}
+        <fieldset>
+          <legend className="text-sm font-semibold">Which way</legend>
+          <div className="relative mt-1.5 flex max-w-sm rounded-lg border border-input bg-inset p-0.5">
+            <span
+              aria-hidden
+              className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/2)] rounded-md bg-card shadow-sm transition-transform duration-200 ease-out"
+              style={{ transform: `translateX(${direction === 'out' ? 100 : 0}%)` }}
+            />
+            {(
+              [
+                ['in', 'Money in'],
+                ['out', 'Money out'],
+              ] as const
+            ).map(([value, text]) => (
+              <label
+                key={value}
+                className={cn(
+                  'relative z-10 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-2 text-base transition-colors duration-150 hover:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
+                  direction === value ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                <input type="radio" value={value} className="sr-only" {...register('direction')} />
+                {text}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <Field label="Amount" htmlFor={id('amount')} error={errors.amountCents?.message}>
           <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
         </Field>
         <Field label="On" htmlFor={id('on')} error={errors.on?.message}>
@@ -456,7 +551,7 @@ function AdjustmentForm({
       {serverError ? <FormError>{serverError}</FormError> : null}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={formState.isSubmitting}>
-          {submitLabel}
+          {label}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel
@@ -506,7 +601,14 @@ function ByPhase({ s }: { s: Summary }) {
               <tr key={p.id} className="align-top">
                 <th scope="row" className="py-3 pr-3 text-left font-normal">
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{p.name}</span>
+                    {/* Each phase links to it on the Phases page (OD-121, Q152). */}
+                    <Link
+                      to="/phases"
+                      hash={`phase-${p.id}`}
+                      className="inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
+                    >
+                      {p.name}
+                    </Link>
                     <PhaseStatusBadge status={p.status} />
                   </span>
                   {planned && planned.amount ? (
@@ -530,6 +632,19 @@ function ByPhase({ s }: { s: Summary }) {
             );
           })}
         </tbody>
+        <tfoot className="border-t-2 border-foreground">
+          <tr>
+            <th scope="row" className="py-3 pr-3 text-left font-semibold">
+              Total
+            </th>
+            <td className="py-3 pl-3 text-right font-semibold">
+              {money(s.byPhase.reduce((n, p) => n + p.spentCents, 0))}
+            </td>
+            <td className="py-3 pl-3 text-right font-semibold">
+              {money(s.byPhase.reduce((n, p) => n + p.toComeCents, 0))}
+            </td>
+          </tr>
+        </tfoot>
       </table>
       <table className="mt-5 w-full tabular-nums">
         <caption className="mb-1 text-left text-sm text-muted-foreground">
@@ -550,40 +665,63 @@ function ByPhase({ s }: { s: Summary }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border border-t border-border">
-          {(
-            [
-              ['Jobs', s.jobs],
-              ['Shopping', s.shopping],
-            ] as const
-          ).map(([name, t]) => (
-            <tr key={name}>
-              <th scope="row" className="py-3 text-left font-semibold">
-                {name}
+          {bySize([
+            { name: 'Jobs', to: '/jobs' as const, ...s.jobs },
+            { name: 'Shopping', to: '/shopping' as const, ...s.shopping },
+          ]).map((t) => (
+            <tr key={t.name}>
+              <th scope="row" className="py-1 text-left font-semibold">
+                <Link
+                  to={t.to}
+                  className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                >
+                  {t.name}
+                </Link>
               </th>
               <td className="py-3 pl-3 text-right">{money(t.spentCents)}</td>
               <td className="py-3 pl-3 text-right">{money(t.committedCents)}</td>
             </tr>
           ))}
         </tbody>
+        <tfoot className="border-t-2 border-foreground">
+          <tr>
+            <th scope="row" className="py-3 text-left font-semibold">
+              Total
+            </th>
+            <td className="py-3 pl-3 text-right font-semibold">{money(s.spentCents)}</td>
+            <td className="py-3 pl-3 text-right font-semibold">{money(s.committedCents)}</td>
+          </tr>
+        </tfoot>
       </table>
     </Panel>
   );
 }
 
+type TotalRow = { id: string | null; name: string; spentCents: number; committedCents: number };
+
+/**
+ * A breakdown (OD-121, Q152): biggest first, a total row, and each name a link to Shopping
+ * filtered to it.
+ */
 function Totals({
   id,
   title,
   note,
   rows,
   empty,
+  filter,
 }: {
   id: string;
   title: string;
   note?: string;
-  rows: { id: string | null; name: string; spentCents: number; committedCents: number }[];
+  rows: TotalRow[];
   empty: string;
+  /** The Shopping filter for a row. */
+  filter: (row: TotalRow) => ShoppingSearch;
 }) {
-  const shown = rows.filter((r) => r.spentCents !== 0 || r.committedCents !== 0);
+  const shown = bySize(rows.filter((r) => r.spentCents !== 0 || r.committedCents !== 0));
+  const spent = shown.reduce((n, r) => n + r.spentCents, 0);
+  const committed = shown.reduce((n, r) => n + r.committedCents, 0);
   return (
     <Panel aria-labelledby={id}>
       <h2 id={id} className="text-2xl">
@@ -610,14 +748,30 @@ function Totals({
           <tbody className="divide-y divide-border border-t border-border">
             {shown.map((r) => (
               <tr key={r.id ?? 'house'}>
-                <th scope="row" className="py-3 pr-3 text-left font-normal break-words">
-                  {r.name}
+                <th scope="row" className="py-1 pr-3 text-left font-normal break-words">
+                  <Link
+                    to="/shopping"
+                    search={filter(r)}
+                    className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                  >
+                    {r.name}
+                    <span className="sr-only"> on the shopping list</span>
+                  </Link>
                 </th>
                 <td className="py-3 pl-3 text-right">{money(r.spentCents)}</td>
                 <td className="py-3 pl-3 text-right">{money(r.committedCents)}</td>
               </tr>
             ))}
           </tbody>
+          <tfoot className="border-t-2 border-foreground">
+            <tr>
+              <th scope="row" className="py-3 pr-3 text-left font-semibold">
+                Total
+              </th>
+              <td className="py-3 pl-3 text-right font-semibold">{money(spent)}</td>
+              <td className="py-3 pl-3 text-right font-semibold">{money(committed)}</td>
+            </tr>
+          </tfoot>
         </table>
       )}
     </Panel>
