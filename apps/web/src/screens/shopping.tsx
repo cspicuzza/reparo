@@ -10,10 +10,11 @@ import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Reveal } from '@/components/reveal';
+import { TapeStrip } from '@/components/tape';
 import { Button } from '@/components/ui/button';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMe } from '@/lib/me';
-import { money } from '@/lib/money';
+import { money, moneyStep } from '@/lib/money';
 import {
   groupText,
   shoppingFilter,
@@ -154,6 +155,8 @@ export function Shopping() {
         }
       />
 
+      {totals.data ? <ShoppingTape sections={totals.data} /> : null}
+
       <EditPanel
         open={adding}
         title="Something to buy"
@@ -206,8 +209,8 @@ export function Shopping() {
         </Loading>
       ) : null}
       {lines.error || totals.error ? (
-        <div role="alert" className="flex flex-col items-start gap-2">
-          <FormError>
+        <div className="flex flex-col items-start gap-2">
+          <FormError className="mt-0">
             Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}
           </FormError>
           {/* A way back that isn't reloading the page (OD-106, Q109). */}
@@ -286,6 +289,42 @@ export function Shopping() {
         onClose={() => setOpenId(null)}
       />
     </section>
+  );
+}
+
+/**
+ * What's bought against what's left, drawn as the tape measure (OD-107, Q104): the dark fill is
+ * what's been paid (returns count what wasn't refunded), yellow is the price of what's still to
+ * buy. It follows the filters and search, like the sentence above it. The amounts are written
+ * beside it, so the colours never carry them alone.
+ */
+function ShoppingTape({ sections }: { sections: Section[] }) {
+  const cents = (status: Section['status']) =>
+    sections.find((s) => s.status === status)?.totalCents ?? 0;
+  const boughtCents = cents('purchased') + cents('returned');
+  const leftCents = cents('to_buy');
+  const totalCents = boughtCents + leftCents;
+  if (totalCents <= 0) return null;
+  return (
+    <div className="-mt-2">
+      <TapeStrip
+        mode="money"
+        usedCents={boughtCents}
+        totalCents={totalCents}
+        stepCents={moneyStep(totalCents)}
+        label={`${money(boughtCents)} bought and ${money(leftCents)} left to buy, of ${money(totalCents)}`}
+      />
+      <div aria-hidden className="mt-3 flex flex-wrap gap-x-5 gap-y-1 tabular-nums">
+        <span>
+          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape-ink align-[-2px] outline-1 outline-tape-edge outline-solid" />
+          Bought <strong className="font-semibold">{money(boughtCents)}</strong>
+        </span>
+        <span>
+          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape align-[-2px] outline-1 outline-tape-edge outline-solid" />
+          Left to buy <strong className="font-semibold">{money(leftCents)}</strong>
+        </span>
+      </div>
+    </div>
   );
 }
 
