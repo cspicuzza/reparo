@@ -2,13 +2,20 @@ import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { RouterOutputs } from '@reparo/api';
-import { vendorCreateSchema, type VendorCreate, type VendorCreateInput } from '@reparo/shared';
+import {
+  vendorCreateSchema,
+  vendorUpdateSchema,
+  type VendorCreate,
+  type VendorCreateInput,
+} from '@reparo/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { FileText, Mail, Pencil, Phone, Plus } from 'lucide-react';
+import { Mail, PanelRightOpen, Phone, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
+import { PanelNameField } from '@/components/panel-name-field';
 import { FileSection } from '@/components/file-section';
 import { Field, FormError, Input, Textarea } from '@/components/form';
 import { PageHeader } from '@/components/page-header';
@@ -16,13 +23,15 @@ import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
-import { useTRPC } from '@/lib/trpc';
+import { problemWith } from '@/lib/problem';
+import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { jobCountText, telHref } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
 import { ListPlaceholder } from '@/components/placeholder';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
+type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
 
 /**
  * Everyone we hire (M2, OD-47). Editors add and edit; the admin archives, which hides a vendor
@@ -119,7 +128,7 @@ export function Vendors() {
       {vendors.data && vendors.data.length > 0 ? (
         <PanelList>
           {vendors.data.map((v) => (
-            <li key={v.id} className="px-4 py-4 sm:px-5">
+            <li key={v.id} className="px-4 py-3 sm:px-5">
               <VendorRow
                 vendor={v}
                 jobs={jobs.data?.filter((j) => j.vendorId === v.id) ?? []}
@@ -170,6 +179,10 @@ export function Vendors() {
   );
 }
 
+/**
+ * One vendor per line (OD-93): name and what they do, how many jobs, and Details, which opens
+ * the vendor's panel with everything else.
+ */
 function VendorRow({
   vendor,
   jobs,
@@ -183,61 +196,126 @@ function VendorRow({
   canEdit: boolean;
   isAdmin: boolean;
 }) {
-  const [showDocs, setShowDocs] = useState(false);
+  const [open, setOpen] = useState(false);
+  useReturnFocus(open ? `vendor-${vendor.id}` : null);
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-lg font-semibold break-words">{vendor.name}</h2>
+        {vendor.trade ? <p className="text-sm text-muted-foreground">{vendor.trade}</p> : null}
+      </div>
+      <span className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        className="-mr-3"
+        onClick={() => setOpen(true)}
+        data-return-focus={`vendor-${vendor.id}`}
+      >
+        <PanelRightOpen aria-hidden absoluteStrokeWidth strokeWidth={2} />
+        Details
+        <span className="sr-only"> for {vendor.name}</span>
+      </Button>
+      <EditPanel
+        open={open}
+        title={vendor.name}
+        focusFirstField={false}
+        heading={canEdit ? <VendorNameField vendor={vendor} /> : undefined}
+        onClose={() => setOpen(false)}
+      >
+        <VendorBody
+          vendor={vendor}
+          jobs={jobs}
+          documents={documents}
+          canEdit={canEdit}
+          isAdmin={isAdmin}
+          onArchived={() => setOpen(false)}
+        />
+      </EditPanel>
+    </div>
+  );
+}
+
+/** Save part of a vendor, then refresh vendors and the jobs that show them. */
+function useSaveVendor(id: string) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  useReturnFocus(editing ? `vendor-${vendor.id}` : null);
-  const [confirming, setConfirming] = useState(false);
-  const invalidate = () =>
-    Promise.all([
+  return async (patch: Omit<VendorUpdateInput, 'id'>) => {
+    await trpcClient.vendors.update.mutate({ id, ...patch });
+    await Promise.all([
       queryClient.invalidateQueries(trpc.vendors.pathFilter()),
       queryClient.invalidateQueries(trpc.jobs.pathFilter()),
     ]);
-  const update = useMutation(
-    trpc.vendors.update.mutationOptions({
+  };
+}
+
+function VendorNameField({ vendor }: { vendor: Vendor }) {
+  const save = useSaveVendor(vendor.id);
+  return (
+    <PanelNameField
+      id={`vendor-name-${vendor.id}`}
+      initial={vendor.name}
+      what={`Name of ${vendor.name}`}
+      validate={(v) => problemWith(vendorUpdateSchema.shape.name, v)}
+      onSave={(v) => save({ name: v })}
+    />
+  );
+}
+
+/**
+ * A vendor's panel. Editors change it in place: every field saves when you leave it (OD-89,
+ * done here with OD-93). Everyone gets tap-to-call and email, the jobs, and the documents; the
+ * admin can archive.
+ */
+function VendorBody({
+  vendor,
+  jobs,
+  documents,
+  canEdit,
+  isAdmin,
+  onArchived,
+}: {
+  vendor: Vendor;
+  jobs: Job[];
+  documents: FileView[];
+  canEdit: boolean;
+  isAdmin: boolean;
+  onArchived: () => void;
+}) {
+  const trpc = useTRPC();
+  const queryClient = useQueryClient();
+  const save = useSaveVendor(vendor.id);
+  const [confirming, setConfirming] = useState(false);
+  const archive = useMutation(
+    trpc.vendors.remove.mutationOptions({
       onSuccess: async () => {
-        await invalidate();
-        setEditing(false);
+        onArchived();
+        await Promise.all([
+          queryClient.invalidateQueries(trpc.vendors.pathFilter()),
+          queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+        ]);
       },
     }),
   );
-  const archive = useMutation(trpc.vendors.remove.mutationOptions({ onSuccess: invalidate }));
+  const id = (f: string) => `vendor-${vendor.id}-${f}`;
+  const field = (
+    name: 'trade' | 'phone' | 'email' | 'notes',
+    label: string,
+    extra: { hint?: string; multiline?: boolean; type?: 'text' } = {},
+  ) => (
+    <AutoSaveField
+      id={id(name)}
+      label={label}
+      {...extra}
+      initial={vendor[name]}
+      what={`${label} for ${vendor.name}`}
+      validate={(v) => problemWith(vendorUpdateSchema.shape[name], v)}
+      onSave={(v) => save({ [name]: v })}
+    />
+  );
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold break-words">{vendor.name}</h2>
-          {vendor.trade ? <p className="text-muted-foreground">{vendor.trade}</p> : null}
-        </div>
-        {canEdit && !confirming ? (
-          <div className="flex flex-wrap gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={`Edit ${vendor.name}`}
-              onClick={() => setEditing(true)}
-              data-return-focus={`vendor-${vendor.id}`}
-            >
-              <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              Edit
-            </Button>
-            {isAdmin ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-muted-foreground"
-                aria-label={`Archive ${vendor.name}`}
-                onClick={() => setConfirming(true)}
-              >
-                Archive
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
+    <div className="flex flex-col gap-6">
       {vendor.phone || vendor.email ? (
         <div className="flex flex-wrap gap-2">
           {vendor.phone ? (
@@ -258,10 +336,23 @@ function VendorRow({
         </div>
       ) : null}
 
-      <div>
-        <p className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</p>
+      {canEdit ? (
+        <div className="flex flex-col gap-4">
+          {field('trade', 'What they do', { hint: 'Like Plumber or Demo crew.' })}
+          {field('phone', 'Phone')}
+          {field('email', 'Email')}
+          {field('notes', 'Notes', { multiline: true })}
+        </div>
+      ) : vendor.notes ? (
+        <p className="max-w-prose whitespace-pre-wrap">{vendor.notes}</p>
+      ) : null}
+
+      <section aria-labelledby={id('jobs')}>
+        <h3 id={id('jobs')} className="text-xl">
+          Jobs
+        </h3>
         {jobs.length > 0 ? (
-          <ul className="mt-1 flex flex-wrap gap-x-4">
+          <ul className="mt-1 flex flex-col">
             {jobs.map((j) => (
               <li key={j.id}>
                 <Link
@@ -274,88 +365,56 @@ function VendorRow({
               </li>
             ))}
           </ul>
-        ) : null}
-      </div>
+        ) : (
+          <p className="mt-1 text-muted-foreground">{jobCountText(vendor.jobCount)}</p>
+        )}
+      </section>
 
-      {vendor.notes ? (
-        <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">{vendor.notes}</p>
-      ) : null}
+      <FileSection
+        id={id('docs')}
+        title="Documents"
+        description="Insurance certificate, license, W-9. Add a caption to say which is which."
+        files={documents}
+        target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
+        uploadLabel="Add documents"
+        emptyText="No documents yet"
+        canEdit={canEdit}
+      />
 
-      {canEdit || documents.length > 0 ? (
-        <div className="-ml-3">
-          <Button
-            type="button"
-            variant="ghost"
-            aria-expanded={showDocs}
-            onClick={() => setShowDocs((v) => !v)}
-          >
-            <FileText aria-hidden className="size-4" />
-            {showDocs
-              ? 'Hide documents'
-              : documents.length > 0
-                ? `Documents (${documents.length})`
-                : 'Add documents'}
-            <span className="sr-only"> for {vendor.name}</span>
-          </Button>
+      {isAdmin ? (
+        <div className="border-t border-border pt-4">
+          {confirming ? (
+            <div className="flex flex-col gap-3">
+              <p>
+                Archive {vendor.name}? They stay on their jobs but aren&apos;t offered for new ones.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={archive.isPending}
+                  onClick={() => archive.mutate({ id: vendor.id })}
+                >
+                  Yes, archive
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+                  Keep
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              className="-ml-3 text-muted-foreground"
+              onClick={() => setConfirming(true)}
+            >
+              Archive {vendor.name}
+            </Button>
+          )}
+          {archive.error ? <FormError>{archive.error.message}</FormError> : null}
         </div>
       ) : null}
-      {showDocs ? (
-        <div className="rounded-xl border border-border bg-background p-4">
-          <FileSection
-            id={`vendor-docs-${vendor.id}`}
-            title={`Documents for ${vendor.name}`}
-            description="Insurance certificate, license, W-9. Add a caption to say which is which."
-            files={documents}
-            target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
-            uploadLabel="Add documents"
-            emptyText="No documents yet"
-            canEdit={canEdit}
-          />
-        </div>
-      ) : null}
-
-      {confirming ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-background p-3">
-          <span className="min-w-0">
-            Archive {vendor.name}? They stay on their jobs but aren&apos;t offered for new ones.
-          </span>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={archive.isPending}
-            onClick={() => archive.mutate({ id: vendor.id })}
-          >
-            Yes, archive
-          </Button>
-          <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
-            Keep
-          </Button>
-        </div>
-      ) : null}
-      {archive.error ? <FormError>{archive.error.message}</FormError> : null}
-
-      <EditPanel
-        open={editing}
-        title={`Edit ${vendor.name}`}
-        onClose={() => {
-          update.reset();
-          setEditing(false);
-        }}
-      >
-        <VendorForm
-          idPrefix={`vendor-${vendor.id}`}
-          vendor={vendor}
-          submitLabel="Save vendor"
-          serverError={update.error?.message}
-          onCancel={() => {
-            update.reset();
-            setEditing(false);
-          }}
-          onSubmit={async (values) => {
-            await update.mutateAsync({ id: vendor.id, ...values }).catch(() => undefined);
-          }}
-        />
-      </EditPanel>
     </div>
   );
 }
