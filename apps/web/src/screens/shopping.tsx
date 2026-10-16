@@ -584,7 +584,8 @@ function Filters({ search, select }: { search: ShoppingSearch; select: ReactNode
               key={key}
               type="button"
               onClick={() => setFilter(key, '')}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-input bg-card px-3 text-base hover:bg-accent"
+              // A filter that's on: small, in the other theme, with a 44px tap area (OD-126, Q173).
+              className="ink relative inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-popover px-2.5 text-sm text-popover-foreground transition-colors duration-150 after:absolute after:inset-x-0 after:-inset-y-1.5 hover:bg-accent"
             >
               {label}
               <X aria-hidden className="size-4" />

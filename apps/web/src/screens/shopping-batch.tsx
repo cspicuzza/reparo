@@ -109,7 +109,8 @@ export function BatchBar({
       // up with the list instead of overhanging it (OD-104, Q103).
       className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-6xl px-4 sm:px-6 md:bottom-4"
     >
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-popover p-3 shadow-[0_6px_24px_var(--float-shadow)] sm:p-4">
+      {/* The other theme, so the bar stands clear of the list it floats over (OD-126, Q175). */}
+      <div className="ink flex flex-col gap-3 rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-[0_6px_24px_var(--float-shadow)] sm:p-4">
         {/* Phone: the count and Clear on top, the actions two to a row below. Laptop: one row,
             count first and Clear last. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">

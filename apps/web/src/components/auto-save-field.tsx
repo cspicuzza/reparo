@@ -34,7 +34,8 @@ export function AutoSaveField({
 }: {
   id: string;
   label: ReactNode;
-  hint?: string;
+  /** Said under the field; may end with a small action, like "Rename Amazon everywhere…". */
+  hint?: ReactNode;
   /** What the server holds, as the field shows it. */
   initial: string;
   multiline?: boolean;

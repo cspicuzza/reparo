@@ -6,7 +6,7 @@ import {
   type ShoppingStatusInput as ShoppingStatus,
 } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AttachedFiles } from '@/components/attached-files';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
@@ -169,6 +169,7 @@ function EditBody({
   // Suggestions only; nothing waits for them.
   const stores = useQuery(trpc.shoppingLines.stores.queryOptions());
   const [renaming, setRenaming] = useState(false);
+  const renameLink = useRef<HTMLButtonElement>(null);
   // Removing one line offers the same 10 seconds of Undo as removing many (OD-103).
   const remove = useMutation(
     trpc.shoppingLines.remove.mutationOptions({
@@ -260,7 +261,26 @@ function EditBody({
           <AutoSaveField
             id={id('store')}
             label="Store"
-            hint="Pick one you've used or type a new one."
+            hint={
+              <>
+                Pick one you&apos;ve used or type a new one.
+                {line.store ? (
+                  <>
+                    {' '}
+                    {/* A quiet link at the end of the hint, not a floating button (OD-126, Q174). */}
+                    <button
+                      type="button"
+                      className="relative text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3 hover:decoration-2"
+                      ref={renameLink}
+                      aria-expanded={renaming}
+                      onClick={() => setRenaming(true)}
+                    >
+                      Rename {line.store} everywhere…
+                    </button>
+                  </>
+                ) : null}
+              </>
+            }
             list={id('stores')}
             initial={line.store}
             what={`Store for ${line.name}`}
@@ -273,19 +293,14 @@ function EditBody({
               <option key={st.name} value={st.name} />
             ))}
           </datalist>
-          {line.store ? (
-            renaming ? (
-              <RenameStore store={line.store} onDone={() => setRenaming(false)} />
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                className="-ml-3"
-                onClick={() => setRenaming(true)}
-              >
-                Rename this store everywhere
-              </Button>
-            )
+          {line.store && renaming ? (
+            <RenameStore
+              store={line.store}
+              onDone={() => {
+                setRenaming(false);
+                renameLink.current?.focus();
+              }}
+            />
           ) : null}
         </div>
 
