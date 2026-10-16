@@ -44,6 +44,9 @@
   /* Reparo's own tokens. */
   --bar: #f1f0ec; /* top bar and phone bottom bar */
   --inset: #efeeea; /* recessed areas, picture placeholders */
+  /* Section heading strips inside a panel, such as Shopping's rooms (OD-99). Checked
+     2026-10-16: text 11.95:1, secondary text 5.03:1, 1.29:1 against the panel. */
+  --band: #dcd9d1;
   --grid: rgb(30 29 26 / 0.07); /* drafting grid lines in placeholders */
   --float-shadow: rgb(30 29 26 / 0.1); /* shadow under things that float (phone bottom bar) */
   --scrim: rgb(30 29 26 / 0.35); /* dims the page behind a slide-out panel */
@@ -85,6 +88,7 @@
 
   --bar: #21201d;
   --inset: #2e2d29;
+  --band: #3b3934; /* dark: text 9.68:1, secondary text 4.70:1, 1.33:1 against the panel */
   --grid: rgb(237 235 230 / 0.06);
   --float-shadow: rgb(0 0 0 / 0.4);
   --scrim: rgb(0 0 0 / 0.55);
@@ -121,6 +125,7 @@
 
   --color-bar: var(--bar);
   --color-inset: var(--inset);
+  --color-band: var(--band);
   --color-grid: var(--grid);
   --color-float-shadow: var(--float-shadow);
   --color-scrim: var(--scrim);

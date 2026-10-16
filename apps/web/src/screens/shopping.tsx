@@ -2,7 +2,7 @@ import type { RouterOutputs } from '@reparo/api';
 import type { ShoppingStatusInput } from '@reparo/shared';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
-import { Plus, Search, X } from 'lucide-react';
+import { ListFilter, Plus, Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Select, inputClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
@@ -253,9 +253,10 @@ function ShoppingSection({
           <Panel
             key={room.roomId ?? 'house'}
             aria-labelledby={`${headingId}-${room.roomId ?? 'house'}`}
-            className="p-0 sm:p-0"
+            className="overflow-hidden p-0 sm:p-0"
           >
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border px-4 py-3 sm:px-5">
+            {/* The room's strip on the band tone, so it stands apart from its rows (OD-99). */}
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-band px-4 py-3 sm:px-5">
               <h3 id={`${headingId}-${room.roomId ?? 'house'}`} className="text-xl">
                 {room.name}
               </h3>
@@ -407,6 +408,7 @@ function Filters({ search }: { search: ShoppingSearch }) {
             aria-controls={panelId}
             onClick={() => setOpen((v) => !v)}
           >
+            <ListFilter aria-hidden absoluteStrokeWidth strokeWidth={2} />
             {open ? 'Hide filters' : active.length > 0 ? `Filter (${active.length})` : 'Filter'}
           </Button>
         </div>
