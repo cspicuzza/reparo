@@ -6,6 +6,7 @@ import {
   getRoomWithProgress,
   listRoomsWithProgress,
   removeRoom,
+  restoreRoom,
   updateRoom,
 } from '../services/rooms';
 import { setRoomCover } from '../services/files';
@@ -24,6 +25,10 @@ export const roomsRouter = router({
   remove: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removeRoom(ctx.db, input.id)),
+  /** Undo for remove (OD-113, Q142). */
+  restore: editorProcedure
+    .input(z.object({ id: idSchema }))
+    .mutation(({ ctx, input }) => restoreRoom(ctx.db, input.id)),
   /** One of the room's renderings as its cover, or none (M4, Q16). */
   setCover: editorProcedure
     .input(roomCoverSchema)

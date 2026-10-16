@@ -13,7 +13,8 @@ import { TapeStrip } from '@/components/tape';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
 import { useMe } from '@/lib/me';
-import { trpcErrorCode, useTRPC } from '@/lib/trpc';
+import { useToasts } from '@/lib/toasts';
+import { trpcClient, trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobNameField, JobPanelBody } from './job-panel';
@@ -24,6 +25,7 @@ import { JobRoomEditor } from './job-room-editor';
 import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { ConfirmRemove } from '@/components/confirm-remove';
 
 /**
  * One job (M2, OD-46; replaces the item page): who's doing it, the house-wide spec, and each
@@ -120,7 +122,7 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const navigate = useNavigate();
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
   useReturnFocus(editingRoom ? `jr-${editingRoom}` : null);
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const toasts = useToasts();
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries(trpc.jobs.pathFilter()),
@@ -139,11 +141,24 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
       },
     }),
   );
+  // Removing offers Undo for 10 seconds (OD-113, Q129).
   const remove = useMutation(
     trpc.jobs.remove.mutationOptions({
       onSuccess: async () => {
         await invalidate();
         await navigate({ to: '/jobs' });
+        toasts.add({
+          title: `Removed ${job.name}`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.jobs.restore
+                .mutate({ id: job.id })
+                .then(invalidate)
+                .catch(() => undefined),
+          },
+        });
       },
     }),
   );
@@ -312,35 +327,16 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
       <JobFiles jobId={job.id} canEdit={canEdit} />
 
       {canEdit ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {confirmingRemove ? (
-            <>
-              <span>Remove {job.name}?</span>
-              <Button
-                type="button"
-                disabled={remove.isPending}
-                onClick={() => remove.mutate({ id: job.id })}
-                variant="destructive"
-              >
-                Yes, remove it
-              </Button>
-              <Button type="button" onClick={() => setConfirmingRemove(false)} variant="ghost">
-                Keep it
-              </Button>
-              {remove.error ? (
-                <FormError className="w-full">{remove.error.message}</FormError>
-              ) : null}
-            </>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => setConfirmingRemove(true)}
-              variant="ghost"
-              className="text-muted-foreground"
-            >
-              Remove job
-            </Button>
-          )}
+        <div>
+          <ConfirmRemove
+            strong
+            what={job.name}
+            label="Remove job"
+            question={`Remove ${job.name}?`}
+            disabled={remove.isPending}
+            onConfirm={() => remove.mutate({ id: job.id })}
+          />
+          {remove.error ? <FormError>{remove.error.message}</FormError> : null}
         </div>
       ) : null}
     </>

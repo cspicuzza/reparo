@@ -1,4 +1,17 @@
-import { and, asc, eq, isNull, jobRooms, jobs, ne, phases, rooms, sql, type Db } from '@reparo/db';
+import {
+  and,
+  asc,
+  eq,
+  isNull,
+  jobRooms,
+  jobs,
+  ne,
+  phases,
+  rooms,
+  shoppingLines,
+  sql,
+  type Db,
+} from '@reparo/db';
 import type { RoomCreate, RoomUpdate } from '@reparo/shared';
 import { conflict, isUniqueViolation, notFound } from './errors';
 
@@ -72,10 +85,57 @@ export async function listRoomsWithProgress(db: Db) {
   });
 }
 
-/** A room with its progress, for the room page. */
+export type RoomAttachments = {
+  /** Live shopping lines (in live phases) for this room. */
+  lines: number;
+  /** Live jobs (in live phases) that cover this room, whatever its status there. */
+  jobs: number;
+};
+
+/**
+ * What still points at a room (OD-113, Q142). A room with any of these can't be removed: its
+ * lines would point at a room nobody can see, and its jobs would quietly lose it.
+ */
+export async function roomAttachments(db: Db, id: string): Promise<RoomAttachments> {
+  const [lines] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(shoppingLines)
+    .innerJoin(phases, eq(phases.id, shoppingLines.phaseId))
+    .where(
+      and(eq(shoppingLines.roomId, id), isNull(shoppingLines.deletedAt), isNull(phases.deletedAt)),
+    );
+  const [covering] = await db
+    .select({ n: sql<number>`count(distinct ${jobs.id})`.mapWith(Number) })
+    .from(jobRooms)
+    .innerJoin(jobs, eq(jobs.id, jobRooms.jobId))
+    .innerJoin(phases, eq(phases.id, jobs.phaseId))
+    .where(
+      and(
+        eq(jobRooms.roomId, id),
+        isNull(jobRooms.deletedAt),
+        isNull(jobs.deletedAt),
+        isNull(phases.deletedAt),
+      ),
+    );
+  return { lines: lines?.n ?? 0, jobs: covering?.n ?? 0 };
+}
+
+/** "11 things on the list and 1 job": what a room still has, for the refusal (Q142). */
+export function attachmentsText({ lines, jobs: jobCount }: RoomAttachments): string {
+  const parts: string[] = [];
+  if (lines > 0) parts.push(`${lines} ${lines === 1 ? 'thing' : 'things'} on the list`);
+  if (jobCount > 0) parts.push(`${jobCount} ${jobCount === 1 ? 'job' : 'jobs'}`);
+  return parts.join(' and ');
+}
+
+/** A room with its progress and what's attached to it, for the room page. */
 export async function getRoomWithProgress(db: Db, id: string) {
   const room = await getRoom(db, id);
-  return { ...room, progress: await roomProgress(db, id) };
+  return {
+    ...room,
+    progress: await roomProgress(db, id),
+    attached: await roomAttachments(db, id),
+  };
 }
 
 export async function createRoom(db: Db, input: RoomCreate) {
@@ -109,9 +169,39 @@ export async function updateRoom(db: Db, { id, ...patch }: RoomUpdate) {
   }
 }
 
-/** Soft-delete. The jobs covering the room keep their rows; the room is hidden from them. */
+/**
+ * Soft-delete, only once nothing points at the room (OD-113, Q142): lines and jobs have to be
+ * moved first, so none is left pointing at a room nobody can see.
+ */
 export async function removeRoom(db: Db, id: string) {
-  await getRoom(db, id);
+  const room = await getRoom(db, id);
+  const attached = await roomAttachments(db, id);
+  if (attached.lines > 0 || attached.jobs > 0) {
+    throw conflict(
+      `${room.name} still has ${attachmentsText(attached)}. Move them to another room first.`,
+    );
+  }
   await db.update(rooms).set({ deletedAt: new Date() }).where(eq(rooms.id, id));
   return { id };
+}
+
+/** Undo for removeRoom (Q142). Already live is fine; a live room with the same name isn't. */
+export async function restoreRoom(db: Db, id: string) {
+  const [row] = await db.select().from(rooms).where(eq(rooms.id, id));
+  if (!row) throw notFound('Room');
+  if (row.deletedAt === null) return row;
+  try {
+    const [back] = await db
+      .update(rooms)
+      .set({ deletedAt: null })
+      .where(eq(rooms.id, id))
+      .returning();
+    if (!back) throw notFound('Room');
+    return back;
+  } catch (e) {
+    if (isUniqueViolation(e, 'rooms_name_live_uidx')) {
+      throw conflict(`Another room is already called "${row.name}"`);
+    }
+    throw e;
+  }
 }

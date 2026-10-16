@@ -21,3 +21,25 @@ export function roomProgressText({ done, total }: { done: number; total: number 
   if (done >= total) return total === 1 ? 'Its one job is done' : `All ${total} jobs done`;
   return `${done} of ${total} ${total === 1 ? 'job' : 'jobs'} done`;
 }
+
+/** "11 things on the list and 1 job": what still points at a room (OD-113, Q142). */
+export function attachedText({ lines, jobs }: { lines: number; jobs: number }): string {
+  const parts: string[] = [];
+  if (lines > 0) parts.push(`${lines} ${lines === 1 ? 'thing' : 'things'} on the list`);
+  if (jobs > 0) parts.push(`${jobs} ${jobs === 1 ? 'job' : 'jobs'}`);
+  return parts.join(' and ');
+}
+
+/** Why a room can't be removed yet, and how to move what's on it; null when it can (Q142). */
+export function roomBlockedText(
+  name: string,
+  attached: { lines: number; jobs: number },
+): string | null {
+  if (attached.lines === 0 && attached.jobs === 0) return null;
+  const how: string[] = [];
+  if (attached.lines > 0) {
+    how.push('give each line another room (Select on Shopping moves several at once)');
+  }
+  if (attached.jobs > 0) how.push(`take ${name} off its jobs on the Jobs page`);
+  return `${name} still has ${attachedText(attached)}. To remove it, first ${how.join(', and ')}.`;
+}

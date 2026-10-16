@@ -69,7 +69,8 @@ export async function listShoppingLines(db: Db, filter: ShoppingLineList & { id?
     .from(shoppingLines)
     .innerJoin(phases, eq(phases.id, shoppingLines.phaseId))
     .innerJoin(categories, eq(categories.id, shoppingLines.categoryId))
-    .leftJoin(rooms, eq(rooms.id, shoppingLines.roomId))
+    // A removed room isn't shown (OD-113, Q142); removing one with lines is refused anyway.
+    .leftJoin(rooms, and(eq(rooms.id, shoppingLines.roomId), isNull(rooms.deletedAt)))
     .leftJoin(jobs, eq(jobs.id, shoppingLines.jobId))
     .where(and(...conds))
     .orderBy(

@@ -245,6 +245,7 @@ function Pool({ budget }: { budget: Budget }) {
                     Edit
                   </Button>
                   <ConfirmRemove
+                    strong
                     what={a.note || 'this adjustment'}
                     disabled={removeAdj.isPending}
                     onConfirm={() => removeAdj.mutate({ id: a.id })}

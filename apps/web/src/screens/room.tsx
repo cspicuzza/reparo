@@ -11,7 +11,8 @@ import type { RouterOutputs } from '@reparo/api';
 
 type Room = RouterOutputs['rooms']['get'];
 type RoomUpdateInput = Parameters<typeof trpcClient.rooms.update.mutate>[0];
-import { describeRoom, roomProgressText } from '@/lib/rooms';
+import { describeRoom, roomBlockedText, roomProgressText } from '@/lib/rooms';
+import { useToasts } from '@/lib/toasts';
 import { DimensionFrame, DimensionLine } from '@/components/dimension';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
@@ -25,6 +26,7 @@ import { FormError } from '@/components/form';
 import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { ConfirmRemove } from '@/components/confirm-remove';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -35,14 +37,28 @@ export function RoomDetail() {
   const room = useQuery(trpc.rooms.get.queryOptions({ id: roomId }));
   const [editing, setEditing] = useState(false);
   useReturnFocus(editing ? 'edit-room' : null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const toasts = useToasts();
 
   const invalidate = () => queryClient.invalidateQueries(trpc.rooms.pathFilter());
+  // Removing offers Undo for 10 seconds (OD-113, Q142).
   const remove = useMutation(
     trpc.rooms.remove.mutationOptions({
-      onSuccess: async () => {
+      onSuccess: async (_data, { id }) => {
+        const name = room.data?.name ?? 'the room';
         await invalidate();
         await navigate({ to: '/rooms' });
+        toasts.add({
+          title: `Removed ${name}`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.rooms.restore
+                .mutate({ id })
+                .then(invalidate)
+                .catch(() => undefined),
+          },
+        });
       },
     }),
   );
@@ -195,34 +211,16 @@ export function RoomDetail() {
 
       {canEdit ? (
         <div className="mt-12 border-t border-border pt-6">
-          {confirmingDelete ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <span>Remove {r.name} from the house?</span>
-              <Button
-                type="button"
-                disabled={remove.isPending}
-                onClick={() => remove.mutate({ id: r.id })}
-                variant="destructive"
-              >
-                Yes, remove it
-              </Button>
-              <Button type="button" onClick={() => setConfirmingDelete(false)} variant="ghost">
-                Keep it
-              </Button>
-              {remove.error ? (
-                <FormError className="w-full">{remove.error.message}</FormError>
-              ) : null}
-            </div>
-          ) : (
-            <Button
-              type="button"
-              onClick={() => setConfirmingDelete(true)}
-              variant="ghost"
-              className="px-0 text-muted-foreground"
-            >
-              Remove this room
-            </Button>
-          )}
+          <ConfirmRemove
+            strong
+            what={r.name}
+            label="Remove this room"
+            question={`Remove ${r.name} from the house?`}
+            blocked={roomBlockedText(r.name, r.attached)}
+            disabled={remove.isPending}
+            onConfirm={() => remove.mutate({ id: r.id })}
+          />
+          {remove.error ? <FormError>{remove.error.message}</FormError> : null}
         </div>
       ) : null}
       {/* Edited in place (OD-89). Size and notes already save on this page, so the panel

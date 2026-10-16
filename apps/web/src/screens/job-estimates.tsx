@@ -207,15 +207,7 @@ function EstimateCard({
   onChanged: () => Promise<unknown>;
 }) {
   const trpc = useTRPC();
-  const [confirming, setConfirming] = useState(false);
-  const choose = useMutation(
-    trpc.estimates.choose.mutationOptions({
-      onSuccess: async () => {
-        setConfirming(false);
-        await onChanged();
-      },
-    }),
-  );
+  const choose = useMutation(trpc.estimates.choose.mutationOptions({ onSuccess: onChanged }));
   const decline = useMutation(trpc.estimates.update.mutationOptions({ onSuccess: onChanged }));
   const remove = useMutation(trpc.estimates.remove.mutationOptions({ onSuccess: onChanged }));
   const error = choose.error ?? decline.error ?? remove.error;
@@ -281,72 +273,64 @@ function EstimateCard({
       />
 
       {canEdit ? (
-        confirming ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
-            <p>
-              {money(paidCents)} already paid on this job stays counted. Choose {e.vendor.name}
-              {e.amountCents !== null ? ` at ${money(e.amountCents)}` : ''}?
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                disabled={choose.isPending}
-                onClick={() => choose.mutate({ id: e.id })}
-              >
-                Yes, choose {e.vendor.name}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
-                Keep it as it is
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="-ml-3 flex flex-wrap items-center gap-1">
-            {canChoose ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="ml-3"
-                disabled={choose.isPending}
-                onClick={() => (paidCents > 0 ? setConfirming(true) : choose.mutate({ id: e.id }))}
-              >
-                Choose this one
-              </Button>
-            ) : null}
+        <div className="-ml-3 flex flex-wrap items-center gap-1">
+          {canChoose && paidCents > 0 ? (
+            // Money is already paid on the job: the one confirm step says what stays (Q129).
+            <ConfirmRemove
+              tone="neutral"
+              what={e.vendor.name}
+              label="Choose this one"
+              question={`${money(paidCents)} already paid on this job stays counted. Choose ${e.vendor.name}${e.amountCents !== null ? ` at ${money(e.amountCents)}` : ''}?`}
+              confirmLabel={`Yes, choose ${e.vendor.name}`}
+              keepLabel="Keep it as it is"
+              className="ml-3"
+              disabled={choose.isPending}
+              onConfirm={() => choose.mutate({ id: e.id })}
+            />
+          ) : canChoose ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="ml-3"
+              disabled={choose.isPending}
+              onClick={() => choose.mutate({ id: e.id })}
+            >
+              Choose this one
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onEdit}
+            data-return-focus={`estimate-${e.id}`}
+          >
+            {e.status === 'requested' ? null : (
+              <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+            )}
+            {e.status === 'requested' ? 'Add the amount' : 'Edit'}
+            <span className="sr-only"> for {e.vendor.name}</span>
+          </Button>
+          {e.status === 'received' || e.status === 'requested' ? (
             <Button
               type="button"
               variant="ghost"
-              onClick={onEdit}
-              data-return-focus={`estimate-${e.id}`}
+              disabled={decline.isPending}
+              onClick={() => decline.mutate({ id: e.id, status: 'declined' })}
             >
-              {e.status === 'requested' ? null : (
-                <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              )}
-              {e.status === 'requested' ? 'Add the amount' : 'Edit'}
+              Mark declined
               <span className="sr-only"> for {e.vendor.name}</span>
             </Button>
-            {e.status === 'received' || e.status === 'requested' ? (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={decline.isPending}
-                onClick={() => decline.mutate({ id: e.id, status: 'declined' })}
-              >
-                Mark declined
-                <span className="sr-only"> for {e.vendor.name}</span>
-              </Button>
-            ) : null}
-            <ConfirmRemove
-              what={
-                e.status === 'chosen' && e.amountCents !== null
-                  ? `the ${e.vendor.name} estimate and its ${money(e.amountCents)} quote line`
-                  : `the ${e.vendor.name} estimate`
-              }
-              disabled={remove.isPending}
-              onConfirm={() => remove.mutate({ id: e.id })}
-            />
-          </div>
-        )
+          ) : null}
+          <ConfirmRemove
+            what={
+              e.status === 'chosen' && e.amountCents !== null
+                ? `the ${e.vendor.name} estimate and its ${money(e.amountCents)} quote line`
+                : `the ${e.vendor.name} estimate`
+            }
+            disabled={remove.isPending}
+            onConfirm={() => remove.mutate({ id: e.id })}
+          />
+        </div>
       ) : null}
       {error ? <FormError>{error.message}</FormError> : null}
     </li>

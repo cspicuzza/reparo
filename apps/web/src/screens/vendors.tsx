@@ -24,6 +24,7 @@ import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { problemWith } from '@/lib/problem';
+import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { QuerySource } from '@/lib/load-problem';
 import type { FileView } from '@/lib/upload';
@@ -31,6 +32,7 @@ import { jobCountText, telHref } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
 import { LinesPlaceholder, ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { ConfirmRemove } from '@/components/confirm-remove';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
 type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
@@ -306,15 +308,31 @@ function VendorBody({
   const trpc = useTRPC();
   const queryClient = useQueryClient();
   const save = useSaveVendor(vendor.id);
-  const [confirming, setConfirming] = useState(false);
+  const toasts = useToasts();
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries(trpc.vendors.pathFilter()),
+      queryClient.invalidateQueries(trpc.jobs.pathFilter()),
+    ]);
+  // Archiving offers Undo for 10 seconds, through the same restore as the archived list
+  // (OD-113, Q129).
   const archive = useMutation(
     trpc.vendors.remove.mutationOptions({
       onSuccess: async () => {
         onArchived();
-        await Promise.all([
-          queryClient.invalidateQueries(trpc.vendors.pathFilter()),
-          queryClient.invalidateQueries(trpc.jobs.pathFilter()),
-        ]);
+        await refresh();
+        toasts.add({
+          title: `Archived ${vendor.name}`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.vendors.restore
+                .mutate({ id: vendor.id })
+                .then(refresh)
+                .catch(() => undefined),
+          },
+        });
       },
     }),
   );
@@ -414,35 +432,15 @@ function VendorBody({
 
       {isAdmin ? (
         <div className="border-t border-border pt-4">
-          {confirming ? (
-            <div className="flex flex-col gap-3">
-              <p>
-                Archive {vendor.name}? They stay on their jobs but aren&apos;t offered for new ones.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={archive.isPending}
-                  onClick={() => archive.mutate({ id: vendor.id })}
-                >
-                  Yes, archive
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
-                  Keep
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              className="-ml-3 text-muted-foreground"
-              onClick={() => setConfirming(true)}
-            >
-              Archive {vendor.name}
-            </Button>
-          )}
+          <ConfirmRemove
+            strong
+            what={vendor.name}
+            label={`Archive ${vendor.name}`}
+            question={`Archive ${vendor.name}? They stay on their jobs but aren’t offered for new ones.`}
+            confirmLabel="Yes, archive"
+            disabled={archive.isPending}
+            onConfirm={() => archive.mutate({ id: vendor.id })}
+          />
           {archive.error ? <FormError>{archive.error.message}</FormError> : null}
         </div>
       ) : null}

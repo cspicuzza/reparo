@@ -1,4 +1,13 @@
-import { createDb, eq, members, Rollback, upsertMembers, withRollback, type Db } from '@reparo/db';
+import {
+  createDb,
+  eq,
+  members,
+  Rollback,
+  rooms,
+  upsertMembers,
+  withRollback,
+  type Db,
+} from '@reparo/db';
 import { prepareTestDatabase } from '@reparo/db/testing';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -518,7 +527,15 @@ describe('@reparo/api', () => {
       const back = (await mutate(h, 'editor', 'jobRooms.create', { jobId: job.id, roomId: den.id }))
         .data as JobRow;
       expect(jr(back, 'Test Den').status).toBe('unstarted');
-      await mutate(h, 'editor', 'rooms.remove', { id: bath.id });
+      // A room a job still covers can't be removed (OD-113, Q142); taken off the job, it can.
+      const bathRefused = await mutate(h, 'editor', 'rooms.remove', { id: bath.id });
+      expect([bathRefused.status, bathRefused.code, bathRefused.message]).toEqual([
+        409,
+        'CONFLICT',
+        'Test Bath still has 1 job. Move them to another room first.',
+      ]);
+      await mutate(h, 'editor', 'jobRooms.remove', { id: jr(back, 'Test Bath').id });
+      expect((await mutate(h, 'editor', 'rooms.remove', { id: bath.id })).status).toBe(200);
       const noBath = row(await query(h, 'viewer', 'jobs.get', { id: job.id })) as JobRow;
       expect(noBath.rooms.some((r) => r.room.name === 'Test Bath')).toBe(false);
 
@@ -1783,6 +1800,93 @@ describe('@reparo/api', () => {
       const totals = (await query(h, 'viewer', 'shoppingLines.totals', { q: 'FAN' }))
         .data as Section[];
       expect(totals[0]).toMatchObject({ status: 'to_buy', count: 4, totalCents: 4000 });
+    }));
+
+  it('rooms: removing is refused while lines or jobs point at it, and Undo restores it', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const nook = row(await mutate(h, 'editor', 'rooms.create', { name: 'Refuse Nook' }));
+      const attached = async () =>
+        (row(await query(h, 'viewer', 'rooms.get', { id: nook.id })) as Row & { attached: Row })
+          .attached;
+      expect(await attached()).toEqual({ lines: 0, jobs: 0 });
+
+      const lamp = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase1.id,
+          categoryId: cat('Decor'),
+          roomId: nook.id,
+          name: 'Lamp',
+        }),
+      );
+      await mutate(h, 'editor', 'shoppingLines.create', {
+        phaseId: phase1.id,
+        categoryId: cat('Decor'),
+        roomId: nook.id,
+        name: 'Rug',
+      });
+      const paint = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          name: 'Nook paint',
+          roomIds: [nook.id],
+        }),
+      );
+      expect(await attached()).toEqual({ lines: 2, jobs: 1 });
+
+      const refused = await mutate(h, 'editor', 'rooms.remove', { id: nook.id });
+      expect([refused.status, refused.code, refused.message]).toEqual([
+        409,
+        'CONFLICT',
+        'Refuse Nook still has 2 things on the list and 1 job. Move them to another room first.',
+      ]);
+      expect((await query(h, 'viewer', 'rooms.get', { id: nook.id })).status).toBe(200);
+
+      // A removed line or job no longer holds the room.
+      await mutate(h, 'editor', 'jobs.remove', { id: paint.id });
+      await mutate(h, 'editor', 'shoppingLines.remove', { id: lamp.id });
+      expect(await attached()).toEqual({ lines: 1, jobs: 0 });
+      const lines = rows(await query(h, 'viewer', 'shoppingLines.list', { roomId: nook.id }));
+      await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: lines.map((l) => ({ id: l.id, roomId: null })),
+      });
+      expect(await attached()).toEqual({ lines: 0, jobs: 0 });
+
+      expect((await mutate(h, 'editor', 'rooms.remove', { id: nook.id })).status).toBe(200);
+      expect((await query(h, 'viewer', 'rooms.get', { id: nook.id })).code).toBe('NOT_FOUND');
+
+      // Undo puts it back; a viewer can't; restoring twice is harmless.
+      expect((await mutate(h, 'viewer', 'rooms.restore', { id: nook.id })).status).toBe(403);
+      expect((await mutate(h, 'editor', 'rooms.restore', { id: nook.id })).status).toBe(200);
+      expect((await mutate(h, 'editor', 'rooms.restore', { id: nook.id })).status).toBe(200);
+      expect(row(await query(h, 'viewer', 'rooms.get', { id: nook.id })).name).toBe('Refuse Nook');
+
+      // A new room took the name meanwhile: Undo says so instead of failing quietly.
+      await mutate(h, 'editor', 'rooms.remove', { id: nook.id });
+      await mutate(h, 'editor', 'rooms.create', { name: 'Refuse Nook' });
+      const clash = await mutate(h, 'editor', 'rooms.restore', { id: nook.id });
+      expect([clash.status, clash.message]).toEqual([
+        409,
+        'Another room is already called "Refuse Nook"',
+      ]);
+    }));
+
+  it('shopping list: a line whose room was removed shows no room', () =>
+    withSeeded(async (tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const gone = row(await mutate(h, 'editor', 'rooms.create', { name: 'Gone Room' }));
+      const line = row(
+        await mutate(h, 'editor', 'shoppingLines.create', {
+          phaseId: phase1.id,
+          categoryId: cat('Decor'),
+          roomId: gone.id,
+          name: 'Orphan',
+        }),
+      );
+      // Data from before removing was refused: a removed room with a line still on it.
+      await tx.update(rooms).set({ deletedAt: new Date() }).where(eq(rooms.id, gone.id));
+      const got = row(await query(h, 'viewer', 'shoppingLines.get', { id: line.id }));
+      expect(got.room).toBeNull();
     }));
 
   it('batch edits: move, recategorise and remove lines together, all or none, with undo', () =>
