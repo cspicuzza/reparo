@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { supabase } from '@/lib/supabase';
+import { NotHere } from '@/screens/not-here';
 import { Shell } from '@/screens/shell';
 
 export const Route = createFileRoute('/_app')({
@@ -8,4 +9,5 @@ export const Route = createFileRoute('/_app')({
     if (!data.session) throw redirect({ to: '/sign-in' });
   },
   component: Shell,
+  notFoundComponent: NotHere,
 });

@@ -4,9 +4,15 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { supabase } from '@/lib/supabase';
 import { queryClient } from '@/lib/trpc';
+import { PageError } from '@/screens/not-here';
 import './index.css';
 
-const router = createRouter({ routeTree, defaultPreload: 'intent' });
+const router = createRouter({
+  routeTree,
+  defaultPreload: 'intent',
+  // Something that breaks while showing a page gets Reparo's words, not the router's (Q124).
+  defaultErrorComponent: PageError,
+});
 
 declare module '@tanstack/react-router' {
   interface Register {

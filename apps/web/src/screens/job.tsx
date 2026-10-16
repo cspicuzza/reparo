@@ -21,6 +21,7 @@ import { JobEstimates } from './job-estimates';
 import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
+import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 
@@ -36,10 +37,18 @@ export function JobDetail() {
   const [editing, setEditing] = useState(false);
   useReturnFocus(editing ? 'edit-job' : null);
 
-  if (job.isPending) return <PagePlaceholder label="Loading the job" />;
+  if (job.isPending) {
+    return (
+      <>
+        <PageTitle parts={['Jobs']} />
+        <PagePlaceholder label="Loading the job" />
+      </>
+    );
+  }
   if (job.error) {
     return (
       <section>
+        <PageTitle parts={['Jobs']} />
         {trpcErrorCode(job.error) === 'NOT_FOUND' ? (
           <p role="alert">That job is no longer here.</p>
         ) : (
@@ -58,6 +67,7 @@ export function JobDetail() {
         <div className="mt-2">
           <PageHeader
             title={j.name}
+            tabTitle={[j.name, 'Jobs']}
             description={j.phase.name}
             action={
               canEdit ? (

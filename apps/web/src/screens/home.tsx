@@ -2,6 +2,7 @@ import type { RouterOutputs } from '@reparo/api';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
+import { PageTitle } from '@/components/page-title';
 import { PlanGrid } from '@/components/plan-grid';
 import { StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
@@ -34,6 +35,7 @@ export function Home() {
   const hello = greeting(new Date(), member?.displayName);
   return (
     <div className="flex flex-col gap-8">
+      <PageTitle parts={['Home']} />
       {summary.isPending ? (
         <>
           <h1 className="text-3xl">{hello}</h1>

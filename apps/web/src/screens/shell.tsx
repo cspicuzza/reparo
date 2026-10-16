@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { Link, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import {
   CalendarRange,
   Contact,
@@ -12,7 +12,7 @@ import {
   ShoppingBag,
   Wallet,
 } from 'lucide-react';
-import { useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { LogoMark } from '@/components/logo';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { ThemeSwitch, ThemeSwitchMenu } from '@/components/theme-switch';
 
-type Path = '/' | '/rooms' | '/jobs' | '/shopping' | '/money' | '/phases' | '/vendors';
+type Path = '/' | '/rooms' | '/jobs' | '/shopping' | '/money' | '/phases' | '/vendors' | '/manage';
 type Section = { name: string; to: Path; icon: ComponentType<{ 'aria-hidden'?: boolean }> };
 
 /*
@@ -57,10 +57,55 @@ const isIn = (pathname: string, to: Path) =>
 
 const ROLE_LABEL = { admin: 'Admin', editor: 'Can edit', viewer: 'Can view' } as const;
 
+/**
+ * After moving to another page (not on first load, and not when only the search changes),
+ * focus the new page's heading so screen readers announce it (OD-111, Q123). Runs once the
+ * router has drawn the new page; one that's still loading has no heading yet, so this waits up
+ * to two seconds for it to appear.
+ */
+function useFocusHeadingOnNavigate() {
+  const router = useRouter();
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    let stopWaiting = () => {};
+    const unsubscribe = router.subscribe('onRendered', (event) => {
+      if (!event.fromLocation || !event.pathChanged) return;
+      stopWaiting();
+      const main = mainRef.current;
+      if (!main) return;
+      const focus = () => {
+        const h1 = main.querySelector('h1');
+        if (!h1) return false;
+        h1.tabIndex = -1;
+        h1.focus({ preventScroll: true });
+        return true;
+      };
+      if (focus()) return;
+      const observer = new MutationObserver(() => {
+        if (focus()) stopWaiting();
+      });
+      observer.observe(main, { childList: true, subtree: true });
+      const timer = window.setTimeout(() => observer.disconnect(), 2000);
+      stopWaiting = () => {
+        observer.disconnect();
+        window.clearTimeout(timer);
+      };
+    });
+    return () => {
+      unsubscribe();
+      stopWaiting();
+    };
+  }, [router]);
+  return mainRef;
+}
+
 export function Shell() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const me = useQuery(trpc.health.ping.queryOptions());
+  const pathname = useRouterState({ select: (st) => st.location.pathname });
+  const onManage = isIn(pathname, '/manage');
+  const mainRef = useFocusHeadingOnNavigate();
 
   async function onSignOut() {
     await signOut();
@@ -82,7 +127,7 @@ export function Shell() {
             <LogoMark mends />
             Reparo
           </Link>
-          <nav aria-label="Sections" className="hidden sm:block">
+          <nav aria-label="Sections" className="hidden md:block">
             <ul className="flex items-center gap-1">
               {TOP_BAR.map(({ name, to }) => (
                 <li key={name}>
@@ -107,7 +152,11 @@ export function Shell() {
               <DropdownMenuTrigger
                 className={buttonVariants({
                   variant: 'outline',
-                  className: 'hidden sm:inline-flex',
+                  className: cn(
+                    'hidden md:inline-flex',
+                    // On /manage the account menu holds the current page (Q128).
+                    onManage && 'shadow-[inset_0_-3px_0_var(--tape)]',
+                  ),
                 })}
               >
                 {me.data.member.displayName}
@@ -123,7 +172,11 @@ export function Shell() {
                 <ThemeSwitchMenu />
                 <DropdownMenuSeparator />
                 {me.data.member.role === 'admin' ? (
-                  <DropdownMenuItem onClick={() => void navigate({ to: '/manage' })}>
+                  <DropdownMenuItem
+                    onClick={() => void navigate({ to: '/manage' })}
+                    aria-current={onManage ? 'page' : undefined}
+                    className={cn(onManage && 'font-semibold shadow-[inset_3px_0_0_var(--tape)]')}
+                  >
                     <ListChecks aria-hidden />
                     Manage lists
                   </DropdownMenuItem>
@@ -135,18 +188,18 @@ export function Shell() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <span className="hidden min-h-11 sm:block" aria-hidden="true" />
+            <span className="hidden min-h-11 md:block" aria-hidden="true" />
           )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 sm:pb-16">
+      <main ref={mainRef} className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 md:pb-16">
         <Outlet />
       </main>
 
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_var(--float-shadow)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_var(--float-shadow)] md:hidden"
       >
         <ul className="flex">
           {BOTTOM_BAR.map(({ name, to, icon: Icon }) => (
@@ -191,7 +244,8 @@ function MenuPanel({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (st) => st.location.pathname });
-  const here = MENU_PANEL.some((sec) => isIn(pathname, sec.to));
+  // Manage lists lives in this panel too, so the tab is current there (Q128).
+  const here = MENU_PANEL.some((sec) => isIn(pathname, sec.to)) || isIn(pathname, '/manage');
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -234,6 +288,10 @@ function MenuPanel({
                 to="/manage"
                 onClick={() => setOpen(false)}
                 className={buttonVariants({ variant: 'outline', className: 'mt-3 w-full' })}
+                activeProps={{
+                  className: 'font-semibold shadow-[inset_3px_0_0_var(--tape)]',
+                  'aria-current': 'page',
+                }}
               >
                 <ListChecks aria-hidden className="size-5" />
                 Manage lists

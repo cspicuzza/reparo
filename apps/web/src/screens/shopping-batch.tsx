@@ -107,7 +107,7 @@ export function BatchBar({
       aria-label="Batch editing"
       // The same column as the page (shell.tsx: max-w-6xl with px-4, sm:px-6), so the bar lines
       // up with the list instead of overhanging it (OD-104, Q103).
-      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-6xl px-4 sm:bottom-4 sm:px-6"
+      className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 mx-auto max-w-6xl px-4 sm:px-6 md:bottom-4"
     >
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-popover p-3 shadow-[0_6px_24px_var(--float-shadow)] sm:p-4">
         {/* Phone: the count and Clear on top, the actions two to a row below. Laptop: one row,

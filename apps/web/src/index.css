@@ -205,6 +205,12 @@
     border-color: var(--border);
   }
 
+  /* A page's heading takes focus after navigating, so screen readers announce the page
+     (OD-111, Q123). It isn't a control, so it shows no focus ring. */
+  h1[tabindex='-1']:focus {
+    outline: none;
+  }
+
   h1,
   h2,
   h3 {

@@ -134,7 +134,7 @@ export function Shopping() {
   const toBuy = totals.data?.find((s) => s.status === 'to_buy');
 
   return (
-    <section className={cn('flex flex-col gap-6', picked.size > 0 && 'pb-56 sm:pb-40')}>
+    <section className={cn('flex flex-col gap-6', picked.size > 0 && 'pb-56 md:pb-40')}>
       <PageHeader
         title="Shopping"
         description={

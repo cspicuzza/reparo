@@ -22,6 +22,7 @@ import { RoomShopping } from './room-shopping';
 import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { FormError } from '@/components/form';
+import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 
@@ -49,11 +50,19 @@ export function RoomDetail() {
   const saveRoom = (input: RoomUpdateInput) =>
     trpcClient.rooms.update.mutate(input).then(() => invalidate());
 
-  if (room.isPending) return <PagePlaceholder label="Loading the room" />;
+  if (room.isPending) {
+    return (
+      <>
+        <PageTitle parts={['Rooms']} />
+        <PagePlaceholder label="Loading the room" />
+      </>
+    );
+  }
   if (room.error) {
     const gone = trpcErrorCode(room.error) === 'NOT_FOUND';
     return (
       <section>
+        <PageTitle parts={['Rooms']} />
         {gone ? (
           <p role="alert">That room is no longer here.</p>
         ) : (
@@ -82,6 +91,7 @@ export function RoomDetail() {
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
+          <PageTitle parts={[r.name, 'Rooms']} />
           <h1 className="text-4xl">{r.name}</h1>
           <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
         </div>

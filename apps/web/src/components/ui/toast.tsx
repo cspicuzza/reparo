@@ -19,7 +19,7 @@ export function ToastProvider(props: Toast.Provider.Props) {
 export function Toaster() {
   return (
     <Toast.Portal>
-      <Toast.Viewport className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex flex-col gap-2 outline-none sm:right-6 sm:bottom-6 sm:left-auto sm:w-[24rem]">
+      <Toast.Viewport className="fixed inset-x-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 flex flex-col gap-2 outline-none md:right-6 md:bottom-6 md:left-auto md:w-[24rem]">
         <ToastList />
       </Toast.Viewport>
     </Toast.Portal>

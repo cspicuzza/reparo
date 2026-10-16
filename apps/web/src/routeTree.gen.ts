@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppSplatRouteImport } from './routes/_app/$'
 import { Route as AppJobsIndexRouteImport } from './routes/_app/jobs/index'
 import { Route as AppJobsJobIdRouteImport } from './routes/_app/jobs/$jobId'
 import { Route as AppManageIndexRouteImport } from './routes/_app/manage/index'
@@ -34,6 +35,11 @@ const SignInRoute = SignInRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSplatRoute = AppSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => AppRoute,
 } as any)
 const AppJobsIndexRoute = AppJobsIndexRouteImport.update({
@@ -85,6 +91,7 @@ const AppVendorsIndexRoute = AppVendorsIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
+  '/$': typeof AppSplatRoute
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
   '/jobs/': typeof AppJobsIndexRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
+  '/$': typeof AppSplatRoute
   '/': typeof AppIndexRoute
   '/jobs/$jobId': typeof AppJobsJobIdRoute
   '/rooms/$roomId': typeof AppRoomsRoomIdRoute
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
+  '/_app/$': typeof AppSplatRoute
   '/_app/': typeof AppIndexRoute
   '/_app/jobs/$jobId': typeof AppJobsJobIdRoute
   '/_app/rooms/$roomId': typeof AppRoomsRoomIdRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/sign-in'
+    | '/$'
     | '/jobs/$jobId'
     | '/rooms/$roomId'
     | '/jobs/'
@@ -140,6 +150,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/sign-in'
+    | '/$'
     | '/'
     | '/jobs/$jobId'
     | '/rooms/$roomId'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/sign-in'
+    | '/_app/$'
     | '/_app/'
     | '/_app/jobs/$jobId'
     | '/_app/rooms/$roomId'
@@ -192,6 +204,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$': {
+      id: '/_app/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof AppSplatRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/jobs/': {
@@ -261,6 +280,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppSplatRoute: typeof AppSplatRoute
   AppIndexRoute: typeof AppIndexRoute
   AppJobsJobIdRoute: typeof AppJobsJobIdRoute
   AppRoomsRoomIdRoute: typeof AppRoomsRoomIdRoute
@@ -274,6 +294,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppSplatRoute: AppSplatRoute,
   AppIndexRoute: AppIndexRoute,
   AppJobsJobIdRoute: AppJobsJobIdRoute,
   AppRoomsRoomIdRoute: AppRoomsRoomIdRoute,
