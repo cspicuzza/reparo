@@ -27,6 +27,7 @@ import { PageTitle } from '@/components/page-title';
 import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
+import { BoughtTape } from '@/components/bought-tape';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -123,6 +124,13 @@ export function RoomDetail() {
           </Button>
         ) : null}
       </div>
+
+      {/* What's bought for this room against what's left to buy (OD-118, Q143). */}
+      <BoughtTape
+        boughtCents={r.shopping.boughtCents}
+        leftCents={r.shopping.leftCents}
+        className="mt-5"
+      />
 
       <section
         aria-labelledby="room-jobs"

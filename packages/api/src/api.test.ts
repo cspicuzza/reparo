@@ -2010,6 +2010,26 @@ describe('@reparo/api', () => {
       );
       expect(await attached()).toEqual({ lines: 2, jobs: 1 });
 
+      // The room page's money tape: bought against left to buy, for this room (OD-118, Q143).
+      const priced = (await query(h, 'viewer', 'rooms.get', { id: nook.id })).data as Row & {
+        shopping: Row;
+      };
+      expect(priced.shopping).toEqual({ boughtCents: 0, leftCents: 0 });
+      await mutate(h, 'editor', 'shoppingLines.update', { id: lamp.id, priceCents: '120.00' });
+      await mutate(h, 'editor', 'shoppingLines.update', {
+        id: lamp.id,
+        status: 'purchased',
+        paidCents: '110.50',
+      });
+      const rug = rows(await query(h, 'viewer', 'shoppingLines.list', { roomId: nook.id })).find(
+        (l) => l.name === 'Rug',
+      );
+      await mutate(h, 'editor', 'shoppingLines.update', { id: rug?.id, priceCents: '300' });
+      const after = (await query(h, 'viewer', 'rooms.get', { id: nook.id })).data as Row & {
+        shopping: Row;
+      };
+      expect(after.shopping).toEqual({ boughtCents: 11050, leftCents: 30000 });
+
       const refused = await mutate(h, 'editor', 'rooms.remove', { id: nook.id });
       expect([refused.status, refused.code, refused.message]).toEqual([
         409,

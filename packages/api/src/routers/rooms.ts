@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { editorProcedure, memberProcedure, router } from '../trpc';
 import {
   createRoom,
-  getRoomWithProgress,
   listRoomsWithProgress,
   moveRoom,
   removeRoom,
@@ -17,12 +16,13 @@ import {
   updateRoom,
 } from '../services/rooms';
 import { setRoomCover } from '../services/files';
+import { getRoomDetail } from '../services/room-detail';
 
 export const roomsRouter = router({
   list: memberProcedure.query(({ ctx }) => listRoomsWithProgress(ctx.db)),
   get: memberProcedure
     .input(z.object({ id: idSchema }))
-    .query(({ ctx, input }) => getRoomWithProgress(ctx.db, input.id)),
+    .query(({ ctx, input }) => getRoomDetail(ctx.db, input.id)),
   create: editorProcedure
     .input(roomCreateSchema)
     .mutation(({ ctx, input }) => createRoom(ctx.db, input)),

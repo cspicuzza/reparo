@@ -10,11 +10,11 @@ import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Reveal } from '@/components/reveal';
-import { TapeStrip } from '@/components/tape';
+import { BoughtTape } from '@/components/bought-tape';
 import { Button } from '@/components/ui/button';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMe } from '@/lib/me';
-import { money, moneyStep } from '@/lib/money';
+import { money } from '@/lib/money';
 import {
   groupText,
   shoppingFilter,
@@ -279,39 +279,16 @@ export function Shopping() {
   );
 }
 
-/**
- * What's bought against what's left, drawn as the tape measure (OD-107, Q104): the dark fill is
- * what's been paid (returns count what wasn't refunded), yellow is the price of what's still to
- * buy. It follows the filters and search, like the sentence above it. The amounts are written
- * beside it, so the colours never carry them alone.
- */
+/** Bought against left to buy for the list as filtered (OD-107, Q104), from the totals. */
 function ShoppingTape({ sections }: { sections: Section[] }) {
   const cents = (status: Section['status']) =>
     sections.find((s) => s.status === status)?.totalCents ?? 0;
-  const boughtCents = cents('purchased') + cents('returned');
-  const leftCents = cents('to_buy');
-  const totalCents = boughtCents + leftCents;
-  if (totalCents <= 0) return null;
   return (
-    <div className="-mt-2">
-      <TapeStrip
-        mode="money"
-        usedCents={boughtCents}
-        totalCents={totalCents}
-        stepCents={moneyStep(totalCents)}
-        label={`${money(boughtCents)} bought and ${money(leftCents)} left to buy, of ${money(totalCents)}`}
-      />
-      <div aria-hidden className="mt-3 flex flex-wrap gap-x-5 gap-y-1 tabular-nums">
-        <span>
-          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape-fill align-[-2px] outline-1 outline-tape-edge outline-solid" />
-          Bought <strong className="font-semibold">{money(boughtCents)}</strong>
-        </span>
-        <span>
-          <span className="mr-2 inline-block size-3.5 rounded-sm bg-tape align-[-2px] outline-1 outline-tape-edge outline-solid" />
-          Left to buy <strong className="font-semibold">{money(leftCents)}</strong>
-        </span>
-      </div>
-    </div>
+    <BoughtTape
+      boughtCents={cents('purchased') + cents('returned')}
+      leftCents={cents('to_buy')}
+      className="-mt-2"
+    />
   );
 }
 
