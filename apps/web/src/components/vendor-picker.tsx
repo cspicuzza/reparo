@@ -34,9 +34,18 @@ type Row = VendorOption | AddRow;
  * without leaving the job. Clearing goes back to "Nobody yet".
  */
 export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
-  const [query, setQuery] = useState('');
   const [adding, setAdding] = useState<string | null>(null);
   const selected = vendors.find((v) => v.id === value) ?? null;
+  // The input shows the picked vendor's name. It used to start empty, so a job with a vendor
+  // showed "Nobody yet" (OD-86). When the value changes from outside, the text follows it, the
+  // way the React docs adjust state from a prop:
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+  const [query, setQuery] = useState(selected?.name ?? '');
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setQuery(selected?.name ?? '');
+  }
 
   const typed = query.trim();
   const exact = vendors.some((v) => v.name.toLowerCase() === typed.toLowerCase());

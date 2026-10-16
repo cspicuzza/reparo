@@ -32,6 +32,12 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
   const phases = useQuery(trpc.phases.list.queryOptions());
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const vendors = useQuery(trpc.vendors.list.queryOptions());
+  // Which vendor the chosen estimate brought in, so the form can say so (OD-86).
+  const estimates = useQuery({
+    ...trpc.estimates.list.queryOptions({ jobId: job?.id ?? '' }),
+    enabled: job !== undefined && job.estimates.chosen,
+  });
+  const chosenVendorId = estimates.data?.find((e) => e.status === 'chosen')?.vendor.id ?? null;
 
   const invalidate = () =>
     Promise.all([
@@ -96,6 +102,7 @@ export function JobEditor({ idPrefix, job, onSaved, onCancel }: Props) {
       phases={phases.data}
       rooms={rooms.data}
       vendors={vendorOptions(vendors.data, job?.vendor ?? null)}
+      chosenVendorId={chosenVendorId}
       defaults={{
         name: job?.name ?? '',
         phaseId: job?.phaseId ?? active?.id ?? '',
@@ -117,6 +124,7 @@ function JobForm({
   phases,
   rooms,
   vendors,
+  chosenVendorId,
   defaults,
   submitLabel,
   serverError,
@@ -127,6 +135,8 @@ function JobForm({
   phases: { id: string; name: string; status: 'planned' | 'active' | 'complete' }[];
   rooms: { id: string; name: string }[];
   vendors: VendorOption[];
+  /** The chosen estimate's vendor, if the job has one. */
+  chosenVendorId: string | null;
   defaults: JobCreateInput;
   submitLabel: string;
   serverError: string | undefined;
@@ -184,7 +194,11 @@ function JobForm({
       <Field
         label="Vendor"
         htmlFor={id('vendor')}
-        hint="Who's doing it. Search by name or what they do, or type a new name to add them. Leave empty for work you do yourselves."
+        hint={
+          chosenVendorId !== null && vendorField.field.value === chosenVendorId
+            ? "From the chosen estimate. Choosing another estimate changes who's doing it."
+            : "Who's doing it. Search by name or what they do, or type a new name to add them. Leave empty for work you do yourselves."
+        }
         error={errors.vendorId?.message}
       >
         <VendorPicker
