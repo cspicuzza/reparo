@@ -25,6 +25,8 @@ describe('shopping filters', () => {
     expect(parseShoppingSearch({ status: 'bought', job: ID })).toEqual({ job: ID });
     expect(parseShoppingSearch({ store: ' Wayfair ' })).toEqual({ store: 'Wayfair' });
     expect(parseShoppingSearch({ store: '   ' })).toEqual({});
+    expect(parseShoppingSearch({ q: ' fan ' })).toEqual({ q: 'fan' });
+    expect(parseShoppingSearch({ q: '' })).toEqual({});
   });
 
   it('turns them into the API filter; "house" means whole-house lines', () => {
@@ -53,6 +55,9 @@ describe('shopping words (OD-75)', () => {
     expect(summaryText(0, 0, money)).toBe('Nothing left to buy.');
     expect(summaryText(1, 999, money)).toBe('1 thing to buy, $9.99 in all.');
     expect(summaryText(38, 1420000, money)).toBe('38 things to buy, $14,200.00 in all.');
+    expect(summaryText(4, 184000, money, 'fan')).toBe('4 to buy match “fan”, $1,840.00 in all.');
+    expect(summaryText(1, 999, money, 'rug')).toBe('1 to buy matches “rug”, $9.99 in all.');
+    expect(summaryText(0, 0, money, 'zz')).toBe('Nothing to buy matches “zz”.');
   });
 });
 

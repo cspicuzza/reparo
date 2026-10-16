@@ -489,6 +489,8 @@ export const shoppingLineListSchema = z
     status: z.enum(SHOPPING_STATUSES),
     /** A store, matched in any case (Workflow polish, OD-75). */
     store: z.string().trim().min(1).max(120),
+    /** Words to find in a line's name, store, model number or notes, in any case (OD-98). */
+    q: z.string().trim().min(1).max(120),
   })
   .partial();
 export type ShoppingLineCreate = z.infer<typeof shoppingLineCreateSchema>;

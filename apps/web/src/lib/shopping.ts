@@ -13,6 +13,8 @@ export type ShoppingSearch = {
   job?: string;
   /** A store name, as the list shows it (OD-75). */
   store?: string;
+  /** Search text (OD-98). */
+  q?: string;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -37,6 +39,8 @@ export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearc
   if (typeof store === 'string' && store.trim() !== '' && store.length <= 120) {
     out.store = store.trim();
   }
+  const q = raw['q'];
+  if (typeof q === 'string' && q.trim() !== '' && q.length <= 120) out.q = q.trim();
   return out;
 }
 
@@ -49,6 +53,7 @@ export function shoppingFilter(s: ShoppingSearch) {
     ...(s.status ? { status: s.status } : {}),
     ...(s.job ? { jobId: s.job } : {}),
     ...(s.store ? { store: s.store } : {}),
+    ...(s.q ? { q: s.q } : {}),
   };
 }
 
@@ -67,8 +72,20 @@ export function groupText(
   return `${count} returned, ${money(cents)} not refunded`;
 }
 
-/** The page's opening sentence: what's left to buy under the current filters (OD-75, Q26). */
-export function summaryText(count: number, cents: number, money: (c: number) => string): string {
+/**
+ * The page's opening sentence: what's left to buy under the current filters (OD-75, Q26), or
+ * what's left to buy that matches a search (OD-98, Q84).
+ */
+export function summaryText(
+  count: number,
+  cents: number,
+  money: (c: number) => string,
+  q?: string,
+): string {
+  if (q !== undefined) {
+    if (count === 0) return `Nothing to buy matches “${q}”.`;
+    return `${count} to buy ${count === 1 ? 'matches' : 'match'} “${q}”, ${money(cents)} in all.`;
+  }
   if (count === 0) return 'Nothing left to buy.';
   return `${count} ${count === 1 ? 'thing' : 'things'} to buy, ${money(cents)} in all.`;
 }

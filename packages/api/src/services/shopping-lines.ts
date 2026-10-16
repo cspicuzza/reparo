@@ -47,6 +47,15 @@ export async function listShoppingLines(db: Db, filter: ShoppingLineList & { id?
   if (filter.store !== undefined) {
     conds.push(sql`lower(trim(${shoppingLines.store})) = ${filter.store.toLowerCase()}`);
   }
+  if (filter.q !== undefined) {
+    // Search (OD-98): the text anywhere in the name, store, model number or notes, any case.
+    // `%`, `_` and `\` are escaped so they match themselves (Postgres LIKE's default escape is
+    // backslash: https://www.postgresql.org/docs/16/functions-matching.html#FUNCTIONS-LIKE).
+    const pattern = `%${filter.q.replace(/[\\%_]/g, '\\$&')}%`;
+    conds.push(
+      sql`(${shoppingLines.name} ilike ${pattern} or ${shoppingLines.store} ilike ${pattern} or ${shoppingLines.modelNumber} ilike ${pattern} or ${shoppingLines.notes} ilike ${pattern})`,
+    );
+  }
 
   const rows = await db
     .select({

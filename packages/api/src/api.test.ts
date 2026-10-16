@@ -1750,6 +1750,41 @@ describe('@reparo/api', () => {
       ]);
     }));
 
+  it('search: finds text in name, store, model number or notes, any case; totals follow', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const add = async (fields: Record<string, string>) =>
+        row(
+          await mutate(h, 'editor', 'shoppingLines.create', {
+            phaseId: phase1.id,
+            categoryId: cat('Decor'),
+            priceCents: '10',
+            ...fields,
+          }),
+        );
+      await add({ name: 'Brass Ceiling Fan' });
+      await add({ name: 'Lamp', store: 'Fanfare Lighting' });
+      await add({ name: 'Rug', modelNumber: 'FAN-22' });
+      await add({ name: 'Shelf', notes: 'Goes beside the fan' });
+      await add({ name: '100% wool throw' });
+      await add({ name: 'Mirror' });
+
+      const names = async (q: string) =>
+        rows(await query(h, 'viewer', 'shoppingLines.list', { q }))
+          .map((l) => l.name)
+          .sort();
+      expect(await names('fan')).toEqual(['Brass Ceiling Fan', 'Lamp', 'Rug', 'Shelf']);
+      expect(await names('100%')).toEqual(['100% wool throw']);
+      // `%` and `_` are plain characters, not wildcards.
+      expect(await names('%')).toEqual(['100% wool throw']);
+      expect(await names('_')).toEqual([]);
+
+      type Section = { status: string; count: number; totalCents: number };
+      const totals = (await query(h, 'viewer', 'shoppingLines.totals', { q: 'FAN' }))
+        .data as Section[];
+      expect(totals[0]).toMatchObject({ status: 'to_buy', count: 4, totalCents: 4000 });
+    }));
+
   it('stores: suggestions merge case, new lines snap to the spelling in use, rename fixes every line', () =>
     withSeeded(async (_tx, h) => {
       const { phase1, cat } = await moneyFixtures(h);

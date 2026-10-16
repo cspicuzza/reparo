@@ -1,10 +1,10 @@
 import type { RouterOutputs } from '@reparo/api';
 import type { ShoppingStatusInput } from '@reparo/shared';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
-import { Plus, X } from 'lucide-react';
-import { useId, useState } from 'react';
-import { Select } from '@/components/form';
+import { Plus, Search, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Select, inputClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -22,6 +22,8 @@ import {
   type ShoppingSearch,
 } from '@/lib/shopping';
 import { useTRPC } from '@/lib/trpc';
+import { cn } from '@/lib/utils';
+import { NOT_A_LOGIN } from '@/lib/fields';
 import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { ShoppingLineForm } from './shopping-line-form';
@@ -53,8 +55,16 @@ export function Shopping() {
   const search = route.useSearch();
   const { canEdit } = useMe();
   const filter = shoppingFilter(search);
-  const lines = useQuery(trpc.shoppingLines.list.queryOptions(filter));
-  const totals = useQuery(trpc.shoppingLines.totals.queryOptions(filter));
+  // While a search or filter changes, the last list stays up until the new one arrives, so
+  // typing doesn't flash the placeholder (OD-98).
+  const lines = useQuery({
+    ...trpc.shoppingLines.list.queryOptions(filter),
+    placeholderData: keepPreviousData,
+  });
+  const totals = useQuery({
+    ...trpc.shoppingLines.totals.queryOptions(filter),
+    placeholderData: keepPreviousData,
+  });
   // Every line's pictures and receipts in one request (M4, OD-59), shared by the room groups.
   const files = useLineFiles(lines.data);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -82,7 +92,7 @@ export function Shopping() {
         description={
           toBuy ? (
             <span className="text-xl text-foreground tabular-nums">
-              {summaryText(toBuy.count, toBuy.totalCents, money)}
+              {summaryText(toBuy.count, toBuy.totalCents, money, search.q)}
             </span>
           ) : (
             'What we still need to buy, room by room.'
@@ -140,7 +150,13 @@ export function Shopping() {
       ) : null}
       {lines.data && lines.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
-          <span>{filtered ? 'Nothing matches these filters.' : 'Nothing on the list yet.'}</span>
+          <span>
+            {search.q
+              ? `Nothing matches “${search.q}”.`
+              : filtered
+                ? 'Nothing matches these filters.'
+                : 'Nothing on the list yet.'}
+          </span>
           {filtered ? (
             <Button
               type="button"
@@ -263,6 +279,77 @@ function ShoppingSection({
 
 const FILTER_LABEL = { room: 'Room', category: 'Category', store: 'Store', phase: 'Phase' };
 
+/** The filters that show as chips; search has its own box. */
+type FilterKey = Exclude<keyof ShoppingSearch, 'q'>;
+
+/**
+ * Search the list (OD-98, Q83–Q85): name, store, model number and notes, any case. It narrows
+ * the list a moment after typing stops, and the text lives in the URL with the filters, so a
+ * searched list can be shared. Clear empties it.
+ */
+function SearchBox({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (q: string) => void;
+  className?: string;
+}) {
+  const [text, setText] = useState(value);
+  // Follow the URL when it changes from outside (Show everything, Back), the way the React docs
+  // adjust state from a prop: https://react.dev/learn/you-might-not-need-an-effect
+  const [seen, setSeen] = useState(value);
+  if (value !== seen) {
+    setSeen(value);
+    setText(value);
+  }
+  // The parent's handler changes every render; keep the latest without restarting the wait.
+  const send = useRef(onChange);
+  useEffect(() => {
+    send.current = onChange;
+  });
+  useEffect(() => {
+    if (text.trim() === value) return;
+    const timer = setTimeout(() => send.current(text.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [text, value]);
+  return (
+    <div role="search" className={cn('relative', className)}>
+      <label htmlFor="shopping-search" className="sr-only">
+        Search the list
+      </label>
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground"
+      />
+      <input
+        {...NOT_A_LOGIN}
+        id="shopping-search"
+        type="search"
+        autoComplete="off"
+        placeholder="Search names, stores, model numbers, notes"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className={cn(inputClass, 'pr-20 pl-10 [&::-webkit-search-cancel-button]:hidden')}
+      />
+      {text !== '' ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="absolute top-1/2 right-0 -translate-y-1/2 px-3"
+          onClick={() => {
+            setText('');
+            onChange('');
+          }}
+        >
+          Clear<span className="sr-only"> the search</span>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * One "Filter" button that opens the choices, and the filters in use as chips you can remove
  * (OD-75, Q25). The Status filter is gone: the sections do that job.
@@ -285,7 +372,7 @@ function Filters({ search }: { search: ShoppingSearch }) {
       replace: true,
     });
 
-  const nameOf: Record<keyof ShoppingSearch, (v: string) => string | undefined> = {
+  const nameOf: Record<FilterKey, (v: string) => string | undefined> = {
     room: (v) => (v === 'house' ? 'Whole house' : rooms.data?.find((r) => r.id === v)?.name),
     category: (v) => categories.data?.find((c) => c.id === v)?.name,
     phase: (v) => phases.data?.find((p) => p.id === v)?.name,
@@ -293,27 +380,38 @@ function Filters({ search }: { search: ShoppingSearch }) {
     job: (v) => jobs.data?.find((j) => j.id === v)?.name,
     status: (v) => SECTION_TITLE[v as ShoppingStatusInput],
   };
-  const chipLabel: Record<keyof ShoppingSearch, string> = {
+  const chipLabel: Record<FilterKey, string> = {
     ...FILTER_LABEL,
     job: 'For',
     status: 'Status',
   };
+  // Search has its own box, so it isn't a chip or counted as a filter.
   const active = (Object.keys(search) as (keyof ShoppingSearch)[]).filter(
-    (k) => search[k] !== undefined,
+    (k): k is FilterKey => k !== 'q' && search[k] !== undefined,
   );
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {open ? 'Hide filters' : active.length > 0 ? `Filter (${active.length})` : 'Filter'}
-        </Button>
+      {/* Search fills the row with Filter beside it; on a phone Filter drops below (Q85). */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchBox
+          value={search.q ?? ''}
+          onChange={(q) => setFilter('q', q)}
+          className="sm:flex-1"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? 'Hide filters' : active.length > 0 ? `Filter (${active.length})` : 'Filter'}
+          </Button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 empty:hidden">
         {active.map((key) => {
           const value = search[key] ?? '';
           const label = `${chipLabel[key]}: ${nameOf[key](value) ?? '…'}`;
