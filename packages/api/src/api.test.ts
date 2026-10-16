@@ -1787,6 +1787,92 @@ describe('@reparo/api', () => {
       expect((await summary()).committedCents).toBe(before - 40000);
     }));
 
+  it('estimates: the quote line says so; choosing can be undone', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const v = async (name: string) => row(await mutate(h, 'editor', 'vendors.create', { name }));
+      const [mine, acme, best] = [await v('Undo Mine'), await v('Undo Acme'), await v('Undo Best')];
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          name: 'Undo roof',
+          vendorId: mine.id,
+        }),
+      );
+      await mutate(h, 'editor', 'costLines.create', {
+        jobId: job.id,
+        description: 'Permit',
+        amountCents: '400',
+      });
+      const add = async (vendorId: string, amountCents: string) =>
+        row(
+          await mutate(h, 'editor', 'estimates.create', { jobId: job.id, vendorId, amountCents }),
+        );
+      const a = await add(acme.id, '12,000');
+      const b = await add(best.id, '10,500');
+      type Line = Row & {
+        description: string;
+        fromEstimate: { id: string; vendorName: string } | null;
+      };
+      const lines = async () =>
+        rows(await query(h, 'viewer', 'costLines.list', { jobId: job.id })) as Line[];
+      const statuses = async () =>
+        ((await query(h, 'viewer', 'estimates.list', { jobId: job.id })).data as EstimateRow[]).map(
+          (e) => [e.vendor.name, e.status],
+        );
+      const vendorOf = async () =>
+        (
+          rows(await query(h, 'viewer', 'jobs.list')).find((j) => j.id === job.id) as Row & {
+            vendor: { name: string } | null;
+          }
+        ).vendor?.name;
+      expect((await lines()).map((l) => l.fromEstimate)).toEqual([null]);
+
+      // First choice: the quote line is marked as the estimate's (Q145).
+      type Chose = { previousChosenId: string | null; previousVendorId: string | null };
+      const first = (await mutate(h, 'editor', 'estimates.choose', { id: a.id })).data as Chose;
+      expect(first).toMatchObject({ previousChosenId: null, previousVendorId: mine.id });
+      expect((await lines()).map((l) => [l.description, l.fromEstimate])).toEqual([
+        ['Undo Acme quote', { id: a.id, vendorName: 'Undo Acme' }],
+        ['Permit', null],
+      ]);
+
+      // Switching to Best, then Undo: Acme is chosen again with its line, and the vendor back.
+      const second = (await mutate(h, 'editor', 'estimates.choose', { id: b.id })).data as Chose;
+      expect(second).toMatchObject({ previousChosenId: a.id, previousVendorId: acme.id });
+      expect(await vendorOf()).toBe('Undo Best');
+      expect(
+        (await mutate(h, 'viewer', 'estimates.undoChoose', { id: b.id, ...second })).status,
+      ).toBe(403);
+      expect(
+        (await mutate(h, 'editor', 'estimates.undoChoose', { id: b.id, ...second })).status,
+      ).toBe(200);
+      expect(await statuses()).toEqual([
+        ['Undo Acme', 'chosen'],
+        ['Undo Best', 'declined'],
+      ]);
+      expect((await lines()).map((l) => [l.description, l.fromEstimate?.id ?? null])).toEqual([
+        ['Undo Acme quote', a.id],
+        ['Permit', null],
+      ]);
+      expect(await vendorOf()).toBe('Undo Acme');
+
+      // Undoing the first choice: nothing chosen, no quote line, both received, vendor as before.
+      expect(
+        (await mutate(h, 'editor', 'estimates.undoChoose', { id: a.id, ...first })).status,
+      ).toBe(200);
+      expect(await statuses()).toEqual([
+        ['Undo Acme', 'received'],
+        ['Undo Best', 'received'],
+      ]);
+      expect((await lines()).map((l) => l.description)).toEqual(['Permit']);
+      expect(await vendorOf()).toBe('Undo Mine');
+
+      // Too late: once it isn't the chosen one, Undo changes nothing.
+      const late = await mutate(h, 'editor', 'estimates.undoChoose', { id: a.id, ...first });
+      expect(late.data).toEqual({ undone: false });
+    }));
+
   it('estimates: quote PDFs attach; a hand decline is not undone; expiring quotes reach Home', () =>
     withSeeded(async (_tx, h) => {
       const { phase1 } = await moneyFixtures(h);

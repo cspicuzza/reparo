@@ -35,7 +35,7 @@ import {
 import {
   createCostLine,
   createPayment,
-  listCostLines,
+  listCostLinesForJob,
   listPayments,
   removeCostLine,
   removePayment,
@@ -121,7 +121,9 @@ export const shoppingLinesRouter = router({
 
 /** What a job costs: the vendor's price, permits, fees, extras. */
 export const costLinesRouter = router({
-  list: memberProcedure.input(byJob).query(({ ctx, input }) => listCostLines(ctx.db, input.jobId)),
+  list: memberProcedure
+    .input(byJob)
+    .query(({ ctx, input }) => listCostLinesForJob(ctx.db, input.jobId)),
   create: editorProcedure
     .input(costLineCreateSchema)
     .mutation(({ ctx, input }) => createCostLine(ctx.db, input)),

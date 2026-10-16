@@ -24,6 +24,7 @@ export function ConfirmRemove({
   keepLabel,
   tone = 'danger',
   blocked,
+  triggerVariant,
   className,
 }: {
   /** Read out in the button's label and the question, e.g. "the $10,000.00 payment". */
@@ -40,6 +41,8 @@ export function ConfirmRemove({
   tone?: 'danger' | 'neutral';
   /** Why it can't be done yet. Asking then shows this and OK instead of Yes. */
   blocked?: ReactNode;
+  /** The trigger's look when it isn't a removal (an outline "All rooms"). */
+  triggerVariant?: 'outline' | 'ghost';
   className?: string;
 }) {
   const [asking, setAsking] = useState(false);
@@ -66,8 +69,9 @@ export function ConfirmRemove({
       <Button
         ref={trigger}
         type="button"
-        variant={strong ? 'destructive' : 'ghost'}
-        className={cn(!strong && 'text-muted-foreground', className)}
+        variant={triggerVariant ?? (strong ? 'destructive' : 'ghost')}
+        className={cn(!strong && !triggerVariant && 'text-muted-foreground', className)}
+        disabled={disabled && triggerVariant !== undefined}
         aria-label={label === 'Remove' ? `Remove ${what}` : undefined}
         onClick={() => setAsking(true)}
       >

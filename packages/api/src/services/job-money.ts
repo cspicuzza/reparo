@@ -9,6 +9,7 @@ import {
   jobs,
   payments,
   sql,
+  vendors,
   type Db,
 } from '@reparo/db';
 import type { CostLineCreate, CostLineUpdate, PaymentCreate, PaymentUpdate } from '@reparo/shared';
@@ -72,6 +73,24 @@ export function listCostLines(db: Db, jobId: string) {
     .from(costLines)
     .where(and(eq(costLines.jobId, jobId), isNull(costLines.deletedAt)))
     .orderBy(asc(costLines.sortOrder), asc(costLines.createdAt));
+}
+
+/**
+ * A job's cost lines for its page, each saying whether it's the chosen estimate's quote line
+ * (OD-119, Q145): that line follows the estimate, so the page offers the estimate to edit
+ * instead of its own Edit and Remove.
+ */
+export async function listCostLinesForJob(db: Db, jobId: string) {
+  const lines = await listCostLines(db, jobId);
+  const quotes = await db
+    .select({ lineId: estimates.costLineId, id: estimates.id, vendorName: vendors.name })
+    .from(estimates)
+    .innerJoin(vendors, eq(vendors.id, estimates.vendorId))
+    .where(
+      and(eq(estimates.jobId, jobId), eq(estimates.status, 'chosen'), isNull(estimates.deletedAt)),
+    );
+  const byLine = new Map(quotes.map((q) => [q.lineId, { id: q.id, vendorName: q.vendorName }]));
+  return lines.map((l) => ({ ...l, fromEstimate: byLine.get(l.id) ?? null }));
 }
 
 async function getCostLine(db: Db, id: string) {

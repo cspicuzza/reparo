@@ -6,6 +6,7 @@ import { AutoSaveSelect } from '@/components/auto-save-select';
 import { PanelNameField } from '@/components/panel-name-field';
 import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
+import { ConfirmRemove } from '@/components/confirm-remove';
 import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
 import { LoadError } from '@/components/load-error';
@@ -194,19 +195,23 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
       ) : (
         <>
           <div className="mt-2 flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={change.isPending}
-              onClick={() =>
-                change.mutate({
-                  add: rooms.map((r) => r.id).filter((r) => !onJob.has(r)),
-                  remove: [],
-                })
-              }
-            >
-              All rooms
-            </Button>
+            {/* Adding every room asks first, with the count (OD-119, Q147). */}
+            {(() => {
+              const toAdd = rooms.map((r) => r.id).filter((r) => !onJob.has(r));
+              return (
+                <ConfirmRemove
+                  tone="neutral"
+                  what={job.name}
+                  label="All rooms"
+                  question={`Add ${toAdd.length === 1 ? 'the 1 room' : `all ${toAdd.length} rooms`} it doesn’t cover yet to ${job.name}?`}
+                  confirmLabel={`Yes, add ${toAdd.length === 1 ? 'it' : `all ${toAdd.length}`}`}
+                  keepLabel="Keep"
+                  disabled={change.isPending || toAdd.length === 0}
+                  onConfirm={() => change.mutate({ add: toAdd, remove: [] })}
+                  triggerVariant="outline"
+                />
+              );
+            })()}
             <Button
               type="button"
               variant="outline"

@@ -25,7 +25,7 @@ import { Field, FormError, Input, MoneyInput } from '@/components/form';
 import { PaymentBadge, ShoppingStatusBadge } from '@/components/money';
 import { Panel } from '@/components/panel';
 import { TapeStrip } from '@/components/tape';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { centsToInput, lineAmountText, money, moneyStep } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import type { Job } from '@/lib/work';
@@ -60,19 +60,21 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         <PaymentBadge status={payment} />
       </div>
 
-      <dl className="mt-4 grid grid-cols-3 gap-4 tabular-nums">
-        <div>
-          <dt className="text-sm text-muted-foreground">Price</dt>
-          <dd className="text-xl font-semibold">{money(costCents)}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">Paid</dt>
-          <dd className="text-xl font-semibold">{money(paidCents)}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">Still to pay</dt>
-          <dd className="text-xl font-semibold">{money(owedCents)}</dd>
-        </div>
+      {/* On a phone, label and amount on one row each; three columns overflowed at 375px
+          (OD-119, Q146). */}
+      <dl className="mt-4 grid gap-2 tabular-nums sm:grid-cols-3 sm:gap-4">
+        {(
+          [
+            ['Price', costCents],
+            ['Paid', paidCents],
+            ['Still to pay', owedCents],
+          ] as const
+        ).map(([label, cents]) => (
+          <div key={label} className="flex items-baseline justify-between gap-4 sm:block">
+            <dt className="text-sm text-muted-foreground">{label}</dt>
+            <dd className="text-xl font-semibold">{money(cents)}</dd>
+          </div>
+        ))}
       </dl>
       {costCents > 0 ? (
         <TapeStrip
@@ -193,9 +195,31 @@ function CostLines({
               key={l.id}
               className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
             >
-              <span className="min-w-0 break-words">{l.description}</span>
+              <span className="min-w-0 break-words">
+                {l.description}
+                {l.fromEstimate ? (
+                  <span className="block text-sm text-muted-foreground">
+                    From the {l.fromEstimate.vendorName} estimate
+                  </span>
+                ) : null}
+              </span>
               <span className="font-semibold tabular-nums">{money(l.amountCents)}</span>
-              {canEdit ? (
+              {canEdit && l.fromEstimate ? (
+                // The chosen estimate's line follows the estimate: Edit opens the estimate, and
+                // there's no Remove (OD-119, Q145).
+                <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
+                  <Link
+                    to="/jobs/$jobId"
+                    params={{ jobId }}
+                    search={{ estimate: l.fromEstimate.id }}
+                    className={buttonVariants({ variant: 'ghost' })}
+                  >
+                    <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                    Edit
+                    <span className="sr-only"> the {l.fromEstimate.vendorName} estimate</span>
+                  </Link>
+                </span>
+              ) : canEdit ? (
                 <span className="col-span-2 -ml-3 flex gap-1 sm:col-span-1 sm:ml-0">
                   <Button
                     type="button"

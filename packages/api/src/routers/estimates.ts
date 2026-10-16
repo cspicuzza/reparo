@@ -6,6 +6,7 @@ import {
   createEstimate,
   listEstimates,
   removeEstimate,
+  undoChoose,
   updateEstimate,
 } from '../services/estimates';
 
@@ -26,6 +27,16 @@ export const estimatesRouter = router({
   choose: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => chooseEstimate(ctx.db, input.id)),
+  /** Undo for choose, with what choose returned (OD-119, Q147). */
+  undoChoose: editorProcedure
+    .input(
+      z.object({
+        id: idSchema,
+        previousChosenId: idSchema.nullable(),
+        previousVendorId: idSchema.nullable(),
+      }),
+    )
+    .mutation(({ ctx, input }) => undoChoose(ctx.db, input)),
   remove: editorProcedure
     .input(z.object({ id: idSchema }))
     .mutation(({ ctx, input }) => removeEstimate(ctx.db, input.id)),

@@ -12,6 +12,7 @@ import {
   type EstimateFormInput,
 } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
@@ -24,7 +25,8 @@ import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
 import { LoadError } from '@/components/load-error';
 import { centsToInput, money } from '@/lib/money';
-import { useTRPC } from '@/lib/trpc';
+import { useToasts } from '@/lib/toasts';
+import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { vendorOptions } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
@@ -51,7 +53,13 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
     enabled: (estimates.data?.length ?? 0) > 0,
   });
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
+  // The estimate being edited lives in the address, so the job's quote line can open it
+  // (OD-119, Q145).
+  const search = useSearch({ from: '/_app/jobs/$jobId' });
+  const navigate = useNavigate({ from: '/jobs/$jobId' });
+  const editing = search.estimate ?? null;
+  const setEditing = (id: string | null) =>
+    void navigate({ search: id ? { estimate: id } : {}, replace: id === null });
   useReturnFocus(adding ? `add-estimate-${job.id}` : editing ? `estimate-${editing}` : null);
   const refresh = useRefreshMoney();
   const create = useMutation(trpc.estimates.create.mutationOptions());
@@ -200,8 +208,52 @@ function EstimateCard({
   onChanged: () => Promise<unknown>;
 }) {
   const trpc = useTRPC();
-  const choose = useMutation(trpc.estimates.choose.mutationOptions({ onSuccess: onChanged }));
-  const decline = useMutation(trpc.estimates.update.mutationOptions({ onSuccess: onChanged }));
+  const toasts = useToasts();
+  // Choosing and declining offer Undo for 10 seconds (OD-119, Q147).
+  const choose = useMutation(
+    trpc.estimates.choose.mutationOptions({
+      onSuccess: async (result) => {
+        await onChanged();
+        toasts.add({
+          title: `Chose ${e.vendor.name}`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.estimates.undoChoose
+                .mutate({
+                  id: e.id,
+                  previousChosenId: result.previousChosenId,
+                  previousVendorId: result.previousVendorId,
+                })
+                .then(onChanged)
+                .catch(() => undefined),
+          },
+        });
+      },
+    }),
+  );
+  const decline = useMutation(
+    trpc.estimates.update.mutationOptions({
+      onSuccess: async () => {
+        // Only Received and Requested estimates can be declined by hand.
+        const was = e.status === 'requested' ? 'requested' : 'received';
+        await onChanged();
+        toasts.add({
+          title: `Marked ${e.vendor.name} declined`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Undo',
+            onClick: () =>
+              void trpcClient.estimates.update
+                .mutate({ id: e.id, status: was })
+                .then(onChanged)
+                .catch(() => undefined),
+          },
+        });
+      },
+    }),
+  );
   const remove = useMutation(trpc.estimates.remove.mutationOptions({ onSuccess: onChanged }));
   const error = choose.error ?? decline.error ?? remove.error;
   const canChoose = e.status !== 'chosen' && e.amountCents !== null;

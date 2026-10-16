@@ -225,13 +225,20 @@ export async function chooseEstimate(db: Db, id: string) {
     throw badRequest('Add the amount before choosing this estimate');
   }
   const paidCents = (await jobMoneyTotals(db, [e.jobId])).get(e.jobId)?.paidCents ?? 0;
-  if (e.status === 'chosen') return { estimate: e, paidCents };
+  const [job] = await db.select({ vendorId: jobs.vendorId }).from(jobs).where(eq(jobs.id, e.jobId));
+  // What Undo needs to put things back (OD-119, Q147).
+  const before = {
+    previousChosenId: null as string | null,
+    previousVendorId: job?.vendorId ?? null,
+  };
+  if (e.status === 'chosen') return { estimate: e, paidCents, ...before };
 
   const vendor = await liveVendorOrAny(db, e.vendorId);
   const [current] = await db
     .select()
     .from(estimates)
     .where(and(eq(estimates.jobId, e.jobId), eq(estimates.status, 'chosen'), live()));
+  before.previousChosenId = current?.id ?? null;
 
   // The quote line: moved from the previous choice, or new and listed before the others.
   let lineId: string;
@@ -279,7 +286,57 @@ export async function chooseEstimate(db: Db, id: string) {
     .where(eq(estimates.id, e.id))
     .returning();
   await db.update(jobs).set({ vendorId: e.vendorId }).where(eq(jobs.id, e.jobId));
-  return { estimate: chosen ?? e, paidCents };
+  return { estimate: chosen ?? e, paidCents, ...before };
+}
+
+/** Put back the estimates a choice declined: each to what it was before (Q28). */
+async function restoreDeclined(db: Db, jobId: string) {
+  await db
+    .update(estimates)
+    .set({ status: sql`${estimates.declinedFrom}`, declinedFrom: null })
+    .where(
+      and(
+        eq(estimates.jobId, jobId),
+        eq(estimates.status, 'declined'),
+        sql`${estimates.declinedFrom} IS NOT NULL`,
+        live(),
+      ),
+    );
+}
+
+/**
+ * Undo a choice, within its 10 seconds (OD-119, Q147). With an estimate chosen before, that one
+ * is chosen again (the quote line moves back to it); with none, this one goes back to
+ * Received, its quote line goes, and the estimates it declined come back. Either way the job's
+ * vendor goes back to who it was. If this estimate is no longer the chosen one, nothing
+ * changes: the last save wins.
+ */
+export async function undoChoose(
+  db: Db,
+  input: { id: string; previousChosenId: string | null; previousVendorId: string | null },
+) {
+  const e = await getLive(db, input.id);
+  if (e.status !== 'chosen') return { undone: false };
+  if (input.previousChosenId) {
+    const prev = await getLive(db, input.previousChosenId);
+    if (prev.jobId !== e.jobId) throw badRequest('That estimate is on another job');
+    await chooseEstimate(db, prev.id);
+  } else {
+    if (e.costLineId) {
+      await db
+        .update(costLines)
+        .set({ deletedAt: new Date() })
+        .where(eq(costLines.id, e.costLineId));
+    }
+    await db
+      .update(estimates)
+      .set({ status: 'received', declinedFrom: null, costLineId: null })
+      .where(eq(estimates.id, e.id));
+    await restoreDeclined(db, e.jobId);
+  }
+  if (input.previousVendorId) await liveVendorOrAny(db, input.previousVendorId);
+  await db.update(jobs).set({ vendorId: input.previousVendorId }).where(eq(jobs.id, e.jobId));
+  return { undone: true };
 }
 
 /**
