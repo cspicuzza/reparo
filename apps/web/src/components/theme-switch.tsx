@@ -24,7 +24,7 @@ function Track({ index, children }: { index: number; children: ReactNode }) {
     <div className="relative inline-flex shrink-0 rounded-full border border-input bg-inset p-0.5">
       <span
         aria-hidden
-        className="absolute top-0.5 left-0.5 size-11 rounded-full bg-card shadow-sm transition-transform duration-200 ease-out"
+        className="absolute top-0.5 left-0.5 size-11 rounded-full bg-foreground shadow-sm transition-transform duration-200 ease-out"
         style={{ transform: `translateX(${index * 100}%)` }}
       />
       {children}
@@ -34,7 +34,9 @@ function Track({ index, children }: { index: number; children: ReactNode }) {
 
 const POSITION =
   'relative z-10 grid size-11 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:text-foreground [&_svg]:size-5';
-const PICKED = 'text-foreground';
+// The knob is the text colour and the picked icon the page's, so the choice reads plainly in
+// light and dark alike; a card-coloured knob all but vanished in dark (OD-125, Q165).
+const PICKED = 'text-background hover:text-background';
 
 function Label({ choice }: { choice: ThemeChoice }) {
   return (

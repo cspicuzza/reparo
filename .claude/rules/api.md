@@ -9,7 +9,7 @@ paths:
 - Routers only parse input, call a service, and return. Services are plain functions `(db, ctx, input)` so they test without tRPC.
 - One router per entity, named after the table. Verbs: `list`, `get`, `create`, `update`, `remove` (soft delete), `restore`. A true hard delete needs Chris.
 - Input is a Zod schema from `@reparo/shared`. Don't annotate procedure return types; let them infer.
-- Errors: `TRPCError` with `NOT_FOUND`, `BAD_REQUEST`, `FORBIDDEN`, `CONFLICT` via helpers in `src/services/errors.ts`. No string error codes.
+- Errors: `TRPCError` with `NOT_FOUND`, `BAD_REQUEST`, `FORBIDDEN`, `CONFLICT` via helpers in `src/services/errors.ts`. No string error codes. Input that fails its Zod schema comes back worded as the schema's messages (`errorFormatter` in `src/trpc.ts`; the issues stay in `data.issues`), so a page can show `error.message` as is (OD-125).
 - Soft-deleted rows are invisible to every read and write (`deleted_at IS NULL` via the service's `live()`); `get` on one is `NOT_FOUND`.
 - Every write declares its minimum role (`editorProcedure` / `adminProcedure`).
 - Two entry points share one router: `apps/web/api/index.ts` (Vercel, `export default { fetch }`, `/api/trpc/*` rewritten to it) and `src/dev.ts` (local, port `API_PORT`, default 3001). Nothing under `apps/web/api/` uses the `@/` alias — Vercel doesn't support tsconfig paths there; it has its own `tsconfig.api.json`.

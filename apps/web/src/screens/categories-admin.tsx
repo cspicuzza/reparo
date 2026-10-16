@@ -1,6 +1,9 @@
 import { Plus } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { ConfirmRemove } from '@/components/confirm-remove';
+import { useReturnFocus } from '@/lib/editor-focus';
+import { useToasts } from '@/lib/toasts';
 import { FormError, Input, Select } from '@/components/form';
 import { LoadError } from '@/components/load-error';
 import { Panel } from '@/components/panel';
@@ -101,32 +104,65 @@ function CategoryRow({
   onChanged: () => Promise<unknown>;
 }) {
   const trpc = useTRPC();
+  const toasts = useToasts();
   const [mode, setMode] = useState<'view' | 'rename' | 'merge'>('view');
   const [name, setName] = useState(category.name);
-  const [into, setInto] = useState(others[0]?.id ?? '');
-  const done = async () => {
-    await onChanged();
-    setMode('view');
+  // Merge starts on "Pick a category", never on whichever came first (OD-125, Q162).
+  const [into, setInto] = useState('');
+  // Opening focuses the field; closing hands focus back to the button that opened it (Q163).
+  useReturnFocus(mode === 'view' ? null : `${mode}-${category.id}`);
+  const nameField = useRef<HTMLInputElement>(null);
+  const intoField = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (mode === 'rename') nameField.current?.focus();
+    if (mode === 'merge') intoField.current?.focus();
+  }, [mode]);
+  const close = () => setMode('view');
+  const onEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
   };
-  const rename = useMutation(trpc.categories.update.mutationOptions({ onSuccess: done }));
-  const merge = useMutation(trpc.categories.merge.mutationOptions({ onSuccess: done }));
+  const rename = useMutation(
+    trpc.categories.update.mutationOptions({
+      onSuccess: async () => {
+        await onChanged();
+        close();
+      },
+    }),
+  );
   const lines = `${category.lineCount} ${category.lineCount === 1 ? 'line' : 'lines'}`;
   const intoName = others.find((o) => o.id === into)?.name ?? '';
+  const merge = useMutation(
+    trpc.categories.merge.mutationOptions({
+      onSuccess: async () => {
+        await onChanged();
+        toasts.add({
+          title: `Merged ${category.name} into ${intoName}`,
+          description: `Moved ${lines} and removed ${category.name}.`,
+        });
+      },
+    }),
+  );
 
   if (mode === 'rename') {
+    const blank = name.trim() === '';
     return (
       <form
         className="flex flex-wrap items-end gap-3"
+        onKeyDown={onEscape}
         onSubmit={(e) => {
           e.preventDefault();
-          rename.mutate({ id: category.id, name });
+          if (!blank) rename.mutate({ id: category.id, name });
         }}
       >
-        <div className="min-w-0 flex-1 sm:max-w-sm">
+        <div className="min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
           <label htmlFor={`rename-${category.id}`} className="block text-sm font-semibold">
             New name for {category.name}
           </label>
           <Input
+            ref={nameField}
             id={`rename-${category.id}`}
             className="mt-1.5"
             autoComplete="off"
@@ -134,10 +170,11 @@ function CategoryRow({
             onChange={(e) => setName(e.target.value)}
           />
         </div>
-        <Button type="submit" disabled={rename.isPending}>
+        {/* No saving a blank name (Q164). */}
+        <Button type="submit" disabled={rename.isPending || blank}>
           Save
         </Button>
-        <Button type="button" variant="ghost" onClick={() => setMode('view')}>
+        <Button type="button" variant="ghost" onClick={close}>
           Cancel
         </Button>
         {rename.error ? <FormError className="w-full">{rename.error.message}</FormError> : null}
@@ -147,17 +184,22 @@ function CategoryRow({
 
   if (mode === 'merge') {
     return (
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1 sm:max-w-sm">
+      <div className="flex flex-wrap items-end gap-3" onKeyDown={onEscape}>
+        {/* On a phone the field has its own line (Q162). */}
+        <div className="min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
           <label htmlFor={`merge-${category.id}`} className="block text-sm font-semibold">
             Merge {category.name} into
           </label>
           <Select
+            ref={intoField}
             id={`merge-${category.id}`}
             className="mt-1.5"
             value={into}
             onChange={(e) => setInto(e.target.value)}
           >
+            <option value="" disabled>
+              Pick a category
+            </option>
             {others.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -165,14 +207,18 @@ function CategoryRow({
             ))}
           </Select>
         </div>
-        <Button
-          type="button"
+        {/* Asks first, naming the whole consequence; there's no un-merge (Q162). */}
+        <ConfirmRemove
+          what={category.name}
+          label="Merge"
+          triggerVariant="outline"
           disabled={merge.isPending || into === ''}
-          onClick={() => merge.mutate({ id: category.id, intoId: into })}
-        >
-          Move {lines} to {intoName}
-        </Button>
-        <Button type="button" variant="ghost" onClick={() => setMode('view')}>
+          question={`Merge ${category.name} into ${intoName}: moves ${lines}, removes ${category.name}.`}
+          confirmLabel="Yes, merge"
+          keepLabel="Don't merge"
+          onConfirm={() => merge.mutate({ id: category.id, intoId: into })}
+        />
+        <Button type="button" variant="ghost" onClick={close}>
           Cancel
         </Button>
         {merge.error ? <FormError className="w-full">{merge.error.message}</FormError> : null}
@@ -191,8 +237,10 @@ function CategoryRow({
           type="button"
           variant="ghost"
           aria-label={`Rename ${category.name}`}
+          data-return-focus={`rename-${category.id}`}
           onClick={() => {
             setName(category.name);
+            rename.reset();
             setMode('rename');
           }}
         >
@@ -203,7 +251,12 @@ function CategoryRow({
             type="button"
             variant="ghost"
             aria-label={`Merge ${category.name} into another category`}
-            onClick={() => setMode('merge')}
+            data-return-focus={`merge-${category.id}`}
+            onClick={() => {
+              setInto('');
+              merge.reset();
+              setMode('merge');
+            }}
           >
             Merge
           </Button>

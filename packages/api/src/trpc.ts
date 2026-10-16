@@ -1,8 +1,22 @@
 import { initTRPC, TRPCError } from '@trpc/server';
+import { ZodError } from 'zod';
 import type { MemberRole } from '@reparo/db';
 import type { Context } from './context';
 
-const t = initTRPC.context<Context>().create();
+/**
+ * Input that fails its schema reads as the schema's own words ("Enter a name"), not the raw
+ * list of issues as JSON (OD-125, Q164). The issues stay in `data.issues` for anything that
+ * needs them.
+ */
+const t = initTRPC.context<Context>().create({
+  errorFormatter({ shape, error }) {
+    if (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError) {
+      const words = [...new Set(error.cause.issues.map((i) => i.message))].join('. ');
+      return { ...shape, message: words, data: { ...shape.data, issues: error.cause.issues } };
+    }
+    return shape;
+  },
+});
 
 export const router = t.router;
 export const mergeRouters = t.mergeRouters;

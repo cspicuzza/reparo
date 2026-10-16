@@ -1803,6 +1803,14 @@ describe('@reparo/api', () => {
       expect((await summary()).committedCents).toBe(before - 40000);
     }));
 
+  it('a form mistake reads as words, not JSON (OD-125, Q164)', () =>
+    withSeeded(async (_tx, h) => {
+      const bad = await mutate(h, 'editor', 'vendors.create', { name: '   ' });
+      expect(bad.status).toBe(400);
+      expect(bad.message).not.toMatch(/[[{]/);
+      expect(bad.message).toMatch(/name/i);
+    }));
+
   it("vendors.work: a vendor's jobs with quote and paid, and their open estimates (OD-124)", () =>
     withSeeded(async (_tx, h) => {
       const { phase1 } = await moneyFixtures(h);
