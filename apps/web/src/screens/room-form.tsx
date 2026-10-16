@@ -68,18 +68,11 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
             id={id('length')}
             className="max-w-48"
             inputMode="text"
-            placeholder={`14' 6"`}
             {...register('lengthIn')}
           />
         </Field>
         <Field label="Width" htmlFor={id('width')} error={errors.widthIn?.message}>
-          <Input
-            id={id('width')}
-            className="max-w-48"
-            inputMode="text"
-            placeholder={`12'`}
-            {...register('widthIn')}
-          />
+          <Input id={id('width')} className="max-w-48" inputMode="text" {...register('widthIn')} />
         </Field>
         <Field
           label="Ceiling height"
@@ -90,7 +83,6 @@ export function RoomForm({ room, onSubmit, onCancel, submitLabel, serverError, i
             id={id('ceiling')}
             className="max-w-48"
             inputMode="text"
-            placeholder={`9'`}
             {...register('ceilingHeightIn')}
           />
         </Field>
