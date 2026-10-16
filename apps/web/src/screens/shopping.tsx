@@ -296,6 +296,18 @@ function ShoppingSection({
 }) {
   const foldable = section.status !== 'to_buy';
   const [open, setOpen] = useState(!foldable);
+  // Rooms fold one at a time or all together, so a long list can be skimmed (OD-105, Q98).
+  // They start open and the choice isn't kept.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const roomKeys = section.rooms.map((r) => r.roomId ?? 'house');
+  const anyOpen = roomKeys.some((k) => !folded.has(k));
+  const fold = (key: string) =>
+    setFolded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const bodyId = useId();
   const headingId = `section-${section.status}`;
   return (
@@ -320,19 +332,37 @@ function ShoppingSection({
             {open ? 'Hide' : 'Show'}
             <span className="sr-only"> {SECTION_TITLE[section.status].toLowerCase()}</span>
           </Button>
+        ) : roomKeys.length > 1 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="-mr-3"
+            onClick={() => setFolded(anyOpen ? new Set(roomKeys) : new Set())}
+          >
+            {anyOpen ? 'Fold all' : 'Unfold all'}
+            <span className="sr-only"> rooms</span>
+          </Button>
         ) : null}
       </div>
       <Reveal open={open} id={bodyId} className="mt-3 flex flex-col gap-4">
         {section.rooms.map((room) => {
           const inRoom = lines.filter((l) => (l.room?.id ?? null) === room.roomId);
+          const key = room.roomId ?? 'house';
+          const roomOpen = !folded.has(key);
+          const roomBodyId = `${headingId}-${key}-rows`;
           return (
             <Panel
-              key={room.roomId ?? 'house'}
-              aria-labelledby={`${headingId}-${room.roomId ?? 'house'}`}
+              key={key}
+              aria-labelledby={`${headingId}-${key}`}
               className="overflow-hidden p-0 sm:p-0"
             >
               {/* The room's strip on the band tone, so it stands apart from its rows (OD-99). */}
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-band px-4 py-3 sm:px-5">
+              <div
+                className={cn(
+                  'flex flex-wrap items-center justify-between gap-x-4 gap-y-1 bg-band px-4 py-3 sm:px-5',
+                  roomOpen && 'border-b border-border',
+                )}
+              >
                 <div className="flex items-center gap-3">
                   {selection ? (
                     <SelectAll
@@ -342,22 +372,38 @@ function ShoppingSection({
                       onPick={(on) => onPickAll(inRoom, on)}
                     />
                   ) : null}
-                  <h3 id={`${headingId}-${room.roomId ?? 'house'}`} className="text-xl">
+                  <h3 id={`${headingId}-${key}`} className="text-xl">
                     {room.name}
                   </h3>
                 </div>
-                <span className="text-sm text-muted-foreground tabular-nums">
-                  {groupText(section.status, room.count, room.totalCents, money)}
-                </span>
+                <div className="flex items-center gap-x-2">
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {groupText(section.status, room.count, room.totalCents, money)}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    // Inside the strip's padding, so the strip doesn't grow to fit it.
+                    className="-my-2 -mr-3"
+                    aria-expanded={roomOpen}
+                    aria-controls={roomBodyId}
+                    onClick={() => fold(key)}
+                  >
+                    {roomOpen ? 'Fold' : 'Unfold'}
+                    <span className="sr-only"> {room.name}</span>
+                  </Button>
+                </div>
               </div>
-              <ShoppingRows
-                lines={inRoom}
-                files={files}
-                canEdit={canEdit}
-                onOpen={onOpen}
-                selection={selection}
-                className="px-4 sm:px-5"
-              />
+              <Reveal open={roomOpen} id={roomBodyId}>
+                <ShoppingRows
+                  lines={inRoom}
+                  files={files}
+                  canEdit={canEdit}
+                  onOpen={onOpen}
+                  selection={selection}
+                  className="px-4 sm:px-5"
+                />
+              </Reveal>
             </Panel>
           );
         })}
