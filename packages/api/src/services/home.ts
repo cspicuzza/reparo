@@ -2,7 +2,7 @@ import type { Db } from '@reparo/db';
 import { expiringEstimates } from './estimates';
 import { listJobs } from './jobs';
 import { getMoneySummary } from './money';
-import { listPhases } from './phases';
+import { listPhasesWithProgress } from './phase-progress';
 import { listRooms, roomsProgress } from './rooms';
 
 /**
@@ -20,7 +20,7 @@ export type NeedsYou = {
 
 export async function homeSummary(db: Db) {
   const allJobs = await listJobs(db);
-  const allPhases = await listPhases(db);
+  const allPhases = await listPhasesWithProgress(db);
   const allRooms = await listRooms(db);
   const progress = await roomsProgress(db);
   const money = await getMoneySummary(db);
@@ -62,7 +62,10 @@ export async function homeSummary(db: Db) {
     needsYou,
     /** Received quotes that run out within a week (M4, Q4). */
     expiringQuotes: await expiringEstimates(db),
-    phase: current ? { id: current.id, name: current.name, status: current.status } : null,
+    /** With the same "done" count as the Phases list (OD-116, Q119). */
+    phase: current
+      ? { id: current.id, name: current.name, status: current.status, progress: current.progress }
+      : null,
     phaseJobs: current
       ? allJobs
           .filter((j) => j.phaseId === current.id)
@@ -80,6 +83,8 @@ export async function homeSummary(db: Db) {
         name: r.name,
         progress: { done: p?.done ?? 0, total: p?.total ?? 0 },
         awaitingReview: (p?.awaitingReview ?? 0) > 0,
+        /** A job is in progress there (Home puts these rooms second, OD-116, Q120). */
+        underway: (p?.underway ?? 0) > 0,
       };
     }),
   };

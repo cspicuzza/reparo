@@ -40,13 +40,14 @@ export type RoomProgress = {
 /**
  * How far along rooms are, for the room page ("2 of 4 jobs done") and Home's room tiles. Same
  * counting rule as the jobs roll-up: Cancelled doesn't count; jobs in deleted phases and removed
- * jobs don't either. `awaitingReview` counts the jobs waiting for someone to check them there.
+ * jobs don't either. `awaitingReview` counts the jobs waiting for someone to check them there,
+ * `underway` the ones in progress there (Home's order, OD-116).
  * Rooms with no counted jobs are absent from the map.
  */
 export async function roomsProgress(
   db: Db,
   roomId?: string,
-): Promise<Map<string, RoomProgress & { awaitingReview: number }>> {
+): Promise<Map<string, RoomProgress & { awaitingReview: number; underway: number }>> {
   const conds = [
     isNull(jobRooms.deletedAt),
     isNull(jobs.deletedAt),
@@ -60,6 +61,9 @@ export async function roomsProgress(
       done: sql<number>`count(*) filter (where ${jobRooms.status} = 'completed')`.mapWith(Number),
       awaitingReview:
         sql<number>`count(*) filter (where ${jobRooms.status} = 'awaiting_review')`.mapWith(Number),
+      underway: sql<number>`count(*) filter (where ${jobRooms.status} = 'in_progress')`.mapWith(
+        Number,
+      ),
       total: sql<number>`count(*)`.mapWith(Number),
     })
     .from(jobRooms)

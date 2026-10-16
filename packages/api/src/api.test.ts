@@ -622,6 +622,19 @@ describe('@reparo/api', () => {
         id: jr('Home Hall')?.id,
         status: 'completed',
       });
+      // A room with a job in progress is "underway" (Home's order, OD-116, Q120).
+      const nook = await room('Home Nook');
+      const trim = (
+        await mutate(h, 'editor', 'jobs.create', {
+          phaseId: phase1.id,
+          name: 'Trim',
+          roomIds: [nook.id],
+        })
+      ).data as JobRow;
+      await mutate(h, 'editor', 'jobRooms.update', {
+        id: trim.rooms[0]?.id,
+        status: 'in_progress',
+      });
       // A job with no rooms (a fee) waits as a whole.
       const feeJob = row(
         await mutate(h, 'editor', 'jobs.create', {
@@ -635,9 +648,11 @@ describe('@reparo/api', () => {
         needsYou: { jobId: string; jobName: string; room: Row | null }[];
         phase: Row | null;
         phaseJobs: (Row & { roomCount: number; progress: Row })[];
-        rooms: (Row & { progress: Row; awaitingReview: boolean })[];
+        rooms: (Row & { progress: Row; awaitingReview: boolean; underway: boolean })[];
       };
       const home = (await query(h, 'viewer', 'home.summary')).data as Summary;
+      // The phase carries the same done count as the Phases list (OD-116, Q119).
+      expect(home.phase?.progress).toEqual({ done: 0, total: 3 });
 
       expect(home.needsYou.map((n) => [n.jobId, n.jobName, n.room?.name ?? null])).toEqual([
         [job.id, 'Paint — Phase 1', 'Home Den'],
@@ -662,17 +677,27 @@ describe('@reparo/api', () => {
         { done: 0, total: 0 },
         false,
       ]);
+      // Only the nook has a job in progress; awaiting review and done aren't "underway".
+      expect(
+        home.rooms.filter((r) => r.name?.startsWith('Home ')).map((r) => [r.name, r.underway]),
+      ).toEqual([
+        ['Home Den', false],
+        ['Home Hall', false],
+        ['Home Loft', false],
+        ['Home Nook', true],
+      ]);
 
       // The lists carry the same counts: rooms by job, phases by rolled-up job status.
       type WithProgress = Row & { progress: Row };
       const listed = rows(await query(h, 'viewer', 'rooms.list')) as WithProgress[];
       expect(listed.find((r) => r.name === 'Home Hall')?.progress).toEqual({ done: 1, total: 1 });
       const phaseRows = rows(await query(h, 'viewer', 'phases.list')) as WithProgress[];
-      // Paint awaits review in the den; the fee awaits review: none done, both counted.
-      expect(phaseRows.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 0, total: 2 });
+      // Paint awaits review in the den; trim is in progress; the fee awaits review: none done,
+      // all counted.
+      expect(phaseRows.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 0, total: 3 });
       await mutate(h, 'editor', 'jobs.update', { id: feeJob.id, status: 'completed' });
       const after = rows(await query(h, 'viewer', 'phases.list')) as WithProgress[];
-      expect(after.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 1, total: 2 });
+      expect(after.find((p) => p.id === phase1.id)?.progress).toEqual({ done: 1, total: 3 });
     }));
 
   it('jobs: guards — viewers read only; a name, a real phase, vendor and rooms are needed', () =>
