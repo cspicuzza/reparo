@@ -6,6 +6,9 @@ import {
   phaseProgressText,
   progressText,
   specSummary,
+  openJobsText,
+  PHASE_STATUS_LABEL,
+  phaseMoneyEffect,
 } from './work';
 
 describe('work helpers', () => {
@@ -63,5 +66,21 @@ describe('groupByPhase', () => {
       ['p3', ['b']],
     ]);
     expect(groupByPhase(phases, [])).toEqual([]);
+  });
+});
+
+describe('phase status words (OD-122)', () => {
+  it('says what a status does to the money', () => {
+    expect(phaseMoneyEffect('planned')).toBe('Not counted until it starts');
+    expect(phaseMoneyEffect('active')).toBe('Counts toward Committed');
+    expect(phaseMoneyEffect('complete')).toBe('Counts toward Committed');
+  });
+  it('calls active "Underway"', () => {
+    expect(PHASE_STATUS_LABEL.active).toBe('Underway');
+  });
+  it('counts the jobs still open', () => {
+    expect(openJobsText({ done: 3, total: 3 })).toBeNull();
+    expect(openJobsText({ done: 2, total: 3 })).toBe('1 job is still open');
+    expect(openJobsText({ done: 0, total: 3 })).toBe('3 jobs are still open');
   });
 });

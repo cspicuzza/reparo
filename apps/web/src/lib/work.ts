@@ -21,7 +21,8 @@ export const WORK_STATUS_LABEL: Record<WorkStatusInput, string> = {
 
 export const PHASE_STATUS_LABEL: Record<PhaseStatusInput, string> = {
   planned: 'Planned',
-  active: 'Active',
+  // "Underway" everywhere; the stored value stays `active` (OD-122, Q157).
+  active: 'Underway',
   complete: 'Complete',
 };
 
@@ -53,6 +54,18 @@ export function phaseProgressText(p: { done: number; total: number }): string {
   if (p.total === 0) return 'No jobs yet';
   if (p.done >= p.total) return p.total === 1 ? 'Its one job is done' : `All ${p.total} jobs done`;
   return `${p.done} of ${p.total} ${p.total === 1 ? 'job' : 'jobs'} done`;
+}
+
+/** What a phase's status does to the money (OD-122, Q154; money-rules: active and complete count). */
+export function phaseMoneyEffect(status: PhaseStatusInput): string {
+  return status === 'planned' ? 'Not counted until it starts' : 'Counts toward Committed';
+}
+
+/** A phase marked complete while some of its jobs aren't done: "2 jobs are still open". */
+export function openJobsText(p: { done: number; total: number }): string | null {
+  const open = p.total - p.done;
+  if (open <= 0) return null;
+  return open === 1 ? '1 job is still open' : `${open} jobs are still open`;
 }
 
 /** "Oct 1, 2026 to Dec 15, 2026", or just the start or end; '' when neither is set. */

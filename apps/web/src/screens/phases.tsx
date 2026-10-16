@@ -1,4 +1,4 @@
-import { Pencil, Plus } from 'lucide-react';
+import { Pencil, Plus, TriangleAlert } from 'lucide-react';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,6 +8,7 @@ import {
   phaseUpdateSchema,
   type PhaseCreate,
   type PhaseCreateInput,
+  type PhaseStatusInput,
 } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -16,7 +17,16 @@ import { Field, FormError, Input, Select, Textarea } from '@/components/form';
 import { useMe } from '@/lib/me';
 import { problemWith } from '@/lib/problem';
 import { trpcClient, useTRPC } from '@/lib/trpc';
-import { PHASE_STATUS_LABEL, phaseDates, phaseProgressText, type Phase } from '@/lib/work';
+import {
+  PHASE_STATUS_LABEL,
+  openJobsText,
+  phaseDates,
+  phaseMoneyEffect,
+  phaseProgressText,
+  type Phase,
+} from '@/lib/work';
+import { Link } from '@tanstack/react-router';
+import { useToasts } from '@/lib/toasts';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
 import { AutoSaveField } from '@/components/auto-save-field';
@@ -24,7 +34,7 @@ import { AutoSaveSelect } from '@/components/auto-save-select';
 import { EditPanel } from '@/components/edit-panel';
 import { PanelNameField } from '@/components/panel-name-field';
 import { PanelList } from '@/components/panel';
-import { PhaseStatusBadge, PhaseStatusSelect } from '@/components/status';
+import { PhaseStatusBadge, PhaseStatusSelect, StatusBadge } from '@/components/status';
 import { SaveState } from '@/components/save-state';
 import { TapeStrip } from '@/components/tape';
 import { ListPlaceholder } from '@/components/placeholder';
@@ -155,6 +165,10 @@ export function Phases() {
                     ) : (
                       <PhaseStatusBadge status={phase.status} />
                     )}
+                    {/* What the status does to the money (OD-122, Q154). */}
+                    <span className="text-sm text-muted-foreground">
+                      {phaseMoneyEffect(phase.status)}
+                    </span>
                   </div>
                   {isAdmin ? (
                     <Button
@@ -181,10 +195,22 @@ export function Phases() {
                       label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
                     />
                   ) : null}
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {phaseProgressText(phase.progress)}
-                  </span>
+                  {/* The count links to the phase's jobs (OD-122, Q156). */}
+                  {phase.progress.total > 0 ? (
+                    <Link
+                      to="/jobs"
+                      search={{ phase: phase.id }}
+                      className="inline-flex min-h-11 items-center text-sm text-foreground tabular-nums underline underline-offset-4"
+                    >
+                      {phaseProgressText(phase.progress)}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {phaseProgressText(phase.progress)}
+                    </span>
+                  )}
                 </div>
+                <OpenJobsWarning phase={phase} />
                 {phase.notes ? (
                   <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
                     {phase.notes}
@@ -277,7 +303,16 @@ function PhaseForm({ phase, onSubmit, onCancel, submitLabel, serverError, idPref
 function PhaseStatus({ phase }: { phase: Phase }) {
   const trpc = useTRPC();
   const refresh = useRefreshPhases();
-  const save = useMutation(trpc.phases.update.mutationOptions({ onSuccess: () => refresh() }));
+  const announce = useAnnounceStatus();
+  const before = phase.status;
+  const save = useMutation(
+    trpc.phases.update.mutationOptions({
+      onSuccess: async (_d, vars) => {
+        await refresh();
+        if (vars.status) announce(phase, before, vars.status);
+      },
+    }),
+  );
   const what = `Status of ${phase.name}`;
   return (
     <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -293,6 +328,87 @@ function PhaseStatus({ phase }: { phase: Phase }) {
         onRetry={() => save.mutate(save.variables ?? { id: phase.id })}
       />
     </span>
+  );
+}
+
+/**
+ * After a phase's status changes: what it now does to the money, a warning when it's marked
+ * complete with jobs still open, and Undo for 10 seconds (OD-122, Q154).
+ */
+function useAnnounceStatus() {
+  const toasts = useToasts();
+  const refresh = useRefreshPhases();
+  return (phase: Phase, was: PhaseStatusInput, now: PhaseStatusInput) => {
+    if (was === now) return;
+    const open = now === 'complete' ? openJobsText(phase.progress) : null;
+    toasts.add({
+      title: `${phase.name} is now ${PHASE_STATUS_LABEL[now].toLowerCase()}`,
+      description: open ? `${open}. ${phaseMoneyEffect(now)}.` : `${phaseMoneyEffect(now)}.`,
+      timeout: 10_000,
+      actionProps: {
+        children: 'Undo',
+        onClick: () =>
+          void trpcClient.phases.update
+            .mutate({ id: phase.id, status: was })
+            .then(refresh)
+            .catch(() => undefined),
+      },
+    });
+  };
+}
+
+/** A complete phase that still has open jobs says so, in the list and its panel (Q154). */
+function OpenJobsWarning({ phase }: { phase: Phase }) {
+  const open = phase.status === 'complete' ? openJobsText(phase.progress) : null;
+  if (!open) return null;
+  return (
+    <p className="flex items-start gap-2 text-sm">
+      <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <span>Marked complete, but {open}.</span>
+    </p>
+  );
+}
+
+/** The phase's jobs with their status, in its panel (OD-122, Q156). */
+function PhaseJobs({ phase }: { phase: Phase }) {
+  const trpc = useTRPC();
+  const jobs = useQuery(trpc.jobs.list.queryOptions({ phaseId: phase.id }));
+  return (
+    <section aria-labelledby={`phase-${phase.id}-jobs`} className="flex flex-col gap-2">
+      <h3 id={`phase-${phase.id}-jobs`} className="text-base font-semibold">
+        Its jobs
+      </h3>
+      {jobs.isPending ? <p className="text-muted-foreground">Loading its jobs…</p> : null}
+      {jobs.error ? <LoadError what="its jobs" error={jobs.error} retry={[jobs]} /> : null}
+      {jobs.data && jobs.data.length === 0 ? (
+        <p className="text-muted-foreground">No jobs yet.</p>
+      ) : null}
+      {jobs.data && jobs.data.length > 0 ? (
+        <ul className="divide-y divide-border border-y border-border">
+          {jobs.data.map((j) => (
+            <li key={j.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <Link
+                to="/jobs/$jobId"
+                params={{ jobId: j.id }}
+                className="inline-flex min-h-11 min-w-0 items-center font-semibold break-words underline-offset-4 hover:underline"
+              >
+                {j.name}
+              </Link>
+              <StatusBadge status={j.progress.status} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {jobs.data && jobs.data.length > 0 ? (
+        <Link
+          to="/jobs"
+          search={{ phase: phase.id }}
+          className="inline-flex min-h-11 items-center text-sm underline underline-offset-4"
+        >
+          See them on the Jobs page
+        </Link>
+      ) : null}
+    </section>
   );
 }
 
@@ -326,6 +442,7 @@ function PhaseNameField({ phase }: { phase: Phase }) {
  */
 function PhasePanelBody({ phase }: { phase: Phase }) {
   const save = useSavePhase(phase.id);
+  const announce = useAnnounceStatus();
   const id = (f: string) => `phase-${phase.id}-${f}`;
   const date = (v: string) => (v === '' ? null : v);
   return (
@@ -333,11 +450,18 @@ function PhasePanelBody({ phase }: { phase: Phase }) {
       <AutoSaveSelect
         id={id('status')}
         label="Status"
+        hint={phaseMoneyEffect(phase.status)}
         value={phase.status}
         options={PHASE_STATUSES.map((st) => ({ value: st, label: PHASE_STATUS_LABEL[st] }))}
         what={`Status of ${phase.name}`}
-        onSave={(v) => save({ status: v as PhasePatch['status'] })}
+        onSave={async (v) => {
+          const was = phase.status;
+          const now = v as PhaseStatusInput;
+          await save({ status: now });
+          announce(phase, was, now);
+        }}
       />
+      <OpenJobsWarning phase={phase} />
       <AutoSaveField
         id={id('starts')}
         label="Starts"
@@ -367,6 +491,7 @@ function PhasePanelBody({ phase }: { phase: Phase }) {
         validate={(v) => problemWith(phaseUpdateSchema.shape.notes, v)}
         onSave={(v) => save({ notes: v })}
       />
+      <PhaseJobs phase={phase} />
     </div>
   );
 }

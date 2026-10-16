@@ -1,6 +1,6 @@
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { EditPanel } from '@/components/edit-panel';
@@ -31,7 +31,11 @@ export function Jobs() {
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-job' : null);
 
-  const groups = jobs.data && phases.data ? groupByPhase(phases.data, jobs.data) : null;
+  const search = useSearch({ from: '/_app/jobs/' });
+  const all = jobs.data && phases.data ? groupByPhase(phases.data, jobs.data) : null;
+  // `?phase=` shows one phase's jobs, from the Phases page (OD-122, Q156).
+  const onePhase = search.phase ? phases.data?.find((p) => p.id === search.phase) : undefined;
+  const groups = all && onePhase ? all.filter((g) => g.phase.id === onePhase.id) : all;
 
   return (
     <section className="flex flex-col gap-8">
@@ -69,7 +73,18 @@ export function Jobs() {
       {jobs.error || phases.error ? (
         <LoadError what="the jobs" error={jobs.error ?? phases.error} retry={[jobs, phases]} />
       ) : null}
-      {groups && groups.length === 0 ? (
+      {onePhase ? (
+        <p className="-mt-4 text-muted-foreground">
+          Showing {onePhase.name}&apos;s jobs.{' '}
+          <Link to="/jobs" className="text-foreground underline underline-offset-4">
+            Show every phase
+          </Link>
+        </p>
+      ) : null}
+      {onePhase && groups && groups.length === 0 ? (
+        <p className="text-muted-foreground">{onePhase.name} has no jobs yet.</p>
+      ) : null}
+      {!onePhase && groups && groups.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No jobs yet.</span>
           {canEdit ? (
