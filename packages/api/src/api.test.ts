@@ -1785,6 +1785,56 @@ describe('@reparo/api', () => {
       expect(totals[0]).toMatchObject({ status: 'to_buy', count: 4, totalCents: 4000 });
     }));
 
+  it('batch edits: move, recategorise and remove lines together, all or none, with undo', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const room = row(await mutate(h, 'editor', 'rooms.create', { name: 'Batch Room' }));
+      const add = async (name: string) =>
+        row(
+          await mutate(h, 'editor', 'shoppingLines.create', {
+            phaseId: phase1.id,
+            categoryId: cat('Decor'),
+            name,
+          }),
+        );
+      const one = await add('One');
+      const two = await add('Two');
+      const three = await add('Three');
+      const get = async (id: string) => row(await query(h, 'viewer', 'shoppingLines.get', { id }));
+
+      const viewer = await mutate(h, 'viewer', 'shoppingLines.updateMany', {
+        changes: [{ id: one.id, roomId: room.id }],
+      });
+      expect(viewer.status).toBe(403);
+
+      const moved = await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: [one, two].map((l) => ({ id: l.id, roomId: room.id, categoryId: cat('Rugs') })),
+      });
+      expect(moved.data).toEqual({ count: 2 });
+      expect((await get(one.id)).roomId).toBe(room.id);
+      expect((await get(two.id)).categoryId).toBe(cat('Rugs'));
+
+      // One bad change and nothing in the batch happens.
+      const bad = await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: [
+          { id: three.id, roomId: room.id },
+          { id: one.id, categoryId: '00000000-0000-4000-8000-000000000000' },
+        ],
+      });
+      expect(bad.code).toBe('NOT_FOUND');
+      expect((await get(three.id)).roomId).toBeNull();
+
+      const removed = await mutate(h, 'editor', 'shoppingLines.removeMany', {
+        ids: [one.id, two.id],
+      });
+      expect(removed.data).toEqual({ count: 2 });
+      const left = rows(await query(h, 'viewer', 'shoppingLines.list', { roomId: room.id }));
+      expect(left).toEqual([]);
+      await mutate(h, 'editor', 'shoppingLines.restoreMany', { ids: [one.id, two.id] });
+      const back = rows(await query(h, 'viewer', 'shoppingLines.list', { roomId: room.id }));
+      expect(back.map((l) => l.name).sort()).toEqual(['One', 'Two']);
+    }));
+
   it('stores: suggestions merge case, new lines snap to the spelling in use, rename fixes every line', () =>
     withSeeded(async (_tx, h) => {
       const { phase1, cat } = await moneyFixtures(h);

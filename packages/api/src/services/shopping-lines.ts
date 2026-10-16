@@ -18,6 +18,7 @@ import {
   type ShoppingLineCreate,
   type ShoppingLineList,
   type ShoppingLineUpdate,
+  type ShoppingLineUpdateMany,
   type StoreRename,
 } from '@reparo/shared';
 import { getCategory } from './categories';
@@ -171,6 +172,34 @@ export async function updateShoppingLine(
     })
     .where(and(eq(shoppingLines.id, id), live()));
   return getShoppingLine(db, id);
+}
+
+/**
+ * Batch edits (OD-101): each change goes through the same rules as one edit (a job must be in
+ * the line's phase, and so on), all in one transaction, so a batch happens completely or not
+ * at all.
+ */
+export async function updateManyShoppingLines(db: Db, { changes }: ShoppingLineUpdateMany) {
+  await db.transaction(async (tx) => {
+    for (const change of changes) await updateShoppingLine(tx, change);
+  });
+  return { count: changes.length };
+}
+
+/** Remove several lines together, in one transaction (OD-101). Restorable, like one removal. */
+export async function removeManyShoppingLines(db: Db, ids: string[]) {
+  await db.transaction(async (tx) => {
+    for (const id of ids) await removeShoppingLine(tx, id);
+  });
+  return { count: ids.length };
+}
+
+/** Bring back several removed lines together: Undo after a batch removal (OD-101). */
+export async function restoreManyShoppingLines(db: Db, ids: string[]) {
+  await db.transaction(async (tx) => {
+    for (const id of ids) await restoreShoppingLine(tx, id);
+  });
+  return { count: ids.length };
 }
 
 export async function removeShoppingLine(db: Db, id: string) {

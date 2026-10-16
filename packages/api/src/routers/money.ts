@@ -12,6 +12,8 @@ import {
   paymentUpdateSchema,
   shoppingLineCreateSchema,
   shoppingLineListSchema,
+  shoppingLineIdsSchema,
+  shoppingLineUpdateManySchema,
   shoppingLineUpdateSchema,
   storeRenameSchema,
 } from '@reparo/shared';
@@ -49,6 +51,9 @@ import {
   removeShoppingLine,
   renameStore,
   restoreShoppingLine,
+  removeManyShoppingLines,
+  restoreManyShoppingLines,
+  updateManyShoppingLines,
   shoppingTotals,
   updateShoppingLine,
 } from '../services/shopping-lines';
@@ -90,6 +95,18 @@ export const shoppingLinesRouter = router({
   restore: editorProcedure
     .input(byId)
     .mutation(({ ctx, input }) => restoreShoppingLine(ctx.db, input.id)),
+  /** Batch edits: room, category or job for several lines, all or none (OD-101). */
+  updateMany: editorProcedure
+    .input(shoppingLineUpdateManySchema)
+    .mutation(({ ctx, input }) => updateManyShoppingLines(ctx.db, input)),
+  /** Remove several lines together (OD-101). */
+  removeMany: editorProcedure
+    .input(shoppingLineIdsSchema)
+    .mutation(({ ctx, input }) => removeManyShoppingLines(ctx.db, input.ids)),
+  /** Undo for removeMany (OD-101). */
+  restoreMany: editorProcedure
+    .input(shoppingLineIdsSchema)
+    .mutation(({ ctx, input }) => restoreManyShoppingLines(ctx.db, input.ids)),
   /** Counts and totals per status and room, for the same filters as `list` (OD-68). */
   totals: memberProcedure
     .input(shoppingLineListSchema.default({}))

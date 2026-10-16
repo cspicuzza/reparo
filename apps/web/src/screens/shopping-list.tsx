@@ -32,6 +32,7 @@ export function ShoppingRows({
   files,
   canEdit,
   onOpen,
+  selection,
   className,
 }: {
   lines: ShoppingLine[];
@@ -40,6 +41,8 @@ export function ShoppingRows({
   canEdit: boolean;
   /** Open a line's panel. */
   onOpen: (line: ShoppingLine) => void;
+  /** While batch editing (OD-101): which lines are picked, and how to pick one. */
+  selection?: RowSelection | undefined;
   className?: string;
 }) {
   // A picture column only when some line in this list has a picture, so a list without any
@@ -52,9 +55,14 @@ export function ShoppingRows({
     <ul
       className={cn(
         'divide-y divide-border sm:grid sm:gap-x-4',
-        withPictures
-          ? 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
-          : 'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
+        // A checkbox column first while batch editing (OD-101), then pictures, if any.
+        selection
+          ? withPictures
+            ? 'sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_auto]'
+            : 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
+          : withPictures
+            ? 'sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]'
+            : 'sm:grid-cols-[minmax(0,1fr)_auto_auto]',
         className,
       )}
     >
@@ -66,12 +74,19 @@ export function ShoppingRows({
             files={files.filter((f) => f.ownerId === l.id)}
             pictureColumn={withPictures}
             onOpen={() => onOpen(l)}
+            selection={selection}
           />
         </li>
       ))}
     </ul>
   );
 }
+
+/** Batch editing's picked lines (OD-101). */
+export type RowSelection = {
+  selected: ReadonlyMap<string, ShoppingLine>;
+  toggle: (line: ShoppingLine) => void;
+};
 
 /**
  * Row buttons on a laptop look 36px tall with 14px text, so the price outweighs them; an
@@ -86,6 +101,7 @@ function ShoppingRow({
   files,
   pictureColumn,
   onOpen,
+  selection,
 }: {
   line: ShoppingLine;
   canEdit: boolean;
@@ -93,6 +109,7 @@ function ShoppingRow({
   /** The list has a picture column on a laptop, so this row fills its cell even without one. */
   pictureColumn: boolean;
   onOpen: () => void;
+  selection?: RowSelection | undefined;
 }) {
   const [buying, setBuying] = useState(false);
   // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
@@ -155,9 +172,26 @@ function ShoppingRow({
       <div
         className={cn(
           'grid items-start gap-x-3 gap-y-3 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:gap-x-4',
-          thumb?.url ? 'grid-cols-[auto_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(0,1fr)_auto]',
+          selection
+            ? thumb?.url
+              ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
+              : 'grid-cols-[auto_minmax(0,1fr)_auto]'
+            : thumb?.url
+              ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
+              : 'grid-cols-[minmax(0,1fr)_auto]',
         )}
       >
+        {selection ? (
+          <label className="-my-2 -ml-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center self-center">
+            <input
+              type="checkbox"
+              checked={selection.selected.has(line.id)}
+              onChange={() => selection.toggle(line)}
+              className="size-5 accent-primary"
+            />
+            <span className="sr-only">Select {line.name}</span>
+          </label>
+        ) : null}
         {thumb?.url ? (
           <img
             src={thumb.url}
@@ -171,7 +205,16 @@ function ShoppingRow({
           <span aria-hidden className="hidden sm:block" />
         ) : null}
         <div className="min-w-0">
-          <p className="text-lg font-semibold break-words">{line.name}</p>
+          {/* The name opens the panel too (OD-101, Q90). It looks like plain text until
+                hovered, and stays out of Tab order: Details is the keyboard way in. */}
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={onOpen}
+            className="text-left text-lg font-semibold break-words underline-offset-4 hover:underline"
+          >
+            {line.name}
+          </button>
           <LineFacts line={line} />
         </div>
         <span className="text-right text-xl font-semibold whitespace-nowrap tabular-nums">

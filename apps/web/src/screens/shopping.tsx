@@ -3,7 +3,7 @@ import type { ShoppingStatusInput } from '@reparo/shared';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ListFilter, Plus, Search, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Select, inputClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
@@ -28,7 +28,8 @@ import type { FileView } from '@/lib/upload';
 import { useInvalidateShopping } from '@/lib/use-invalidate-shopping';
 import { ShoppingLineForm } from './shopping-line-form';
 import { ShoppingLinePanel } from './shopping-line-panel';
-import { ShoppingRows } from './shopping-list';
+import { BatchBar } from './shopping-batch';
+import { ShoppingRows, type RowSelection } from './shopping-list';
 import { useLineFiles } from '@/lib/use-line-files';
 import { Loading, PanelShape } from '@/components/placeholder';
 
@@ -73,6 +74,34 @@ export function Shopping() {
   const invalidate = useInvalidateShopping();
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-line' : null);
+  // Batch editing (OD-101): Select turns on checkboxes; the picked lines stay picked through
+  // search and filter changes, kept with the line as it was when picked (for Undo).
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<ReadonlyMap<string, ShoppingLine>>(new Map());
+  const selection: RowSelection | undefined = selecting
+    ? {
+        selected,
+        toggle: (line) =>
+          setSelected((prev) => {
+            const next = new Map(prev);
+            if (next.has(line.id)) next.delete(line.id);
+            else next.set(line.id, line);
+            return next;
+          }),
+      }
+    : undefined;
+  const pickAll = (ls: ShoppingLine[], on: boolean) =>
+    setSelected((prev) => {
+      const next = new Map(prev);
+      for (const l of ls) {
+        if (on) next.set(l.id, l);
+        else next.delete(l.id);
+      }
+      return next;
+    });
+  // Each picked line as it is now when it's on screen, so actions use current values.
+  const current = new Map((lines.data ?? []).map((l) => [l.id, l]));
+  const picked = new Map([...selected].map(([id, l]) => [id, current.get(id) ?? l]));
   const create = useMutation(
     trpc.shoppingLines.create.mutationOptions({
       onSuccess: async () => {
@@ -86,7 +115,7 @@ export function Shopping() {
   const toBuy = totals.data?.find((s) => s.status === 'to_buy');
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className={cn('flex flex-col gap-6', picked.size > 0 && 'pb-56 sm:pb-40')}>
       <PageHeader
         title="Shopping"
         description={
@@ -135,7 +164,24 @@ export function Shopping() {
         />
       </EditPanel>
 
-      <Filters search={search} />
+      <Filters
+        search={search}
+        select={
+          canEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={selecting}
+              onClick={() => {
+                if (selecting) setSelected(new Map());
+                setSelecting((v) => !v);
+              }}
+            >
+              {selecting ? 'Done' : 'Select'}
+            </Button>
+          ) : null
+        }
+      />
 
       {lines.isPending || totals.isPending ? (
         <Loading label="Loading the list">
@@ -188,10 +234,20 @@ export function Shopping() {
                 files={files.data ?? []}
                 canEdit={canEdit}
                 onOpen={(l) => setOpenId(l.id)}
+                selection={selection}
+                onPickAll={pickAll}
               />
             ),
           )
         : null}
+
+      {picked.size > 0 ? (
+        <BatchBar
+          selected={picked}
+          shownIds={new Set(current.keys())}
+          onClear={() => setSelected(new Map())}
+        />
+      ) : null}
 
       <ShoppingLinePanel
         line={openLine}
@@ -213,12 +269,16 @@ function ShoppingSection({
   files,
   canEdit,
   onOpen,
+  selection,
+  onPickAll,
 }: {
   section: Section;
   lines: ShoppingLine[];
   files: FileView[];
   canEdit: boolean;
   onOpen: (line: ShoppingLine) => void;
+  selection: RowSelection | undefined;
+  onPickAll: (lines: ShoppingLine[], on: boolean) => void;
 }) {
   const foldable = section.status !== 'to_buy';
   const [open, setOpen] = useState(!foldable);
@@ -249,30 +309,44 @@ function ShoppingSection({
         ) : null}
       </div>
       <Reveal open={open} id={bodyId} className="mt-3 flex flex-col gap-4">
-        {section.rooms.map((room) => (
-          <Panel
-            key={room.roomId ?? 'house'}
-            aria-labelledby={`${headingId}-${room.roomId ?? 'house'}`}
-            className="overflow-hidden p-0 sm:p-0"
-          >
-            {/* The room's strip on the band tone, so it stands apart from its rows (OD-99). */}
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-band px-4 py-3 sm:px-5">
-              <h3 id={`${headingId}-${room.roomId ?? 'house'}`} className="text-xl">
-                {room.name}
-              </h3>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {groupText(section.status, room.count, room.totalCents, money)}
-              </span>
-            </div>
-            <ShoppingRows
-              lines={lines.filter((l) => (l.room?.id ?? null) === room.roomId)}
-              files={files}
-              canEdit={canEdit}
-              onOpen={onOpen}
-              className="px-4 sm:px-5"
-            />
-          </Panel>
-        ))}
+        {section.rooms.map((room) => {
+          const inRoom = lines.filter((l) => (l.room?.id ?? null) === room.roomId);
+          return (
+            <Panel
+              key={room.roomId ?? 'house'}
+              aria-labelledby={`${headingId}-${room.roomId ?? 'house'}`}
+              className="overflow-hidden p-0 sm:p-0"
+            >
+              {/* The room's strip on the band tone, so it stands apart from its rows (OD-99). */}
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-border bg-band px-4 py-3 sm:px-5">
+                <div className="flex items-center gap-3">
+                  {selection ? (
+                    <SelectAll
+                      lines={inRoom}
+                      selected={selection.selected}
+                      roomName={room.name}
+                      onPick={(on) => onPickAll(inRoom, on)}
+                    />
+                  ) : null}
+                  <h3 id={`${headingId}-${room.roomId ?? 'house'}`} className="text-xl">
+                    {room.name}
+                  </h3>
+                </div>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {groupText(section.status, room.count, room.totalCents, money)}
+                </span>
+              </div>
+              <ShoppingRows
+                lines={inRoom}
+                files={files}
+                canEdit={canEdit}
+                onOpen={onOpen}
+                selection={selection}
+                className="px-4 sm:px-5"
+              />
+            </Panel>
+          );
+        })}
       </Reveal>
     </section>
   );
@@ -355,7 +429,7 @@ function SearchBox({
  * One "Filter" button that opens the choices, and the filters in use as chips you can remove
  * (OD-75, Q25). The Status filter is gone: the sections do that job.
  */
-function Filters({ search }: { search: ShoppingSearch }) {
+function Filters({ search, select }: { search: ShoppingSearch; select: ReactNode }) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -411,6 +485,7 @@ function Filters({ search }: { search: ShoppingSearch }) {
             <ListFilter aria-hidden absoluteStrokeWidth strokeWidth={2} />
             {open ? 'Hide filters' : active.length > 0 ? `Filter (${active.length})` : 'Filter'}
           </Button>
+          {select}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 empty:hidden">
@@ -515,5 +590,38 @@ function FilterSelect({
         ))}
       </Select>
     </div>
+  );
+}
+
+/**
+ * "Select all" for one room while batch editing (OD-101, Q91): ticked when every line in the
+ * room is picked, part-ticked when some are.
+ */
+function SelectAll({
+  lines,
+  selected,
+  roomName,
+  onPick,
+}: {
+  lines: ShoppingLine[];
+  selected: ReadonlyMap<string, ShoppingLine>;
+  roomName: string;
+  onPick: (on: boolean) => void;
+}) {
+  const count = lines.filter((l) => selected.has(l.id)).length;
+  const all = lines.length > 0 && count === lines.length;
+  return (
+    <label className="-my-2 -ml-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        checked={all}
+        ref={(el) => {
+          if (el) el.indeterminate = count > 0 && !all;
+        }}
+        onChange={() => onPick(!all)}
+        className="size-5 accent-primary"
+      />
+      <span className="sr-only">Select all in {roomName}</span>
+    </label>
   );
 }

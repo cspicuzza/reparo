@@ -493,6 +493,27 @@ export const shoppingLineListSchema = z
     q: z.string().trim().min(1).max(120),
   })
   .partial();
+/**
+ * Batch edits (OD-101): the room, category or job for several lines at once. Each line carries
+ * its own values, so Undo can put every line back the way it was.
+ */
+export const shoppingLineUpdateManySchema = z.object({
+  changes: z
+    .array(
+      z.object({
+        id: idSchema,
+        roomId: shoppingFields.roomId.optional(),
+        categoryId: shoppingFields.categoryId.optional(),
+        jobId: shoppingFields.jobId.optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+/** Several lines by id: removing them together, or bringing them back (OD-101). */
+export const shoppingLineIdsSchema = z.object({ ids: z.array(idSchema).min(1).max(500) });
+export type ShoppingLineUpdateMany = z.infer<typeof shoppingLineUpdateManySchema>;
+
 export type ShoppingLineCreate = z.infer<typeof shoppingLineCreateSchema>;
 export type ShoppingLineCreateInput = z.input<typeof shoppingLineCreateSchema>;
 export type ShoppingLineUpdate = z.infer<typeof shoppingLineUpdateSchema>;
