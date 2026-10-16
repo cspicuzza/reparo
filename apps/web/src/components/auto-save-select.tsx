@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { SelectChevron, inputClass } from '@/components/form';
+import { NOT_A_LOGIN } from '@/lib/fields';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +44,7 @@ export function AutoSaveSelect({
       </div>
       <div className="relative mt-1.5">
         <select
+          {...NOT_A_LOGIN}
           id={id}
           value={shown}
           aria-describedby={failed ? `${id}-save-error` : hint ? `${id}-hint` : undefined}

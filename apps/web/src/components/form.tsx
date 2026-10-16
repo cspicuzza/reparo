@@ -7,6 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react';
+import { NOT_A_LOGIN } from '@/lib/fields';
 import { cn } from '@/lib/utils';
 
 /**
@@ -84,11 +85,11 @@ export function FormError({
 }
 
 export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input {...props} className={cn(inputClass, className)} />;
+  return <input {...NOT_A_LOGIN} {...props} className={cn(inputClass, className)} />;
 }
 
 export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
-  return <textarea {...props} className={cn(inputClass, className)} />;
+  return <textarea {...NOT_A_LOGIN} {...props} className={cn(inputClass, className)} />;
 }
 
 /**
@@ -99,7 +100,7 @@ export function Textarea({ className, ...props }: ComponentProps<'textarea'>) {
 export function Select({ className, ...props }: ComponentProps<'select'>) {
   return (
     <div className={cn('relative', className)}>
-      <select {...props} className={cn(inputClass, 'appearance-none pr-10')} />
+      <select {...NOT_A_LOGIN} {...props} className={cn(inputClass, 'appearance-none pr-10')} />
       <SelectChevron />
     </div>
   );

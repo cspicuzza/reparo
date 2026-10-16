@@ -2,6 +2,7 @@ import { Combobox as ComboboxPrimitive } from '@base-ui/react/combobox';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { inputClass } from '@/components/form';
+import { NOT_A_LOGIN } from '@/lib/fields';
 
 /*
  * shadcn/ui Combobox, base-nova style, adapted for Plaster and tape (OD-47). Source:
@@ -23,6 +24,7 @@ function ComboboxInput({ className, ...props }: ComboboxPrimitive.Input.Props) {
   return (
     <ComboboxPrimitive.InputGroup className="relative">
       <ComboboxPrimitive.Input
+        {...NOT_A_LOGIN}
         data-slot="combobox-input"
         className={cn(inputClass, 'pr-11', className)}
         {...props}

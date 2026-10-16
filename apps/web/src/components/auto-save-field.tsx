@@ -1,6 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { use, useState, type ReactNode } from 'react';
 import { FormError, inputClass } from '@/components/form';
+import { NOT_A_LOGIN } from '@/lib/fields';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { PanelDirtyContext } from '@/lib/panel-dirty';
 import { cn } from '@/lib/utils';
@@ -90,6 +91,7 @@ export function AutoSaveField({
         ? `${id}-hint`
         : undefined;
   const common = {
+    ...NOT_A_LOGIN,
     id,
     value,
     placeholder,
