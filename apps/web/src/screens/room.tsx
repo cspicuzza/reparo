@@ -13,7 +13,7 @@ type Room = RouterOutputs['rooms']['get'];
 type RoomUpdateInput = Parameters<typeof trpcClient.rooms.update.mutate>[0];
 import { describeRoom, roomBlockedText, roomProgressText } from '@/lib/rooms';
 import { useToasts } from '@/lib/toasts';
-import { DimensionFrame, DimensionLine } from '@/components/dimension';
+import { FloorPlan, MeasuredValue } from '@/components/dimension';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
 import { PlanGrid } from '@/components/plan-grid';
@@ -181,23 +181,14 @@ export function RoomDetail() {
         {canEdit ? (
           <RoomSizeFields room={r} />
         ) : (
-          <dl className="flex flex-wrap gap-x-8 gap-y-5">
-            <DimensionLine label="Length" inches={r.lengthIn} className="flex-1" />
-            <DimensionLine label="Width" inches={r.widthIn} className="flex-1" />
-            <DimensionLine label="Ceiling" inches={r.ceilingHeightIn} className="flex-1" />
-            <div className="min-w-36">
-              <dt className="text-sm text-muted-foreground">Floor area</dt>
-              <dd className="mt-1 text-xl font-semibold tabular-nums">
-                {sqft != null ? (
-                  `${sqft} sq ft`
-                ) : (
-                  <span className="text-base font-normal text-muted-foreground">
-                    {dims ? 'Needs both sides' : 'Not measured'}
-                  </span>
-                )}
-              </dd>
-            </div>
-          </dl>
+          <FloorPlan
+            lengthIn={r.lengthIn}
+            widthIn={r.widthIn}
+            length={<MeasuredValue label="Length" inches={r.lengthIn} />}
+            width={<MeasuredValue label="Width" inches={r.widthIn} />}
+            ceiling={<MeasuredValue label="Ceiling" inches={r.ceilingHeightIn} />}
+            area={<FloorArea sqft={sqft} dims={dims} />}
+          />
         )}
         {canEdit ? (
           <div className="mt-5 border-t border-border pt-4">
@@ -289,6 +280,18 @@ function RoomCover({ roomId, roomName }: { roomId: string; roomName: string }) {
   );
 }
 
+/** What's written inside the floor plan: the area, or why there isn't one yet. */
+function FloorArea({ sqft, dims }: { sqft: number | null; dims: string | null }) {
+  return sqft != null ? (
+    <p>
+      <span className="block text-2xl font-semibold tabular-nums">{sqft} sq ft</span>
+      <span className="text-sm text-muted-foreground">Floor area</span>
+    </p>
+  ) : (
+    <p className="text-muted-foreground">{dims ? 'Needs both sides' : 'Not measured yet'}</p>
+  );
+}
+
 /**
  * The room's size for editors (OD-77): each measurement is a field inside its dimension line
  * that saves when you leave it, checked by the same schema as the API. Floor area follows.
@@ -301,39 +304,33 @@ function RoomSizeFields({ room: r }: { room: Room }) {
     trpcClient.rooms.update
       .mutate(input)
       .then(() => queryClient.invalidateQueries(trpc.rooms.pathFilter()));
-  const sides = [
-    { key: 'lengthIn', label: 'Length', value: r.lengthIn },
-    { key: 'widthIn', label: 'Width', value: r.widthIn },
-    { key: 'ceilingHeightIn', label: 'Ceiling', value: r.ceilingHeightIn },
-  ] as const;
+  const field = (key: 'lengthIn' | 'widthIn' | 'ceilingHeightIn', label: string) => {
+    const value = r[key];
+    return (
+      <AutoSaveField
+        id={`room-${key}-${r.id}`}
+        label={label}
+        labelClassName="text-center w-full"
+        initial={value == null ? '' : formatLength(value)}
+        inputClassName="text-center text-xl font-semibold tabular-nums"
+        what={`${label} of the ${r.name}`}
+        validate={(v) => problemWith(roomUpdateSchema.shape[key], v)}
+        onSave={(v) => save({ id: r.id, [key]: v })}
+      />
+    );
+  };
   return (
     <div className="flex flex-col gap-5">
-      {sides.map((side) => (
-        <div key={side.key} className="w-full max-w-60">
-          <AutoSaveField
-            id={`room-${side.key}-${r.id}`}
-            label={side.label}
-            initial={side.value == null ? '' : formatLength(side.value)}
-            inputClassName="text-center text-xl font-semibold tabular-nums"
-            what={`${side.label} of the ${r.name}`}
-            validate={(v) => problemWith(roomUpdateSchema.shape[side.key], v)}
-            onSave={(v) => save({ id: r.id, [side.key]: v })}
-            wrap={(field) => <DimensionFrame>{field}</DimensionFrame>}
-          />
-        </div>
-      ))}
-      <div className="min-w-36">
-        <p className="text-sm font-semibold">Floor area</p>
-        <p className="mt-1.5 flex min-h-11 items-center text-xl font-semibold tabular-nums">
-          {sqft != null ? (
-            `${sqft} sq ft`
-          ) : (
-            <span className="text-base font-normal text-muted-foreground">
-              {dims ? 'Needs both sides' : 'Not measured'}
-            </span>
-          )}
-        </p>
-      </div>
+      {/* Drawn as a floor plan, each size on its own dimension line (OD-128, Q180). */}
+      <FloorPlan
+        fields
+        lengthIn={r.lengthIn}
+        widthIn={r.widthIn}
+        length={field('lengthIn', 'Length')}
+        width={field('widthIn', 'Width')}
+        ceiling={field('ceilingHeightIn', 'Ceiling')}
+        area={<FloorArea sqft={sqft} dims={dims} />}
+      />
       <p className="text-sm text-muted-foreground">
         Feet and inches, like 14&apos; 6 1/2&quot;, or plain inches. Saves when you leave the field.
       </p>
