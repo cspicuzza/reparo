@@ -48,8 +48,9 @@ export function AutoSaveField({
   what: string;
   /** Draw something around the field, such as a dimension line. */
   wrap?: (field: ReactNode) => ReactNode;
-  type?: 'text' | 'date' | 'url';
-  inputMode?: 'text' | 'decimal' | 'numeric' | 'url';
+  /** `tel` and `email` bring up the phone's matching keyboard (OD-124, Q159). */
+  type?: 'text' | 'date' | 'url' | 'tel' | 'email';
+  inputMode?: 'text' | 'decimal' | 'numeric' | 'url' | 'tel' | 'email';
   /** A <datalist> id, for suggestions as you type. */
   list?: string;
   /** e.g. `sr-only` when something else on screen already says what the field is. */

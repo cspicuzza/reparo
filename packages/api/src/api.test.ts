@@ -1803,6 +1803,57 @@ describe('@reparo/api', () => {
       expect((await summary()).committedCents).toBe(before - 40000);
     }));
 
+  it("vendors.work: a vendor's jobs with quote and paid, and their open estimates (OD-124)", () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const v = async (name: string) => row(await mutate(h, 'editor', 'vendors.create', { name }));
+      const [acme, other] = [await v('Work Acme'), await v('Work Other')];
+      const deck = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Work deck' }),
+      );
+      const fence = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Work fence' }),
+      );
+      const est = async (jobId: string, vendorId: string, amountCents: string, status?: string) =>
+        row(
+          await mutate(h, 'editor', 'estimates.create', {
+            jobId,
+            vendorId,
+            amountCents,
+            ...(status ? { status } : {}),
+          }),
+        );
+      const chosen = await est(deck.id, acme.id, '8,000');
+      await est(deck.id, other.id, '9,000');
+      await mutate(h, 'editor', 'estimates.choose', { id: chosen.id });
+      await mutate(h, 'editor', 'payments.create', {
+        jobId: deck.id,
+        amountCents: '2,000',
+        paidOn: '2026-10-01',
+      });
+      const asked = await est(fence.id, acme.id, '', 'requested');
+
+      type Work = {
+        jobs: { id: string; status: string; quoteCents: number | null; paidCents: number }[];
+        openEstimates: { id: string; jobName: string; status: string }[];
+      };
+      const work = (await query(h, 'viewer', 'vendors.work', { id: acme.id })).data as Work;
+      expect(work.jobs).toEqual([
+        expect.objectContaining({
+          id: deck.id,
+          status: 'unstarted',
+          quoteCents: 800000,
+          paidCents: 200000,
+        }),
+      ]);
+      expect(work.openEstimates).toEqual([
+        expect.objectContaining({ id: asked.id, jobName: 'Work fence', status: 'requested' }),
+      ]);
+      // The other vendor's estimate was declined when Acme's was chosen: nothing open.
+      const theirs = (await query(h, 'viewer', 'vendors.work', { id: other.id })).data as Work;
+      expect(theirs).toEqual({ jobs: [], openEstimates: [] });
+    }));
+
   it('estimates: the quote line says so; choosing can be undone', () =>
     withSeeded(async (_tx, h) => {
       const { phase1 } = await moneyFixtures(h);

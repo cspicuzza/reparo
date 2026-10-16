@@ -29,7 +29,8 @@ import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { QuerySource } from '@/lib/load-problem';
 import type { FileView } from '@/lib/upload';
 import { jobCountText, telHref } from '@/lib/vendors';
-import type { Job } from '@/lib/work';
+import { StatusBadge } from '@/components/status';
+import { ESTIMATE_STATUS_LABEL, money } from '@/lib/money';
 import { LinesPlaceholder, ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
@@ -51,7 +52,6 @@ export function Vendors() {
     ...trpc.vendors.list.queryOptions({ query: '', includeArchived: true }),
     enabled: isAdmin,
   });
-  const jobs = useQuery(trpc.jobs.list.queryOptions());
   const docs = useQuery({
     ...trpc.files.listMany.queryOptions({
       ownerType: 'vendor',
@@ -139,9 +139,8 @@ export function Vendors() {
             <li key={v.id} className="px-4 py-3 sm:px-5">
               <VendorRow
                 vendor={v}
-                jobs={jobs.data?.filter((j) => j.vendorId === v.id) ?? []}
                 documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
-                sources={{ jobs, docs }}
+                docsSource={docs}
                 open={search.vendor === v.id}
                 onOpen={() => void navigate({ search: { vendor: v.id } })}
                 onClose={() => void navigate({ search: {}, replace: true })}
@@ -197,9 +196,8 @@ export function Vendors() {
  */
 function VendorRow({
   vendor,
-  jobs,
   documents,
-  sources,
+  docsSource,
   open,
   onOpen,
   onClose,
@@ -207,10 +205,9 @@ function VendorRow({
   isAdmin,
 }: {
   vendor: Vendor;
-  jobs: Job[];
   documents: FileView[];
-  /** Where the jobs and documents came from, so the panel shows loading honestly (OD-110). */
-  sources: { jobs: QuerySource; docs: QuerySource };
+  /** Where the documents came from, so the panel shows loading honestly (OD-110). */
+  docsSource: QuerySource;
   /** Whether the panel is open: `?vendor=` names this vendor. */
   open: boolean;
   onOpen: () => void;
@@ -225,6 +222,17 @@ function VendorRow({
         <h2 className="text-lg font-semibold break-words">{vendor.name}</h2>
         {vendor.trade ? <p className="text-sm text-muted-foreground">{vendor.trade}</p> : null}
       </div>
+      {/* Tap to call from the list (OD-124, Q161). */}
+      {vendor.phone ? (
+        <a
+          href={telHref(vendor.phone)}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm tabular-nums underline underline-offset-4"
+        >
+          <Phone aria-hidden className="size-4" />
+          {vendor.phone}
+          <span className="sr-only">, call {vendor.name}</span>
+        </a>
+      ) : null}
       <span className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</span>
       <Button
         type="button"
@@ -246,9 +254,8 @@ function VendorRow({
       >
         <VendorBody
           vendor={vendor}
-          jobs={jobs}
           documents={documents}
-          sources={sources}
+          docsSource={docsSource}
           canEdit={canEdit}
           isAdmin={isAdmin}
           onArchived={onClose}
@@ -287,17 +294,15 @@ function VendorNameField({ vendor }: { vendor: Vendor }) {
  */
 function VendorBody({
   vendor,
-  jobs,
   documents,
-  sources,
+  docsSource,
   canEdit,
   isAdmin,
   onArchived,
 }: {
   vendor: Vendor;
-  jobs: Job[];
   documents: FileView[];
-  sources: { jobs: QuerySource; docs: QuerySource };
+  docsSource: QuerySource;
   canEdit: boolean;
   isAdmin: boolean;
   onArchived: () => void;
@@ -332,7 +337,7 @@ function VendorBody({
   const field = (
     name: 'trade' | 'phone' | 'email' | 'notes',
     label: string,
-    extra: { hint?: string; multiline?: boolean; type?: 'text' } = {},
+    extra: { hint?: string; multiline?: boolean; type?: 'text' | 'tel' | 'email' } = {},
   ) => (
     <AutoSaveField
       id={id(name)}
@@ -369,53 +374,24 @@ function VendorBody({
 
       {canEdit ? (
         <div className="flex flex-col gap-4">
+          {/* Contact first (Q161), with the phone's matching keyboards (Q159). */}
+          {field('phone', 'Phone', { type: 'tel' })}
+          {field('email', 'Email', { type: 'email' })}
           {field('trade', 'What they do', { hint: 'Like Plumber or Demo crew.' })}
-          {field('phone', 'Phone')}
-          {field('email', 'Email')}
           {field('notes', 'Notes', { multiline: true })}
         </div>
       ) : vendor.notes ? (
         <p className="max-w-prose whitespace-pre-wrap">{vendor.notes}</p>
       ) : null}
 
-      <section aria-labelledby={id('jobs')}>
-        <h3 id={id('jobs')} className="text-xl">
-          Jobs
-        </h3>
-        {sources.jobs.isPending ? (
-          <LinesPlaceholder label="Loading jobs" className="mt-2" />
-        ) : sources.jobs.error ? (
-          <LoadError
-            what="their jobs"
-            error={sources.jobs.error}
-            retry={[sources.jobs]}
-            className="mt-2"
-          />
-        ) : jobs.length > 0 ? (
-          <ul className="mt-1 flex flex-col">
-            {jobs.map((j) => (
-              <li key={j.id}>
-                <Link
-                  to="/jobs/$jobId"
-                  params={{ jobId: j.id }}
-                  className="inline-flex min-h-11 items-center underline underline-offset-4"
-                >
-                  {j.name}, {j.phase.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-1 text-muted-foreground">{jobCountText(vendor.jobCount)}</p>
-        )}
-      </section>
+      <VendorWork vendor={vendor} />
 
       <FileSection
         id={id('docs')}
         title="Documents"
         description="Insurance certificate, license, W-9. Add a caption to say which is which."
         files={documents}
-        source={sources.docs}
+        source={docsSource}
         target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
         uploadLabel="Add documents"
         emptyText="No documents yet"
@@ -437,6 +413,77 @@ function VendorBody({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * What a vendor is doing for us (OD-124, Q158): each job with its status, the chosen quote and
+ * what's been paid, then estimates from them still waiting on a decision.
+ */
+function VendorWork({ vendor }: { vendor: Vendor }) {
+  const trpc = useTRPC();
+  const work = useQuery(trpc.vendors.work.queryOptions({ id: vendor.id }));
+  const headingId = `vendor-${vendor.id}-jobs`;
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+      <h3 id={headingId} className="text-xl">
+        Jobs
+      </h3>
+      {work.isPending ? <LinesPlaceholder label="Loading jobs" /> : null}
+      {work.error ? <LoadError what="their jobs" error={work.error} retry={[work]} /> : null}
+      {work.data && work.data.jobs.length === 0 ? (
+        <p className="text-muted-foreground">{jobCountText(0)}</p>
+      ) : null}
+      {work.data && work.data.jobs.length > 0 ? (
+        <ul className="divide-y divide-border border-y border-border">
+          {work.data.jobs.map((j) => (
+            <li key={j.id} className="flex flex-col gap-1 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <Link
+                  to="/jobs/$jobId"
+                  params={{ jobId: j.id }}
+                  className="inline-flex min-h-11 min-w-0 items-center font-semibold break-words underline underline-offset-4"
+                >
+                  {j.name}, {j.phase.name}
+                </Link>
+                <StatusBadge status={j.status} />
+              </div>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                {j.quoteCents !== null ? `Quote ${money(j.quoteCents)}` : 'No chosen quote'}
+                {j.paidCents > 0 ? `, ${money(j.paidCents)} paid` : ', nothing paid yet'}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {work.data && work.data.openEstimates.length > 0 ? (
+        <>
+          <h4 className="mt-3 text-base font-semibold">Open estimates</h4>
+          <ul className="divide-y divide-border border-y border-border">
+            {work.data.openEstimates.map((e) => (
+              <li
+                key={e.id}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+              >
+                <Link
+                  to="/jobs/$jobId"
+                  params={{ jobId: e.jobId }}
+                  search={{ estimate: e.id }}
+                  className="inline-flex min-h-11 min-w-0 items-center break-words underline underline-offset-4"
+                >
+                  {e.jobName}
+                </Link>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {e.amountCents !== null
+                    ? `${ESTIMATE_STATUS_LABEL[e.status]}, ${money(e.amountCents)}`
+                    : ESTIMATE_STATUS_LABEL[e.status]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
   );
 }
 

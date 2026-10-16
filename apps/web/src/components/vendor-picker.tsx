@@ -11,6 +11,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
+import { useToasts } from '@/lib/toasts';
 import { useTRPC } from '@/lib/trpc';
 import { matchesVendor, type VendorOption } from '@/lib/vendors';
 
@@ -31,10 +32,11 @@ type Row = VendorOption | AddRow;
 
 /**
  * Pick who's doing a job (OD-47): type to search vendors by name or trade, or add a new one
- * without leaving the job. Clearing goes back to "Nobody yet".
+ * without leaving the job. Clear vendor goes back to "Nobody yet" and offers Undo.
  */
 export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
   const [adding, setAdding] = useState<string | null>(null);
+  const toasts = useToasts();
   const selected = vendors.find((v) => v.id === value) ?? null;
   // The input shows the picked vendor's name. It used to start empty, so a job with a vendor
   // showed "Nobody yet" (OD-86). When the value changes from outside, the text follows it, the
@@ -98,17 +100,25 @@ export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
         </ComboboxContent>
       </Combobox>
 
+      {/* Clear vendor, with Undo for 10 seconds (OD-124, Q160). */}
       {selected && adding === null ? (
         <Button
           type="button"
           variant="ghost"
           className="mt-1 px-0 sm:px-3"
           onClick={() => {
+            const was = selected;
             onChange(null);
             setQuery('');
+            toasts.add({
+              title: `Cleared ${was.name}`,
+              description: 'Nobody is doing this job now.',
+              timeout: 10_000,
+              actionProps: { children: 'Undo', onClick: () => onChange(was.id) },
+            });
           }}
         >
-          Change to nobody yet
+          Clear vendor
         </Button>
       ) : null}
 

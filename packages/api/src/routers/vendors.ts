@@ -9,6 +9,7 @@ import {
   restoreVendor,
   updateVendor,
 } from '../services/vendors';
+import { vendorWork } from '../services/vendor-work';
 
 /** Vendors (M2). Editors add and edit; archiving (`remove`) and `restore` are admin only. */
 export const vendorsRouter = router({
@@ -18,6 +19,10 @@ export const vendorsRouter = router({
   get: memberProcedure
     .input(z.object({ id: idSchema }))
     .query(({ ctx, input }) => getVendor(ctx.db, input.id)),
+  /** Their jobs with status, chosen quote and paid, and their open estimates (OD-124). */
+  work: memberProcedure
+    .input(z.object({ id: idSchema }))
+    .query(({ ctx, input }) => vendorWork(ctx.db, input.id)),
   create: editorProcedure
     .input(vendorCreateSchema)
     .mutation(({ ctx, input }) => createVendor(ctx.db, input)),
