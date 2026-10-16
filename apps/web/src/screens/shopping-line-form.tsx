@@ -17,6 +17,7 @@ import type { ShoppingLine } from '@/lib/shopping';
 import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
 import { FormPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 /** Empty <select> values mean "none" (whole house, no job). */
 const orNull = (v: unknown) => (v === '' ? null : v);
@@ -58,8 +59,13 @@ export function ShoppingLineForm({
     return <FormPlaceholder label="Loading the form" fields={5} />;
   }
   if (phases.error || rooms.error || categories.error || jobs.error) {
-    const message = (phases.error ?? rooms.error ?? categories.error ?? jobs.error)?.message;
-    return <p role="alert">Couldn&apos;t load: {message}</p>;
+    return (
+      <LoadError
+        what="the form"
+        error={phases.error ?? rooms.error ?? categories.error ?? jobs.error}
+        retry={[phases, rooms, categories, jobs]}
+      />
+    );
   }
   if (phases.data.length === 0)
     return <p role="alert">Add a phase first. Every line belongs to one.</p>;

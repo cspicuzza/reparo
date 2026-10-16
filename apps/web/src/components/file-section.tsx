@@ -2,8 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { FileGrid } from '@/components/file-grid';
 import { FileUpload } from '@/components/file-upload';
+import { LoadError } from '@/components/load-error';
 import { PictureViewer } from '@/components/picture-viewer';
+import { Loading } from '@/components/placeholder';
 import { PlanGrid } from '@/components/plan-grid';
+import type { QuerySource } from '@/lib/load-problem';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView, UploadTarget } from '@/lib/upload';
 
@@ -28,6 +31,7 @@ export function FileSection({
   beforeUpload,
   onChanged,
   gridClassName,
+  source,
 }: {
   /** Used for the heading's id. */
   id: string;
@@ -49,6 +53,11 @@ export function FileSection({
   onChanged?: () => Promise<unknown>;
   /** Columns for the tiles where the window's width is the wrong guide (inside a side panel). */
   gridClassName?: string | undefined;
+  /**
+   * The query the files came from, so the section shows loading and load errors honestly
+   * instead of "No … yet" (OD-110, Q122). Omit when the page already handled them.
+   */
+  source?: QuerySource | undefined;
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -72,7 +81,16 @@ export function FileSection({
       </div>
       {/* With nothing here yet, an editor gets just the upload box, which says so, rather than
           an empty grid above a separate box (OD-95). */}
-      {files.length > 0 ? (
+      {source?.isPending ? (
+        <Loading label={`Loading ${title.toLowerCase()}`}>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="aspect-[4/3] rounded-lg bg-inset" />
+            <div className="aspect-[4/3] rounded-lg bg-inset" />
+          </div>
+        </Loading>
+      ) : source?.error ? (
+        <LoadError what={title.toLowerCase()} error={source.error} retry={[source]} />
+      ) : files.length > 0 ? (
         <FileGrid
           files={files}
           label={title}
@@ -84,7 +102,7 @@ export function FileSection({
       ) : uploading ? null : (
         <PlanGrid className="h-32 rounded-xl">{emptyText}</PlanGrid>
       )}
-      {uploading ? (
+      {uploading && !source?.isPending && !source?.error ? (
         <div className="flex flex-col gap-3">
           {beforeUpload}
           <FileUpload

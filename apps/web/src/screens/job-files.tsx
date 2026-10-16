@@ -29,11 +29,6 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
       <h2 id="job-files" className="text-2xl">
         Drawings and paperwork
       </h2>
-      {files.error ? (
-        <p role="alert" className="mt-3">
-          Couldn&apos;t load the files: {files.error.message}
-        </p>
-      ) : null}
       <div className="mt-4 flex flex-col gap-8">
         <FileSection
           id="drawings"
@@ -44,6 +39,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           uploadLabel="Add drawings"
           emptyText="No drawings yet"
           canEdit={canEdit}
+          source={files}
           beforeUpload={
             <div className="sm:max-w-xs">
               <label htmlFor={kindId} className="block text-sm font-semibold">
@@ -75,6 +71,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           uploadLabel="Add paperwork"
           emptyText="No paperwork yet"
           canEdit={canEdit}
+          source={files}
         />
         <FileSection
           id="job-progress-photos"
@@ -83,6 +80,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           files={progress}
           emptyText="No progress photos show this job yet"
           canEdit={canEdit}
+          source={photos}
         />
       </div>
     </Panel>

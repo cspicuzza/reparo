@@ -11,6 +11,7 @@ import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
 import { Button } from '@/components/ui/button';
 import { FormPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type Props = {
   idPrefix: string;
@@ -44,8 +45,13 @@ export function JobEditor({ idPrefix, onSaved, onCancel }: Props) {
     return <FormPlaceholder label="Loading the form" fields={5} />;
   }
   if (phases.error || rooms.error || vendors.error) {
-    const message = (phases.error ?? rooms.error ?? vendors.error)?.message;
-    return <p role="alert">Couldn&apos;t load: {message}</p>;
+    return (
+      <LoadError
+        what="the form"
+        error={phases.error ?? rooms.error ?? vendors.error}
+        retry={[phases, rooms, vendors]}
+      />
+    );
   }
   if (phases.data.length === 0) {
     return <p role="alert">Add a phase first. Every job belongs to one.</p>;

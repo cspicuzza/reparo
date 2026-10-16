@@ -14,6 +14,7 @@ import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
 import { Button } from '@/components/ui/button';
 import { ListPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 export function Rooms() {
   const trpc = useTRPC();
@@ -75,7 +76,7 @@ export function Rooms() {
       </EditPanel>
 
       {rooms.isPending ? <ListPlaceholder label="Loading rooms" rows={6} /> : null}
-      {rooms.error ? <p role="alert">Couldn&apos;t load rooms: {rooms.error.message}</p> : null}
+      {rooms.error ? <LoadError what="the rooms" error={rooms.error} retry={[rooms]} /> : null}
       {rooms.data && rooms.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
           <span>No rooms yet.</span>

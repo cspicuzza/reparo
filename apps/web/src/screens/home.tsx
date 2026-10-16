@@ -15,6 +15,7 @@ import { roomProgressText } from '@/lib/rooms';
 import { useTRPC } from '@/lib/trpc';
 import { progressText } from '@/lib/work';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type Summary = RouterOutputs['home']['summary'];
 
@@ -50,7 +51,7 @@ export function Home() {
       ) : summary.error ? (
         <>
           <h1 className="text-3xl">{hello}</h1>
-          <p role="alert">Couldn&apos;t load Home: {summary.error.message}</p>
+          <LoadError what="Home" error={summary.error} retry={[summary]} className="mt-4" />
         </>
       ) : (
         <>

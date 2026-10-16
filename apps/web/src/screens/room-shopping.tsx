@@ -13,6 +13,7 @@ import { ShoppingLinePanel } from './shopping-line-panel';
 import { ShoppingRows } from './shopping-list';
 import { useLineFiles } from '@/lib/use-line-files';
 import { ListPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 /** A room's "What we're buying" (M3, OD-52): its shopping lines, and adding one for this room. */
 export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: string }) {
@@ -39,7 +40,9 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
       {lines.isPending ? (
         <ListPlaceholder label="Loading the list" rows={3} surface={false} className="-mt-4" />
       ) : null}
-      {lines.error ? <p role="alert">Couldn&apos;t load: {lines.error.message}</p> : null}
+      {lines.error ? (
+        <LoadError what={`the list for ${roomName}`} error={lines.error} retry={[lines]} />
+      ) : null}
       {lines.data && lines.data.length === 0 ? (
         <p className="text-muted-foreground">Nothing on the list for {roomName} yet.</p>
       ) : null}

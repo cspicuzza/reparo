@@ -20,6 +20,7 @@ import { ShoppingStatusBadge } from '@/components/money';
 import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { LoadError } from '@/components/load-error';
 import { centsToInput, lineAmountText, money, SHOPPING_STATUS_LABEL } from '@/lib/money';
 import { problemWith } from '@/lib/problem';
 import { lineWhere, type ShoppingLine } from '@/lib/shopping';
@@ -194,8 +195,13 @@ function EditBody({
     return <FormPlaceholder label="Loading the line" fields={6} />;
   }
   if (phases.error || rooms.error || categories.error || jobs.error) {
-    const message = (phases.error ?? rooms.error ?? categories.error ?? jobs.error)?.message;
-    return <p role="alert">Couldn&apos;t load: {message}</p>;
+    return (
+      <LoadError
+        what="this line's details"
+        error={phases.error ?? rooms.error ?? categories.error ?? jobs.error}
+        retry={[phases, rooms, categories, jobs]}
+      />
+    );
   }
 
   const id = (f: string) => `line-${line.id}-${f}`;

@@ -23,6 +23,7 @@ import { RoomWork } from './room-work';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { FormError } from '@/components/form';
 import { PagePlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -53,7 +54,11 @@ export function RoomDetail() {
     const gone = trpcErrorCode(room.error) === 'NOT_FOUND';
     return (
       <section>
-        <p role="alert">{gone ? 'That room is no longer here.' : room.error.message}</p>
+        {gone ? (
+          <p role="alert">That room is no longer here.</p>
+        ) : (
+          <LoadError what="this room" error={room.error} retry={[room]} />
+        )}
         <Link to="/rooms" className={buttonVariants({ variant: 'ghost', className: 'mt-4 px-0' })}>
           All rooms
         </Link>

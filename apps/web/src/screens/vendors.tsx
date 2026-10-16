@@ -25,10 +25,12 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { problemWith } from '@/lib/problem';
 import { trpcClient, useTRPC } from '@/lib/trpc';
+import type { QuerySource } from '@/lib/load-problem';
 import type { FileView } from '@/lib/upload';
 import { jobCountText, telHref } from '@/lib/vendors';
 import type { Job } from '@/lib/work';
-import { ListPlaceholder } from '@/components/placeholder';
+import { LinesPlaceholder, ListPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
 type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
@@ -107,7 +109,7 @@ export function Vendors() {
 
       {vendors.isPending ? <ListPlaceholder label="Loading vendors" rows={6} /> : null}
       {vendors.error ? (
-        <p role="alert">Couldn&apos;t load vendors: {vendors.error.message}</p>
+        <LoadError what="the vendors" error={vendors.error} retry={[vendors]} />
       ) : null}
       {vendors.data && vendors.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
@@ -133,6 +135,7 @@ export function Vendors() {
                 vendor={v}
                 jobs={jobs.data?.filter((j) => j.vendorId === v.id) ?? []}
                 documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
+                sources={{ jobs, docs }}
                 canEdit={canEdit}
                 isAdmin={isAdmin}
               />
@@ -187,12 +190,15 @@ function VendorRow({
   vendor,
   jobs,
   documents,
+  sources,
   canEdit,
   isAdmin,
 }: {
   vendor: Vendor;
   jobs: Job[];
   documents: FileView[];
+  /** Where the jobs and documents came from, so the panel shows loading honestly (OD-110). */
+  sources: { jobs: QuerySource; docs: QuerySource };
   canEdit: boolean;
   isAdmin: boolean;
 }) {
@@ -227,6 +233,7 @@ function VendorRow({
           vendor={vendor}
           jobs={jobs}
           documents={documents}
+          sources={sources}
           canEdit={canEdit}
           isAdmin={isAdmin}
           onArchived={() => setOpen(false)}
@@ -271,6 +278,7 @@ function VendorBody({
   vendor,
   jobs,
   documents,
+  sources,
   canEdit,
   isAdmin,
   onArchived,
@@ -278,6 +286,7 @@ function VendorBody({
   vendor: Vendor;
   jobs: Job[];
   documents: FileView[];
+  sources: { jobs: QuerySource; docs: QuerySource };
   canEdit: boolean;
   isAdmin: boolean;
   onArchived: () => void;
@@ -351,7 +360,16 @@ function VendorBody({
         <h3 id={id('jobs')} className="text-xl">
           Jobs
         </h3>
-        {jobs.length > 0 ? (
+        {sources.jobs.isPending ? (
+          <LinesPlaceholder label="Loading jobs" className="mt-2" />
+        ) : sources.jobs.error ? (
+          <LoadError
+            what="their jobs"
+            error={sources.jobs.error}
+            retry={[sources.jobs]}
+            className="mt-2"
+          />
+        ) : jobs.length > 0 ? (
           <ul className="mt-1 flex flex-col">
             {jobs.map((j) => (
               <li key={j.id}>
@@ -375,6 +393,7 @@ function VendorBody({
         title="Documents"
         description="Insurance certificate, license, W-9. Add a caption to say which is which."
         files={documents}
+        source={sources.docs}
         target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
         uploadLabel="Add documents"
         emptyText="No documents yet"

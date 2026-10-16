@@ -10,6 +10,7 @@ import { AutoSaveField } from '@/components/auto-save-field';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
 import { GridPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type RoomJob = { id: string; name: string };
 
@@ -45,7 +46,7 @@ export function RoomPictures({
   );
 
   if (files.isPending) return <GridPlaceholder label="Loading pictures" />;
-  if (files.error) return <p role="alert">Couldn&apos;t load pictures: {files.error.message}</p>;
+  if (files.error) return <LoadError what="the pictures" error={files.error} retry={[files]} />;
 
   const all = files.data;
   const of = (kind: FileView['kind']) => all.filter((f) => f.kind === kind);

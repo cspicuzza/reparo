@@ -22,6 +22,7 @@ import { JobFiles } from './job-files';
 import { JobMoney } from './job-money';
 import { JobRoomEditor } from './job-room-editor';
 import { PagePlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 /**
  * One job (M2, OD-46; replaces the item page): who's doing it, the house-wide spec, and each
@@ -39,11 +40,11 @@ export function JobDetail() {
   if (job.error) {
     return (
       <section>
-        <p role="alert">
-          {trpcErrorCode(job.error) === 'NOT_FOUND'
-            ? 'That job is no longer here.'
-            : job.error.message}
-        </p>
+        {trpcErrorCode(job.error) === 'NOT_FOUND' ? (
+          <p role="alert">That job is no longer here.</p>
+        ) : (
+          <LoadError what="this job" error={job.error} retry={[job]} />
+        )}
         <BackToJobs />
       </section>
     );

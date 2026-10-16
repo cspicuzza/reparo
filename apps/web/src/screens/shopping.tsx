@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ListFilter, Plus, Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { FormError, Select, inputClass } from '@/components/form';
+import { Select, inputClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -33,6 +33,7 @@ import { BatchBar } from './shopping-batch';
 import { ShoppingRows, type RowSelection } from './shopping-list';
 import { useLineFiles } from '@/lib/use-line-files';
 import { Loading, PanelShape } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 const route = getRouteApi('/_app/shopping/');
 
@@ -209,22 +210,8 @@ export function Shopping() {
         </Loading>
       ) : null}
       {lines.error || totals.error ? (
-        <div className="flex flex-col items-start gap-2">
-          <FormError className="mt-0">
-            Couldn&apos;t load the list: {(lines.error ?? totals.error)?.message}
-          </FormError>
-          {/* A way back that isn't reloading the page (OD-106, Q109). */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              void lines.refetch();
-              void totals.refetch();
-            }}
-          >
-            Try again
-          </Button>
-        </div>
+        // A way back that isn't reloading the page (OD-106, Q109).
+        <LoadError what="the list" error={lines.error ?? totals.error} retry={[lines, totals]} />
       ) : null}
       {lines.data && lines.data.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">

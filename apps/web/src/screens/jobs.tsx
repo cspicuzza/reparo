@@ -16,6 +16,7 @@ import { useTRPC } from '@/lib/trpc';
 import { groupByPhase, progressText, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { ListPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 /**
  * Every job, phase by phase (M2, OD-46). Replaces the Items page: a job is a named task in a
@@ -66,7 +67,7 @@ export function Jobs() {
         <ListPlaceholder label="Loading jobs" rows={6} />
       ) : null}
       {jobs.error || phases.error ? (
-        <p role="alert">Couldn&apos;t load jobs: {(jobs.error ?? phases.error)?.message}</p>
+        <LoadError what="the jobs" error={jobs.error ?? phases.error} retry={[jobs, phases]} />
       ) : null}
       {groups && groups.length === 0 ? (
         <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">

@@ -8,6 +8,7 @@ import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
+import { LoadError } from '@/components/load-error';
 import { listText } from '@/lib/money';
 import { problemWith } from '@/lib/problem';
 import { trpcClient, useTRPC } from '@/lib/trpc';
@@ -66,8 +67,13 @@ export function JobPanelBody({ job }: { job: Job }) {
     return <FormPlaceholder label="Loading the job" fields={5} />;
   }
   if (phases.error || rooms.error || vendors.error) {
-    const message = (phases.error ?? rooms.error ?? vendors.error)?.message;
-    return <p role="alert">Couldn&apos;t load: {message}</p>;
+    return (
+      <LoadError
+        what="the job's details"
+        error={phases.error ?? rooms.error ?? vendors.error}
+        retry={[phases, rooms, vendors]}
+      />
+    );
   }
 
   const id = (f: string) => `job-${job.id}-${f}`;

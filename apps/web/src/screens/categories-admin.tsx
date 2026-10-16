@@ -2,7 +2,9 @@ import { Plus } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { FormError, Input, Select } from '@/components/form';
+import { LoadError } from '@/components/load-error';
 import { Panel } from '@/components/panel';
+import { LinesPlaceholder } from '@/components/placeholder';
 import { Button } from '@/components/ui/button';
 import { useTRPC } from '@/lib/trpc';
 
@@ -38,6 +40,20 @@ export function CategoriesAdmin() {
       <p className="mt-1 text-muted-foreground">
         How the list is grouped and totalled. Merging moves every line into the other category.
       </p>
+      {categories.isPending ? (
+        <LinesPlaceholder label="Loading categories" lines={4} className="mt-3" />
+      ) : null}
+      {categories.error ? (
+        <LoadError
+          what="the categories"
+          error={categories.error}
+          retry={[categories]}
+          className="mt-3"
+        />
+      ) : null}
+      {categories.data && categories.data.length === 0 ? (
+        <p className="mt-3 text-muted-foreground">No categories yet.</p>
+      ) : null}
       <ul className="mt-3 divide-y divide-border">
         {categories.data?.map((c) => (
           <li key={c.id} className="py-3">

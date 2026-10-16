@@ -22,6 +22,7 @@ import { EditPanel } from '@/components/edit-panel';
 import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
+import { LoadError } from '@/components/load-error';
 import { centsToInput, money } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
@@ -93,9 +94,12 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
       </div>
 
       {estimates.error ? (
-        <p role="alert" className="mt-3">
-          Couldn&apos;t load the estimates: {estimates.error.message}
-        </p>
+        <LoadError
+          what="the estimates"
+          error={estimates.error}
+          retry={[estimates]}
+          className="mt-3"
+        />
       ) : null}
 
       <EditPanel

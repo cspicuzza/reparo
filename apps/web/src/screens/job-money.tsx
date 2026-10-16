@@ -30,6 +30,7 @@ import { centsToInput, lineAmountText, money, moneyStep } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import type { Job } from '@/lib/work';
 import { LinesPlaceholder } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type CostLine = RouterOutputs['costLines']['list'][number];
 type Payment = RouterOutputs['payments']['list'][number];
@@ -103,6 +104,8 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         </p>
         {costs.data ? (
           <CostLines jobId={job.id} lines={costs.data} canEdit={canEdit} />
+        ) : costs.error ? (
+          <LoadError what="the costs" error={costs.error} retry={[costs]} className="mt-3" />
         ) : (
           <LinesPlaceholder label="Loading costs" className="mt-3" />
         )}
@@ -114,11 +117,26 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         </h3>
         {paid.data ? (
           <Payments jobId={job.id} payments={paid.data} canEdit={canEdit} />
+        ) : paid.error ? (
+          <LoadError what="the payments" error={paid.error} retry={[paid]} className="mt-3" />
         ) : (
           <LinesPlaceholder label="Loading payments" className="mt-3" />
         )}
       </section>
 
+      {bought.error ? (
+        <section aria-labelledby="job-bought" className="mt-6 border-t border-border pt-5">
+          <h3 id="job-bought" className="text-xl">
+            Bought for this job
+          </h3>
+          <LoadError
+            what="what was bought for this job"
+            error={bought.error}
+            retry={[bought]}
+            className="mt-3"
+          />
+        </section>
+      ) : null}
       {bought.data && bought.data.length > 0 ? (
         <section aria-labelledby="job-bought" className="mt-6 border-t border-border pt-5">
           <h3 id="job-bought" className="text-xl">

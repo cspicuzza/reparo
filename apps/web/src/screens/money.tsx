@@ -30,6 +30,7 @@ import { centsToInput, headline, money, plannedPhaseText } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
+import { LoadError } from '@/components/load-error';
 
 type Summary = RouterOutputs['money']['summary'];
 type Budget = RouterOutputs['budget']['get'];
@@ -78,7 +79,11 @@ export function Money() {
         </Loading>
       ) : null}
       {summary.error || budget.error ? (
-        <p role="alert">Couldn&apos;t load the money: {(summary.error ?? budget.error)?.message}</p>
+        <LoadError
+          what="the money"
+          error={summary.error ?? budget.error}
+          retry={[summary, budget]}
+        />
       ) : null}
       {summary.data && budget.data ? (
         <>
