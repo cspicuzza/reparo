@@ -210,7 +210,8 @@ function LineFacts({ line }: { line: ShoppingLine }) {
       href={line.link}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-1 text-foreground underline underline-offset-4"
+      // 20px of text, but an invisible margin makes the tap area 44px tall (OD-96).
+      className="relative inline-flex items-center gap-1 text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
     >
       {line.store || 'Product page'}
       <ExternalLink aria-hidden className="size-3.5 shrink-0" />
