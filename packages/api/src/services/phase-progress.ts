@@ -1,5 +1,6 @@
 import type { Db } from '@reparo/db';
 import { listJobs } from './jobs';
+import { getMoneySummary } from './money';
 import { listPhases } from './phases';
 
 export type PhaseProgress = {
@@ -24,5 +25,26 @@ export async function listPhasesWithProgress(db: Db) {
       total: counted.length,
     };
     return { ...phase, progress };
+  });
+}
+
+/**
+ * The Phases page's list (OD-123, Q155): each phase with its progress and its money, the same
+ * figures as Money's By phase table (`money.summary`): spent, still to come, and for a phase
+ * that isn't counted yet what it would leave.
+ */
+export async function listPhasesForPage(db: Db) {
+  const [phases, summary] = await Promise.all([listPhasesWithProgress(db), getMoneySummary(db)]);
+  const byId = new Map(summary.byPhase.map((p) => [p.id, p]));
+  return phases.map((phase) => {
+    const m = byId.get(phase.id);
+    return {
+      ...phase,
+      money: {
+        spentCents: m?.spentCents ?? 0,
+        toComeCents: m?.toComeCents ?? 0,
+        leavesCents: m?.leavesCents ?? null,
+      },
+    };
   });
 }

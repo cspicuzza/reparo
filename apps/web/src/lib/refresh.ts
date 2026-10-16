@@ -61,7 +61,7 @@ export function useRefreshMoney() {
 
 /**
  * Shopping lines (buying, returning, editing, moving, removing) and categories: the list, its
- * totals, rooms (what's on them), categories' counts and the money.
+ * totals, rooms (what's on them), categories' counts, the money and each phase's money.
  */
 export function useRefreshShopping() {
   return useRefresh((t) => [
@@ -70,5 +70,7 @@ export function useRefreshShopping() {
     t.rooms.pathFilter(),
     t.money.pathFilter(),
     t.home.pathFilter(),
+    // Each phase carries its money now (OD-123).
+    t.phases.pathFilter(),
   ]);
 }

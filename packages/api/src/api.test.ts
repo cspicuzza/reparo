@@ -1189,6 +1189,20 @@ describe('@reparo/api', () => {
       });
       expect(s.byRoom.at(-1)).toMatchObject({ id: null, name: 'Whole house' });
 
+      // The Phases list carries the same figures as By phase (OD-123, Q155).
+      type ListedPhase = {
+        id: string;
+        money: { spentCents: number; toComeCents: number; leavesCents: number | null };
+      };
+      const listed = (await query(h, 'viewer', 'phases.list')).data as ListedPhase[];
+      for (const p of s.byPhase) {
+        expect(listed.find((l) => l.id === p.id)?.money).toEqual({
+          spentCents: p.spentCents,
+          toComeCents: p.toComeCents,
+          leavesCents: p.leavesCents,
+        });
+      }
+
       // Cancelling the job: its deposit stays spent; the rest is no longer committed.
       await mutate(h, 'editor', 'jobs.update', { id: paint.id, status: 'cancelled' });
       const c = await summary();

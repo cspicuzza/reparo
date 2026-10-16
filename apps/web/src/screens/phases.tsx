@@ -27,6 +27,8 @@ import {
 } from '@/lib/work';
 import { Link } from '@tanstack/react-router';
 import { useToasts } from '@/lib/toasts';
+import { money, plannedPhaseText } from '@/lib/money';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
 import { AutoSaveField } from '@/components/auto-save-field';
@@ -211,6 +213,7 @@ export function Phases() {
                   )}
                 </div>
                 <OpenJobsWarning phase={phase} />
+                <PhaseMoney phase={phase} />
                 {phase.notes ? (
                   <p className="max-w-prose text-muted-foreground whitespace-pre-wrap">
                     {phase.notes}
@@ -366,6 +369,47 @@ function OpenJobsWarning({ phase }: { phase: Phase }) {
       <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span>Marked complete, but {open}.</span>
     </p>
+  );
+}
+
+/**
+ * A phase's money (OD-123, Q155), the same figures as Money's By phase: spent and still to
+ * come, and for a phase that isn't counted yet what it would leave, in red when it's short.
+ */
+function PhaseMoney({ phase }: { phase: Phase }) {
+  const m = phase.money;
+  const planned =
+    m.leavesCents !== null
+      ? plannedPhaseText({
+          name: phase.name,
+          toComeCents: m.toComeCents,
+          leavesCents: m.leavesCents,
+        })
+      : null;
+  return (
+    <div className="flex flex-col gap-1">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
+        <div className="flex items-baseline gap-2">
+          <dt className="text-sm text-muted-foreground">Spent</dt>
+          <dd className="font-semibold">{money(m.spentCents)}</dd>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <dt className="text-sm text-muted-foreground">Still to come</dt>
+          <dd className="font-semibold">{money(m.toComeCents)}</dd>
+        </div>
+      </dl>
+      {planned && planned.amount ? (
+        <p className="text-sm text-muted-foreground tabular-nums">
+          {planned.text}
+          <span
+            className={cn('font-semibold', planned.short ? 'text-destructive' : 'text-foreground')}
+          >
+            {planned.amount}
+          </span>
+          .
+        </p>
+      ) : null}
+    </div>
   );
 }
 
