@@ -572,8 +572,14 @@ function ByPhase({ s }: { s: Summary }) {
       <h2 id="by-phase" className="text-2xl">
         By phase
       </h2>
-      <table className="mt-3 w-full tabular-nums">
+      <table className="mt-3 w-full table-fixed tabular-nums">
         <caption className="sr-only">Spent and still to come in each phase</caption>
+        {/* Both By phase tables share their columns, so the amounts line up (OD-129, Q183). */}
+        <colgroup>
+          <col />
+          <col className="w-28 sm:w-44" />
+          <col className="w-28 sm:w-44" />
+        </colgroup>
         <thead>
           <tr className="text-left text-sm text-muted-foreground">
             <th scope="col" className="py-2 font-normal">
@@ -646,10 +652,15 @@ function ByPhase({ s }: { s: Summary }) {
           </tr>
         </tfoot>
       </table>
-      <table className="mt-5 w-full tabular-nums">
+      <table className="mt-5 w-full table-fixed tabular-nums">
         <caption className="mb-1 text-left text-sm text-muted-foreground">
           By kind of spending
         </caption>
+        <colgroup>
+          <col />
+          <col className="w-28 sm:w-44" />
+          <col className="w-28 sm:w-44" />
+        </colgroup>
         {/* One heading row, like the tables below, not the labels on every row (OD-94). */}
         <thead>
           <tr className="text-left text-sm text-muted-foreground">

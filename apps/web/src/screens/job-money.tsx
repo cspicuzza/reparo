@@ -87,7 +87,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         />
       ) : null}
 
-      <section aria-labelledby="job-costs" className="mt-6 border-t border-border pt-5">
+      <section aria-labelledby="job-costs" className="mt-8 border-t border-border pt-6">
         <h3 id="job-costs" className="text-xl">
           What it costs
         </h3>
@@ -103,7 +103,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         )}
       </section>
 
-      <section aria-labelledby="job-payments" className="mt-6 border-t border-border pt-5">
+      <section aria-labelledby="job-payments" className="mt-8 border-t border-border pt-6">
         <h3 id="job-payments" className="text-xl">
           Payments
         </h3>
@@ -117,7 +117,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
       </section>
 
       {bought.error ? (
-        <section aria-labelledby="job-bought" className="mt-6 border-t border-border pt-5">
+        <section aria-labelledby="job-bought" className="mt-8 border-t border-border pt-6">
           <h3 id="job-bought" className="text-xl">
             Bought for this job
           </h3>
@@ -130,7 +130,7 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
         </section>
       ) : null}
       {bought.data && bought.data.length > 0 ? (
-        <section aria-labelledby="job-bought" className="mt-6 border-t border-border pt-5">
+        <section aria-labelledby="job-bought" className="mt-8 border-t border-border pt-6">
           <h3 id="job-bought" className="text-xl">
             Bought for this job
           </h3>

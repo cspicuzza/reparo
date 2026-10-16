@@ -9,7 +9,7 @@ import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { PhaseStatusBadge, StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { money } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
@@ -43,19 +43,22 @@ export function Jobs() {
         title="Jobs"
         description={
           <>
-            The work, phase by phase. Each job says who&apos;s doing it and which rooms it covers.{' '}
-            <Link to="/vendors" className="text-foreground underline underline-offset-4">
-              See all vendors
-            </Link>
+            The work, phase by phase. Each job says who&apos;s doing it and which rooms it covers.
           </>
         }
         action={
-          canEdit ? (
-            <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-job">
-              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
-              Add a job
-            </Button>
-          ) : null
+          // Vendors sits beside Add a job, not wrapped under the description (OD-129, Q184).
+          <div className="flex flex-wrap gap-2">
+            <Link to="/vendors" className={buttonVariants({ variant: 'outline' })}>
+              See all vendors
+            </Link>
+            {canEdit ? (
+              <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-job">
+                <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                Add a job
+              </Button>
+            ) : null}
+          </div>
         }
       />
 

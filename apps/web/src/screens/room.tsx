@@ -16,7 +16,6 @@ import { useToasts } from '@/lib/toasts';
 import { FloorPlan, MeasuredValue } from '@/components/dimension';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
-import { PlanGrid } from '@/components/plan-grid';
 import { PanelNameField } from '@/components/panel-name-field';
 import { RoomPictures } from './room-pictures';
 import { RoomShopping } from './room-shopping';
@@ -253,8 +252,8 @@ export function RoomDetail() {
 }
 
 /**
- * The room's cover rendering at the top of the page (M4, OD-57; Q16), or the plan-grid
- * placeholder until one is chosen. Shares the room's files query with the Pictures section.
+ * The room's cover rendering at the top of the page (M4, OD-57; Q16), or nothing until one is
+ * chosen. Shares the room's files query with the Pictures section.
  */
 function RoomCover({ roomId, roomName }: { roomId: string; roomName: string }) {
   const trpc = useTRPC();
@@ -269,15 +268,8 @@ function RoomCover({ roomId, roomName }: { roomId: string; roomName: string }) {
       />
     );
   }
-  const hasRenderings = files.data?.some((f) => f.kind === 'rendering') ?? false;
-  // A slim band, not a tall empty box, until there's a cover (OD-117, Q140).
-  return (
-    <PlanGrid className="mt-2 min-h-14 rounded-xl px-4 py-3 text-center">
-      {hasRenderings
-        ? 'No cover picture yet. Open a rendering under Pictures and make it the cover.'
-        : `No picture of the ${roomName} yet`}
-    </PlanGrid>
-  );
+  // No cover yet: the page starts with its heading, not an empty band (OD-129, Q182).
+  return null;
 }
 
 /** What's written inside the floor plan: the area, or why there isn't one yet. */

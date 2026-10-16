@@ -90,7 +90,7 @@ export function JobDetail() {
         </div>
       </div>
 
-      <JobSummary job={j} />
+      <JobSummary job={j} canEdit={canEdit} />
 
       <JobBody job={j} canEdit={canEdit} onEditJob={() => setEditing(true)} />
 
@@ -124,7 +124,7 @@ function BackToJobs() {
  * The job at a glance, under its title (OD-120, Q148): where it stands, what's still to pay
  * with its tape, and who's doing it with call and email.
  */
-function JobSummary({ job }: { job: Job }) {
+function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const { costCents, paidCents, owedCents } = job.money;
   const v = job.vendor;
   return (
@@ -135,8 +135,16 @@ function JobSummary({ job }: { job: Job }) {
       <div>
         <p className="text-sm text-muted-foreground">Status</p>
         <div className="mt-1">
-          <StatusBadge status={job.progress.status} />
+          {/* A job with no rooms has its status set right here (OD-129, Q181). */}
+          {job.rooms.length === 0 && canEdit ? (
+            <JobStatusPicker job={job} />
+          ) : (
+            <StatusBadge status={job.progress.status} />
+          )}
         </div>
+        {job.rooms.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">Covers no rooms</p>
+        ) : null}
       </div>
       <div className="min-w-0">
         <p className="text-sm text-muted-foreground">Still to pay</p>
@@ -200,6 +208,37 @@ function JobSummary({ job }: { job: Job }) {
   );
 }
 
+/** The status of a job with no rooms, saved when picked; Completed stitches the logo closed. */
+function JobStatusPicker({ job }: { job: Job }) {
+  const trpc = useTRPC();
+  const invalidate = useRefreshJobs();
+  const jobStatus = useMutation(
+    trpc.jobs.update.mutationOptions({
+      onSuccess: (_d, vars) => {
+        if (vars.status === 'completed') celebrateMended();
+        return invalidate();
+      },
+    }),
+  );
+  return (
+    <div className="flex flex-col items-start gap-1">
+      <StatusSelect
+        id={`job-status-${job.id}`}
+        label={`Status of ${job.name}`}
+        value={
+          (jobStatus.isPending ? jobStatus.variables.status : undefined) ?? job.progress.status
+        }
+        onChange={(status) => jobStatus.mutate({ id: job.id, status })}
+      />
+      <SaveState
+        mutation={jobStatus}
+        what={`Status of ${job.name}`}
+        onRetry={() => jobStatus.mutate(jobStatus.variables ?? { id: job.id })}
+      />
+    </div>
+  );
+}
+
 function JobBody({
   job,
   canEdit,
@@ -216,17 +255,6 @@ function JobBody({
   useReturnFocus(editingRoom ? `jr-${editingRoom}` : null);
   const toasts = useToasts();
   const invalidate = useRefreshJobs();
-  const mendIfCompleted = (vars: { status?: string | undefined }) => {
-    if (vars.status === 'completed') celebrateMended();
-  };
-  const jobStatus = useMutation(
-    trpc.jobs.update.mutationOptions({
-      onSuccess: (_d, vars) => {
-        mendIfCompleted(vars);
-        return invalidate();
-      },
-    }),
-  );
   // Removing offers Undo for 10 seconds (OD-113, Q129).
   const remove = useMutation(
     trpc.jobs.remove.mutationOptions({
@@ -252,129 +280,108 @@ function JobBody({
 
   return (
     <>
-      <Panel aria-labelledby="job-progress">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* A job with rooms says how it's going room by room; one without has its status in the
+          summary strip, so it has no panel of its own (OD-129, Q181). */}
+      {job.rooms.length > 0 ? (
+        <Panel aria-labelledby="job-progress">
           <h2 id="job-progress" className="text-2xl">
             How it&apos;s going
           </h2>
-          {job.rooms.length === 0 && canEdit ? (
-            <div className="flex flex-col items-end gap-1">
-              <StatusSelect
-                id={`job-status-${job.id}`}
-                label={`Status of ${job.name}`}
-                value={
-                  (jobStatus.isPending ? jobStatus.variables.status : undefined) ??
-                  job.progress.status
-                }
-                onChange={(status) => jobStatus.mutate({ id: job.id, status })}
-              />
-              <SaveState
-                mutation={jobStatus}
-                what={`Status of ${job.name}`}
-                onRetry={() => jobStatus.mutate(jobStatus.variables ?? { id: job.id })}
-              />
-            </div>
-          ) : null}
-        </div>
-        {/* The badge lives in the summary strip; here it's the rooms that say why.
+          {/* The badge lives in the summary strip; here it's the rooms that say why.
             How it's going and its rooms in one place (OD-120, Q148). The tape only once
             something is done; at 0% it was the loudest thing on the page (Q149). */}
-        {job.rooms.length > 0 ? (
-          <>
-            {job.progress.done > 0 ? (
-              <div className="mt-4 grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
-                <TapeStrip
-                  mode="progress"
-                  done={job.progress.done}
-                  total={job.progress.total}
-                  label={`${job.name}: ${progress}`}
-                />
-                <span className="text-muted-foreground tabular-nums">{progress}</span>
-              </div>
-            ) : (
-              <p className="mt-2 text-muted-foreground tabular-nums">{progress}</p>
-            )}
-            <ul className="mt-2 divide-y divide-border">
-              {job.rooms.map((r) => (
-                <li key={r.id} className="py-3 last:pb-0">
-                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                      <Link
-                        to="/rooms/$roomId"
-                        params={{ roomId: r.room.id }}
-                        className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
-                      >
-                        {r.room.name}
-                      </Link>
-                      {r.specSource === 'room' ? (
-                        <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
-                          Different here
-                        </span>
-                      ) : null}
-                    </div>
-                    {canEdit ? (
-                      <RoomStatus
-                        jobRoomId={r.id}
-                        status={r.status}
-                        what={`Status of ${job.name} in ${r.room.name}`}
-                        onSaved={invalidate}
-                      />
-                    ) : (
-                      <StatusBadge status={r.status} />
-                    )}
-                  </div>
-                  {editingRoom === r.id ? (
-                    <div className="mt-3 rounded-xl border border-border bg-background p-4">
-                      <JobRoomEditor
-                        idPrefix={`jr-${r.id}`}
-                        jobRoom={r}
-                        jobSpec={job.spec}
-                        roomName={r.room.name}
-                        onDone={() => setEditingRoom(null)}
-                      />
-                    </div>
-                  ) : (
-                    <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
-                      <p className="min-w-0">
+          {job.rooms.length > 0 ? (
+            <>
+              {job.progress.done > 0 ? (
+                <div className="mt-4 grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                  <TapeStrip
+                    mode="progress"
+                    done={job.progress.done}
+                    total={job.progress.total}
+                    label={`${job.name}: ${progress}`}
+                  />
+                  <span className="text-muted-foreground tabular-nums">{progress}</span>
+                </div>
+              ) : (
+                <p className="mt-2 text-muted-foreground tabular-nums">{progress}</p>
+              )}
+              <ul className="mt-2 divide-y divide-border">
+                {job.rooms.map((r) => (
+                  <li key={r.id} className="py-3 last:pb-0">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                        <Link
+                          to="/rooms/$roomId"
+                          params={{ roomId: r.room.id }}
+                          className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+                        >
+                          {r.room.name}
+                        </Link>
                         {r.specSource === 'room' ? (
-                          <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {SPEC_SOURCE_LABEL.job}
-                          </span>
-                        )}
-                        {r.notes ? (
-                          <span className="block text-muted-foreground whitespace-pre-wrap">
-                            {r.notes}
+                          <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
+                            Different here
                           </span>
                         ) : null}
-                      </p>
+                      </div>
                       {canEdit ? (
-                        <Button
-                          type="button"
-                          onClick={() => setEditingRoom(r.id)}
-                          data-return-focus={`jr-${r.id}`}
-                          aria-label={`Edit spec and notes for ${r.room.name}`}
-                          variant="ghost"
-                          className="px-0 sm:px-3"
-                        >
-                          <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                          Edit spec &amp; notes
-                        </Button>
-                      ) : null}
+                        <RoomStatus
+                          jobRoomId={r.id}
+                          status={r.status}
+                          what={`Status of ${job.name} in ${r.room.name}`}
+                          onSaved={invalidate}
+                        />
+                      ) : (
+                        <StatusBadge status={r.status} />
+                      )}
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <p className="mt-3 text-muted-foreground">
-            Covers no rooms, so its status is set here.
-            {canEdit ? ' Edit the job to add rooms.' : ''}
-          </p>
-        )}
-      </Panel>
+                    {editingRoom === r.id ? (
+                      <div className="mt-3 rounded-xl border border-border bg-background p-4">
+                        <JobRoomEditor
+                          idPrefix={`jr-${r.id}`}
+                          jobRoom={r}
+                          jobSpec={job.spec}
+                          roomName={r.room.name}
+                          onDone={() => setEditingRoom(null)}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
+                        <p className="min-w-0">
+                          {r.specSource === 'room' ? (
+                            <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">
+                              {SPEC_SOURCE_LABEL.job}
+                            </span>
+                          )}
+                          {r.notes ? (
+                            <span className="block text-muted-foreground whitespace-pre-wrap">
+                              {r.notes}
+                            </span>
+                          ) : null}
+                        </p>
+                        {canEdit ? (
+                          <Button
+                            type="button"
+                            onClick={() => setEditingRoom(r.id)}
+                            data-return-focus={`jr-${r.id}`}
+                            aria-label={`Edit spec and notes for ${r.room.name}`}
+                            variant="ghost"
+                            className="px-0 sm:px-3"
+                          >
+                            <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                            Edit spec &amp; notes
+                          </Button>
+                        ) : null}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </Panel>
+      ) : null}
 
       <Panel aria-labelledby="job-spec">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
