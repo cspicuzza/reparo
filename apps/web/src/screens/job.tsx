@@ -1,7 +1,7 @@
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { ChevronLeft, Mail, Pencil, Phone } from 'lucide-react';
+import { ChevronLeft, Mail, Pencil, Phone, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { EditPanel } from '@/components/edit-panel';
 import { FormError } from '@/components/form';
@@ -15,6 +15,7 @@ import { celebrateMended } from '@/lib/mended';
 import { useMe } from '@/lib/me';
 import { useToasts } from '@/lib/toasts';
 import { trpcClient, trpcErrorCode, useTRPC } from '@/lib/trpc';
+import { money, moneyStep } from '@/lib/money';
 import { telHref } from '@/lib/vendors';
 import { progressText, SPEC_SOURCE_LABEL, type Job } from '@/lib/work';
 import { JobNameField, JobPanelBody } from './job-panel';
@@ -89,7 +90,9 @@ export function JobDetail() {
         </div>
       </div>
 
-      <JobBody job={j} canEdit={canEdit} />
+      <JobSummary job={j} />
+
+      <JobBody job={j} canEdit={canEdit} onEditJob={() => setEditing(true)} />
 
       {/* Edited in place: every change saves as it's made (OD-89). */}
       <EditPanel
@@ -117,7 +120,96 @@ function BackToJobs() {
   );
 }
 
-function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
+/**
+ * The job at a glance, under its title (OD-120, Q148): where it stands, what's still to pay
+ * with its tape, and who's doing it with call and email.
+ */
+function JobSummary({ job }: { job: Job }) {
+  const { costCents, paidCents, owedCents } = job.money;
+  const v = job.vendor;
+  return (
+    <section
+      aria-label="The job at a glance"
+      className="grid gap-x-8 gap-y-5 rounded-xl border border-border bg-card p-5 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-6"
+    >
+      <div>
+        <p className="text-sm text-muted-foreground">Status</p>
+        <div className="mt-1">
+          <StatusBadge status={job.progress.status} />
+        </div>
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">Still to pay</p>
+        {costCents > 0 ? (
+          <>
+            <p className="text-xl font-semibold tabular-nums">{money(owedCents)}</p>
+            <TapeStrip
+              mode="money"
+              size="sm"
+              usedCents={paidCents}
+              totalCents={costCents}
+              stepCents={moneyStep(costCents)}
+              label={`Paid ${money(paidCents)} of ${money(costCents)}`}
+              className="mt-2"
+            />
+            <p className="mt-1 text-sm text-muted-foreground tabular-nums">
+              {money(paidCents)} paid of {money(costCents)}
+            </p>
+          </>
+        ) : (
+          <p className="text-muted-foreground">No price yet</p>
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">Who&apos;s doing it</p>
+        {v ? (
+          <>
+            <Link
+              to="/vendors"
+              search={{ vendor: v.id }}
+              className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+            >
+              {v.name}
+            </Link>
+            {v.trade ? <p className="text-sm text-muted-foreground">{v.trade}</p> : null}
+            {v.archived ? (
+              <p className="text-sm text-muted-foreground">Archived: not offered for new jobs.</p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {v.phone ? (
+                <a href={telHref(v.phone)} className={buttonVariants({ variant: 'outline' })}>
+                  <Phone aria-hidden className="size-4" />
+                  Call
+                  <span className="sr-only"> {v.name}</span>
+                </a>
+              ) : null}
+              {v.email ? (
+                <a href={`mailto:${v.email}`} className={buttonVariants({ variant: 'outline' })}>
+                  <Mail aria-hidden className="size-4" />
+                  Email
+                  <span className="sr-only"> {v.name}</span>
+                </a>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <p className="text-muted-foreground">No vendor yet</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function JobBody({
+  job,
+  canEdit,
+  onEditJob,
+}: {
+  job: Job;
+  canEdit: boolean;
+  /** Opens the job's panel, for adding a spec. */
+  onEditJob: () => void;
+}) {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
@@ -182,136 +274,136 @@ function JobBody({ job, canEdit }: { job: Job; canEdit: boolean }) {
                 onRetry={() => jobStatus.mutate(jobStatus.variables ?? { id: job.id })}
               />
             </div>
-          ) : (
-            <StatusBadge status={job.progress.status} />
-          )}
+          ) : null}
         </div>
+        {/* The badge lives in the summary strip; here it's the rooms that say why.
+            How it's going and its rooms in one place (OD-120, Q148). The tape only once
+            something is done; at 0% it was the loudest thing on the page (Q149). */}
         {job.rooms.length > 0 ? (
-          <div className="mt-4 grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
-            <TapeStrip
-              mode="progress"
-              done={job.progress.done}
-              total={job.progress.total}
-              label={`${job.name}: ${progress}`}
-            />
-            <span className="text-muted-foreground tabular-nums">{progress}</span>
-          </div>
-        ) : (
-          <p className="mt-3 text-muted-foreground">Covers no rooms, so its status is set here.</p>
-        )}
-      </Panel>
-
-      <Panel aria-labelledby="job-rooms">
-        <h2 id="job-rooms" className="text-2xl">
-          Rooms
-        </h2>
-        {job.rooms.length === 0 ? (
-          <p className="mt-3 text-muted-foreground">
-            This job covers no rooms.{canEdit ? ' Edit the job to add some.' : ''}
-          </p>
-        ) : (
-          <ul className="mt-2 divide-y divide-border">
-            {job.rooms.map((r) => (
-              <li key={r.id} className="py-3 last:pb-0">
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-                    <Link
-                      to="/rooms/$roomId"
-                      params={{ roomId: r.room.id }}
-                      className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
-                    >
-                      {r.room.name}
-                    </Link>
-                    {r.specSource === 'room' ? (
-                      <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
-                        Different here
-                      </span>
-                    ) : null}
-                  </div>
-                  {canEdit ? (
-                    <RoomStatus
-                      jobRoomId={r.id}
-                      status={r.status}
-                      what={`Status of ${job.name} in ${r.room.name}`}
-                      onSaved={invalidate}
-                    />
-                  ) : (
-                    <StatusBadge status={r.status} />
-                  )}
-                </div>
-                {editingRoom === r.id ? (
-                  <div className="mt-3 rounded-xl border border-border bg-background p-4">
-                    <JobRoomEditor
-                      idPrefix={`jr-${r.id}`}
-                      jobRoom={r}
-                      jobSpec={job.spec}
-                      roomName={r.room.name}
-                      onDone={() => setEditingRoom(null)}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
-                    <p className="min-w-0">
+          <>
+            {job.progress.done > 0 ? (
+              <div className="mt-4 grid grid-cols-1 items-center gap-x-4 gap-y-2 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <TapeStrip
+                  mode="progress"
+                  done={job.progress.done}
+                  total={job.progress.total}
+                  label={`${job.name}: ${progress}`}
+                />
+                <span className="text-muted-foreground tabular-nums">{progress}</span>
+              </div>
+            ) : (
+              <p className="mt-2 text-muted-foreground tabular-nums">{progress}</p>
+            )}
+            <ul className="mt-2 divide-y divide-border">
+              {job.rooms.map((r) => (
+                <li key={r.id} className="py-3 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                      <Link
+                        to="/rooms/$roomId"
+                        params={{ roomId: r.room.id }}
+                        className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+                      >
+                        {r.room.name}
+                      </Link>
                       {r.specSource === 'room' ? (
-                        <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          {SPEC_SOURCE_LABEL.job}
-                        </span>
-                      )}
-                      {r.notes ? (
-                        <span className="block text-muted-foreground whitespace-pre-wrap">
-                          {r.notes}
+                        <span className="rounded-lg border border-input px-2 py-0.5 text-sm font-semibold">
+                          Different here
                         </span>
                       ) : null}
-                    </p>
+                    </div>
                     {canEdit ? (
-                      <Button
-                        type="button"
-                        onClick={() => setEditingRoom(r.id)}
-                        data-return-focus={`jr-${r.id}`}
-                        aria-label={`Edit spec and notes for ${r.room.name}`}
-                        variant="ghost"
-                        className="px-0 sm:px-3"
-                      >
-                        <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-                        Edit spec &amp; notes
-                      </Button>
-                    ) : null}
+                      <RoomStatus
+                        jobRoomId={r.id}
+                        status={r.status}
+                        what={`Status of ${job.name} in ${r.room.name}`}
+                        onSaved={invalidate}
+                      />
+                    ) : (
+                      <StatusBadge status={r.status} />
+                    )}
                   </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                  {editingRoom === r.id ? (
+                    <div className="mt-3 rounded-xl border border-border bg-background p-4">
+                      <JobRoomEditor
+                        idPrefix={`jr-${r.id}`}
+                        jobRoom={r}
+                        jobSpec={job.spec}
+                        roomName={r.room.name}
+                        onDone={() => setEditingRoom(null)}
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex flex-wrap items-baseline justify-between gap-x-4">
+                      <p className="min-w-0">
+                        {r.specSource === 'room' ? (
+                          <span className="block whitespace-pre-wrap">{r.resolvedSpec}</span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {SPEC_SOURCE_LABEL.job}
+                          </span>
+                        )}
+                        {r.notes ? (
+                          <span className="block text-muted-foreground whitespace-pre-wrap">
+                            {r.notes}
+                          </span>
+                        ) : null}
+                      </p>
+                      {canEdit ? (
+                        <Button
+                          type="button"
+                          onClick={() => setEditingRoom(r.id)}
+                          data-return-focus={`jr-${r.id}`}
+                          aria-label={`Edit spec and notes for ${r.room.name}`}
+                          variant="ghost"
+                          className="px-0 sm:px-3"
+                        >
+                          <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                          Edit spec &amp; notes
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="mt-3 text-muted-foreground">
+            Covers no rooms, so its status is set here.
+            {canEdit ? ' Edit the job to add rooms.' : ''}
+          </p>
         )}
       </Panel>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Panel aria-labelledby="job-vendor">
-          <h2 id="job-vendor" className="text-2xl">
-            Who&apos;s doing it
-          </h2>
-          <VendorBlock vendor={job.vendor} />
-        </Panel>
-        <Panel aria-labelledby="job-spec">
+      <Panel aria-labelledby="job-spec">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <h2 id="job-spec" className="text-2xl">
             Spec
           </h2>
-          {job.spec ? (
-            <p className="mt-3 max-w-prose whitespace-pre-wrap">{job.spec}</p>
-          ) : (
-            <p className="mt-3 text-muted-foreground">No spec yet.</p>
-          )}
-          {job.notes ? (
+          {job.spec ? null : (
+            // An empty section is one line with its Add button (OD-120, Q148).
             <>
-              <h3 className="mt-5 text-base font-semibold">Notes</h3>
-              <p className="mt-1 max-w-prose text-muted-foreground whitespace-pre-wrap">
-                {job.notes}
-              </p>
+              <span className="text-muted-foreground">Not added yet</span>
+              {canEdit ? (
+                <Button type="button" variant="outline" onClick={onEditJob}>
+                  <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                  Add a spec
+                </Button>
+              ) : null}
             </>
-          ) : null}
-        </Panel>
-      </div>
+          )}
+        </div>
+        {job.spec ? <p className="mt-3 max-w-prose whitespace-pre-wrap">{job.spec}</p> : null}
+        {job.notes ? (
+          <>
+            <h3 className="mt-5 text-base font-semibold">Notes</h3>
+            <p className="mt-1 max-w-prose text-muted-foreground whitespace-pre-wrap">
+              {job.notes}
+            </p>
+          </>
+        ) : null}
+      </Panel>
 
       <JobEstimates job={job} canEdit={canEdit} />
 
@@ -374,45 +466,6 @@ function RoomStatus({
         what={what}
         onRetry={() => save.mutate(save.variables ?? { id: jobRoomId })}
       />
-    </div>
-  );
-}
-
-/** The job's vendor with tap-to-call and tap-to-email, or a note that nobody is set. */
-function VendorBlock({ vendor }: { vendor: Job['vendor'] }) {
-  if (!vendor) {
-    return <p className="mt-3 text-muted-foreground">No vendor yet.</p>;
-  }
-  return (
-    <div className="mt-3">
-      <Link
-        to="/vendors"
-        search={{ vendor: vendor.id }}
-        className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
-      >
-        {vendor.name}
-      </Link>
-      {vendor.trade ? <p className="text-muted-foreground">{vendor.trade}</p> : null}
-      {vendor.archived ? (
-        <p className="mt-1 text-sm text-muted-foreground">Archived: not offered for new jobs.</p>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {vendor.phone ? (
-          <a href={telHref(vendor.phone)} className={buttonVariants({ variant: 'outline' })}>
-            <Phone aria-hidden className="size-4" />
-            {vendor.phone}
-          </a>
-        ) : null}
-        {vendor.email ? (
-          <a
-            href={`mailto:${vendor.email}`}
-            className={buttonVariants({ variant: 'outline', className: 'max-w-full break-all' })}
-          >
-            <Mail aria-hidden className="size-4 shrink-0" />
-            {vendor.email}
-          </a>
-        ) : null}
-      </div>
     </div>
   );
 }

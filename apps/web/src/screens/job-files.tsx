@@ -29,7 +29,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
       <h2 id="job-files" className="text-2xl">
         Drawings and paperwork
       </h2>
-      <div className="mt-4 flex flex-col gap-8">
+      <div className="mt-4 flex flex-col gap-6">
         <FileSection
           id="drawings"
           title="Drawings"
@@ -40,6 +40,17 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           emptyText="No drawings yet"
           canEdit={canEdit}
           source={files}
+          emptyLine
+          emptyUploads={[
+            {
+              label: 'Add mockups',
+              target: () => ({ ownerType: 'job', ownerId: jobId, kind: 'mockup' }),
+            },
+            {
+              label: 'Add spec drawings',
+              target: () => ({ ownerType: 'job', ownerId: jobId, kind: 'spec_drawing' }),
+            },
+          ]}
           beforeUpload={
             <div className="sm:max-w-xs">
               <label htmlFor={kindId} className="block text-sm font-semibold">
@@ -72,15 +83,17 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           emptyText="No paperwork yet"
           canEdit={canEdit}
           source={files}
+          emptyLine
         />
         <FileSection
           id="job-progress-photos"
           title="Progress photos"
           description="Photos from the room pages that show this job."
           files={progress}
-          emptyText="No progress photos show this job yet"
+          emptyText="None yet. Add them on a room's page."
           canEdit={canEdit}
           source={photos}
+          emptyLine
         />
       </div>
     </Panel>

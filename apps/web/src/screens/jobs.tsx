@@ -139,9 +139,12 @@ function JobRow({ job }: { job: Job }) {
               <span className="text-xl font-semibold whitespace-nowrap">
                 {money(job.money.costCents)}
               </span>
-              <span className="text-sm whitespace-nowrap text-muted-foreground">
-                {money(job.money.paidCents)} paid
-              </span>
+              {/* "$0.00 paid" said nothing; only once something is paid (OD-120, Q149). */}
+              {job.money.paidCents > 0 ? (
+                <span className="text-sm whitespace-nowrap text-muted-foreground">
+                  {money(job.money.paidCents)} paid
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-sm text-muted-foreground">No price yet</span>

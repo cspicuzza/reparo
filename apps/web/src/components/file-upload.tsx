@@ -18,6 +18,7 @@ export function FileUpload({
   label,
   onUploaded,
   compact = false,
+  variant = compact ? 'ghost' : 'outline',
   note,
   className,
 }: {
@@ -28,6 +29,8 @@ export function FileUpload({
   onUploaded: (file: FileView) => void | Promise<void>;
   /** Just the button, for a row (a payment's receipt): no drop box or paste hint. */
   compact?: boolean;
+  /** The button's look; ghost in a row, outline where it's the only thing said (OD-120). */
+  variant?: 'ghost' | 'outline';
   /** Said first inside the box, e.g. that nothing is here yet (OD-95). */
   note?: string | undefined;
   className?: string;
@@ -104,11 +107,7 @@ export function FileUpload({
             e.currentTarget.value = '';
           }}
         />
-        <Button
-          type="button"
-          variant={compact ? 'ghost' : 'outline'}
-          onClick={() => input.current?.click()}
-        >
+        <Button type="button" variant={variant} onClick={() => input.current?.click()}>
           <Upload aria-hidden className="size-4" />
           {label}
         </Button>

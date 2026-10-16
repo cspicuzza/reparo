@@ -67,20 +67,37 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
 
   const list = estimates.data ?? [];
   const editingEstimate = list.find((e) => e.id === editing);
+  const empty = list.length === 0 && !estimates.isPending && !estimates.error;
   const quotesOf = (id: string): FileView[] => (quotes.data ?? []).filter((f) => f.ownerId === id);
 
   return (
     <Panel aria-labelledby="job-estimates">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="job-estimates" className="text-2xl">
-            Estimates
-          </h2>
-          <p className="mt-1 max-w-prose text-muted-foreground">
-            Quotes from vendors, side by side. Choosing one makes it the job&apos;s price and
-            vendor; estimates that aren&apos;t chosen don&apos;t count toward the money.
-          </p>
-        </div>
+      {/* With none yet, the section is one line: heading, "Not added yet" and Add (OD-120). */}
+      <div
+        className={
+          empty
+            ? 'flex flex-wrap items-center gap-x-4 gap-y-2'
+            : 'flex flex-wrap items-start justify-between gap-3'
+        }
+      >
+        {empty ? (
+          <>
+            <h2 id="job-estimates" className="text-2xl">
+              Estimates
+            </h2>
+            <span className="text-muted-foreground">{canEdit ? 'Not added yet' : 'None yet'}</span>
+          </>
+        ) : (
+          <div>
+            <h2 id="job-estimates" className="text-2xl">
+              Estimates
+            </h2>
+            <p className="mt-1 max-w-prose text-muted-foreground">
+              Quotes from vendors, side by side. Choosing one makes it the job&apos;s price and
+              vendor; estimates that aren&apos;t chosen don&apos;t count toward the money.
+            </p>
+          </div>
+        )}
         {canEdit ? (
           <Button
             type="button"
@@ -130,8 +147,6 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
           }}
         />
       </EditPanel>
-
-      {list.length === 0 ? <p className="mt-4 text-muted-foreground">No estimates yet.</p> : null}
 
       {list.length > 0 ? (
         <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

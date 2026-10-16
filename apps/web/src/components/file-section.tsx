@@ -32,6 +32,8 @@ export function FileSection({
   onChanged,
   gridClassName,
   source,
+  emptyLine = false,
+  emptyUploads,
 }: {
   /** Used for the heading's id. */
   id: string;
@@ -58,6 +60,13 @@ export function FileSection({
    * instead of "No … yet" (OD-110, Q122). Omit when the page already handled them.
    */
   source?: QuerySource | undefined;
+  /**
+   * With nothing here, the section is one line: its heading, "Not added yet" and its Add
+   * buttons, instead of a description and a drop box (OD-120, Q148).
+   */
+  emptyLine?: boolean;
+  /** The buttons on that line, when one upload box isn't enough (drawings by kind). */
+  emptyUploads?: { label: string; target: () => UploadTarget }[];
 }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -70,6 +79,37 @@ export function FileSection({
       onChanged?.(),
     ]);
   };
+
+  if (emptyLine && files.length === 0 && !source?.isPending && !source?.error) {
+    const buttons =
+      emptyUploads ??
+      (uploadLabel !== undefined && target !== undefined ? [{ label: uploadLabel, target }] : []);
+    return (
+      <section
+        aria-labelledby={`${id}-title`}
+        className="flex flex-wrap items-center gap-x-4 gap-y-2"
+      >
+        <Heading id={`${id}-title`} className={headingLevel === 'h2' ? 'text-2xl' : 'text-xl'}>
+          {title}
+        </Heading>
+        <span className="text-muted-foreground">
+          {canEdit && target !== undefined ? 'Not added yet' : emptyText}
+        </span>
+        {canEdit
+          ? buttons.map((b) => (
+              <FileUpload
+                key={b.label}
+                compact
+                variant="outline"
+                target={b.target}
+                label={b.label}
+                onUploaded={refresh}
+              />
+            ))
+          : null}
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby={`${id}-title`} className="flex flex-col gap-3">
