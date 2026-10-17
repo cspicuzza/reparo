@@ -31,6 +31,7 @@ import { money, plannedPhaseText } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/page-header';
+import { WhatsThis } from '@/components/whats-this';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
 import { EditPanel } from '@/components/edit-panel';
@@ -69,7 +70,16 @@ export function Phases() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Phases"
-        description="The renovation in stages. Work and money belong to a phase."
+        description={
+          <>
+            The renovation in stages. Work and money belong to a phase.{' '}
+            <WhatsThis title="Phases" label="What's a phase?">
+              A stretch of the work done together, like Phase 1 for demo and floors. Every job and
+              everything on the shopping list is in one. A planned phase doesn&apos;t count toward
+              the budget until it starts; then what it still needs counts as Planned.
+            </WhatsThis>
+          </>
+        }
         action={
           isAdmin ? (
             <div className="flex flex-wrap gap-2">

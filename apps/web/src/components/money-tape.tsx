@@ -1,4 +1,5 @@
 import { BudgetTapeStrip } from '@/components/tape';
+import { WhatsThis } from '@/components/whats-this';
 import { money, moneyStep, shortMoney } from '@/lib/money';
 import { budgetSegments, COMMITTED_STRIPES, LEFT_SWATCH, moneyTicks } from '@/lib/tape';
 import { cn } from '@/lib/utils';
@@ -92,7 +93,11 @@ export function MoneyTape({
         </span>
         <span>
           <span aria-hidden="true" className={SWATCH} style={COMMITTED_STRIPES} />
-          Planned <strong className="font-semibold">{money(committedCents)}</strong>
+          Planned <strong className="font-semibold">{money(committedCents)}</strong>{' '}
+          <WhatsThis title="Planned">
+            What jobs still cost and what&apos;s still to buy, in phases that have started. It
+            becomes Spent as it&apos;s paid for. Planned phases don&apos;t count until they start.
+          </WhatsThis>
         </span>
         {availableCents < 0 ? (
           <span>

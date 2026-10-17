@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
-import { use, useState, type ReactNode } from 'react';
+import { use, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { FormError, inputClass } from '@/components/form';
 import { NOT_A_LOGIN } from '@/lib/fields';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { PanelDirtyContext } from '@/lib/panel-dirty';
+import { useToasts } from '@/lib/toasts';
 import { cn } from '@/lib/utils';
 
 /**
@@ -11,7 +12,9 @@ import { cn } from '@/lib/utils';
  * Workflow polish, OD-77). It saves only if the value changed and passes `validate` (the same
  * Zod schema the API uses); otherwise it says what to fix and keeps the old value on the server.
  * Saving / Saved / Couldn't save show on its label line, and why a save failed shows under it
- * (OD-84).
+ * (OD-84). Escape while typing puts back what was there; after a save, a message offers Undo
+ * for 10 seconds, which saves the old value again (OD-139, Q206). Money fields say what
+ * changed in their own message, so they turn this one off (`undo={false}`).
  */
 export function AutoSaveField({
   id,
@@ -31,6 +34,7 @@ export function AutoSaveField({
   list,
   labelClassName,
   className,
+  undo = true,
 }: {
   id: string;
   label: ReactNode;
@@ -58,17 +62,23 @@ export function AutoSaveField({
   labelClassName?: string;
   /** Sizes the whole field, e.g. a short width for money (OD-82, Q52). */
   className?: string;
+  /** Offer Undo after each save (OD-139); off where the caller's own message does. */
+  undo?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [problem, setProblem] = useState<string | null>(null);
   // Take the server's value when it changes (after a save, or someone else's edit), the way the
   // React docs adjust state from a prop: https://react.dev/learn/you-might-not-need-an-effect
   const [seen, setSeen] = useState(initial);
+  // The value last sent, so Enter then leaving the field saves (and offers Undo) once.
+  const [sent, setSent] = useState<string | null>(null);
   if (initial !== seen) {
     setSeen(initial);
     setValue(initial);
+    setSent(null);
   }
   const save = useMutation({ mutationFn: onSave });
+  const toasts = useToasts();
   // Inside a side panel, typing that hasn't been saved yet makes closing ask first (OD-82).
   const setPanelDirty = use(PanelDirtyContext);
 
@@ -81,7 +91,39 @@ export function AutoSaveField({
     const message = validate?.(value) ?? null;
     setProblem(message);
     setPanelDirty?.(message !== null);
-    if (message === null) save.mutate(value);
+    if (message !== null || value === sent) return;
+    setSent(value);
+    const before = initial;
+    save.mutate(value, {
+      onError: () => setSent(null),
+      onSuccess: () => {
+        if (!undo) return;
+        toasts.add({
+          title: 'Saved',
+          description: what,
+          timeout: 10_000,
+          // Saving the old value again, through the same field, so its label says so.
+          actionProps: {
+            children: 'Undo',
+            onClick: () => {
+              setSent(null);
+              save.mutate(before);
+            },
+          },
+        });
+      },
+    });
+  };
+
+  // Escape while typing puts back what was there before (OD-139, Q206). With nothing typed it
+  // does what Escape does around it, such as closing the side panel.
+  const revert = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key !== 'Escape' || value === initial) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setValue(initial);
+    setProblem(null);
+    setPanelDirty?.(false);
   };
 
   const failed = save.status === 'error';
@@ -107,7 +149,7 @@ export function AutoSaveField({
     className: cn(inputClass, inputClassName),
   };
   const field = multiline ? (
-    <textarea rows={rows} {...common} />
+    <textarea rows={rows} {...common} onKeyDown={revert} />
   ) : (
     <input
       type={type}
@@ -117,6 +159,7 @@ export function AutoSaveField({
       {...common}
       onKeyDown={(e) => {
         if (e.key === 'Enter') commit();
+        else revert(e);
       }}
     />
   );

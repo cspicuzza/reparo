@@ -130,6 +130,8 @@ function MoneyField({
       inputMode="decimal"
       inputClassName={cn(SHORT, 'pl-7')}
       wrap={(field) => <DollarBox>{field}</DollarBox>}
+      // It says what changed and offers Undo in its own message.
+      undo={false}
       what={`${label} for ${line.name}`}
       validate={(v) => problemWith(moneyInputSchema, v)}
       onSave={async (v) => {
@@ -193,12 +195,12 @@ function EditBody({
   );
 
   if (phases.isPending || rooms.isPending || categories.isPending || jobs.isPending) {
-    return <FormPlaceholder label="Loading the line" fields={6} />;
+    return <FormPlaceholder label="Loading it" fields={6} />;
   }
   if (phases.error || rooms.error || categories.error || jobs.error) {
     return (
       <LoadError
-        what="this line's details"
+        what="its details"
         error={phases.error ?? rooms.error ?? categories.error ?? jobs.error}
         retry={[phases, rooms, categories, jobs]}
       />
@@ -691,7 +693,7 @@ function RenameStore({ store, onDone }: { store: string; onDone: () => void }) {
     >
       <div>
         <label htmlFor="rename-store" className="block text-sm font-semibold">
-          New name for {store}, on every line
+          New name for {store}, on everything on the list
         </label>
         <Input
           id="rename-store"

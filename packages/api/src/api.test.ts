@@ -941,7 +941,7 @@ describe('@reparo/api', () => {
       });
       expect([wrongPhase.code, wrongPhase.message]).toEqual([
         'BAD_REQUEST',
-        '"Flooring" is in another phase; put this line in the same phase',
+        '"Flooring" is in another phase; put this in the same phase',
       ]);
       const tile = (
         await mutate(h, 'editor', 'shoppingLines.create', {

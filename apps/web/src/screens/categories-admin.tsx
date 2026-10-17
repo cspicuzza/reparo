@@ -36,7 +36,7 @@ export function CategoriesAdmin() {
         Categories
       </h2>
       <p className="mt-1 text-muted-foreground">
-        Merging moves every line into the other category.
+        Merging moves everything in it into the other category.
       </p>
       {categories.isPending ? (
         <LinesPlaceholder label="Loading categories" lines={4} className="mt-3" />
@@ -132,7 +132,7 @@ function CategoryRow({
       },
     }),
   );
-  const lines = `${category.lineCount} ${category.lineCount === 1 ? 'line' : 'lines'}`;
+  const lines = `${category.lineCount} ${category.lineCount === 1 ? 'thing' : 'things'}`;
   const intoName = others.find((o) => o.id === into)?.name ?? '';
   const merge = useMutation(
     trpc.categories.merge.mutationOptions({

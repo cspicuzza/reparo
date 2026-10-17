@@ -99,7 +99,7 @@ async function getCostLine(db: Db, id: string) {
     .from(costLines)
     .innerJoin(jobs, eq(jobs.id, costLines.jobId))
     .where(and(eq(costLines.id, id), isNull(costLines.deletedAt), isNull(jobs.deletedAt)));
-  if (!row) throw notFound('Cost line');
+  if (!row) throw notFound('That cost');
   return row.cost_lines;
 }
 
@@ -119,7 +119,7 @@ export async function createCostLine(db: Db, input: CostLineCreate) {
 export async function updateCostLine(db: Db, { id, ...patch }: CostLineUpdate) {
   await getCostLine(db, id);
   const [row] = await db.update(costLines).set(patch).where(eq(costLines.id, id)).returning();
-  if (!row) throw notFound('Cost line');
+  if (!row) throw notFound('That cost');
   return row;
 }
 

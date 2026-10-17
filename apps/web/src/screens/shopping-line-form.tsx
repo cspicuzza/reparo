@@ -68,7 +68,7 @@ export function ShoppingLineForm({
     );
   }
   if (phases.data.length === 0)
-    return <p role="alert">Add a phase first. Every line belongs to one.</p>;
+    return <p role="alert">Add a phase first. Everything on the list belongs to one.</p>;
 
   const active = phases.data.find((p) => p.status === 'active') ?? phases.data[0];
   const other = categories.data.find((c) => c.name === 'Other') ?? categories.data[0];

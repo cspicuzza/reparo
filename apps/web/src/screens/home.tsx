@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status';
 import { TapeStrip } from '@/components/tape';
 import { buttonVariants } from '@/components/ui/button';
 import { MoneyTape } from '@/components/money-tape';
+import { WelcomeNote } from '@/components/welcome-note';
 import { formatIsoDate, formatMoney, isIsoDate } from '@reparo/shared';
 import { headline, listText, plannedPhaseText } from '@/lib/money';
 import { greeting, homeRoomOrder, phaseGlance, phaseHeading } from '@/lib/home';
@@ -71,6 +72,7 @@ export function Home() {
               overCents={Math.max(0, -summary.data.money.availableCents)}
             />
           </div>
+          <WelcomeNote />
           <PhasePanel summary={summary.data} />
           <Rooms rooms={summary.data.rooms} />
         </>

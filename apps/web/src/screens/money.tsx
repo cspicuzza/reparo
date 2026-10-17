@@ -140,9 +140,6 @@ function Headline({ s }: { s: Summary }) {
           danger={s.availableCents < 0}
         />
       </dl>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Planned is what jobs still cost and what&apos;s still to buy, in phases that have started.
-      </p>
     </Panel>
   );
 }

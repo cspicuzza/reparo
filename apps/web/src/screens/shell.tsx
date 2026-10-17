@@ -28,6 +28,7 @@ import { signOut } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { ThemeSwitch, ThemeSwitchMenu } from '@/components/theme-switch';
+import { OfflineBar } from '@/components/offline-bar';
 import { PreviewBar, ViewAsMenu, ViewAsSwitch } from '@/components/view-as';
 import { useMe } from '@/lib/me';
 
@@ -121,6 +122,7 @@ export function Shell() {
   return (
     <div className="min-h-dvh">
       <PreviewBar />
+      <OfflineBar />
       <header className="border-b border-border bg-bar">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <Link

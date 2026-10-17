@@ -92,7 +92,7 @@ export async function listShoppingLines(db: Db, filter: ShoppingLineList & { id?
 
 export async function getShoppingLine(db: Db, id: string) {
   const [row] = await listShoppingLines(db, { id });
-  if (!row) throw notFound('Shopping line');
+  if (!row) throw notFound('That item');
   return row;
 }
 
@@ -111,7 +111,7 @@ async function checkRefs(
       .where(and(eq(jobs.id, refs.jobId), isNull(jobs.deletedAt)));
     if (!job) throw notFound('Job');
     if (job.phaseId !== phase.id) {
-      throw badRequest(`"${job.name}" is in another phase; put this line in the same phase`);
+      throw badRequest(`"${job.name}" is in another phase; put this in the same phase`);
     }
   }
 }
@@ -211,7 +211,7 @@ export async function removeShoppingLine(db: Db, id: string) {
 
 export async function restoreShoppingLine(db: Db, id: string) {
   const [row] = await db.select().from(shoppingLines).where(eq(shoppingLines.id, id));
-  if (!row) throw notFound('Shopping line');
+  if (!row) throw notFound('That item');
   if (row.deletedAt !== null) {
     await db.update(shoppingLines).set({ deletedAt: null }).where(eq(shoppingLines.id, id));
   }
