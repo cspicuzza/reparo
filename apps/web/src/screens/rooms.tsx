@@ -5,11 +5,13 @@ import { useState } from 'react';
 import { useMe } from '@/lib/me';
 import { useTRPC } from '@/lib/trpc';
 import { describeRoom, roomProgressText } from '@/lib/rooms';
-import { ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { EditPanel } from '@/components/edit-panel';
 import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
+import { RoomOutline } from '@/components/dimension';
+import { money } from '@/lib/money';
 import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
 import { Button } from '@/components/ui/button';
@@ -18,6 +20,10 @@ import { FormError } from '@/components/form';
 import { LoadError } from '@/components/load-error';
 import { MoveButtons } from '@/components/move-buttons';
 
+/**
+ * The rooms (M1; as plans, OD-140): a card per room with its cover or its outline, size, what's
+ * left to buy and how its jobs are going. Change order turns the cards into a list to arrange.
+ */
 export function Rooms() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -25,6 +31,11 @@ export function Rooms() {
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const covers = useQuery(trpc.files.roomCovers.queryOptions());
   const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
+  // What's left to buy for each room, from the shopping totals (OD-140).
+  const shopping = useQuery(trpc.shoppingLines.totals.queryOptions({}));
+  const toBuy = new Map(
+    (shopping.data?.find((sec) => sec.status === 'to_buy')?.rooms ?? []).map((r) => [r.roomId, r]),
+  );
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-room' : null);
   const create = useMutation(
@@ -117,38 +128,43 @@ export function Rooms() {
           ) : null}
         </PlanGrid>
       ) : null}
-      {rooms.data && rooms.data.length > 0 ? (
+      {rooms.data && rooms.data.length > 0 && arranging ? (
+        // Putting the rooms in order: each row moves up or down (OD-117, Q141).
         <PanelList>
-          {rooms.data.map((room, index) => {
+          {rooms.data.map((room, index) => (
+            <li
+              key={room.id}
+              className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
+            >
+              <span className="min-w-0 text-xl font-semibold break-words">{room.name}</span>
+              <MoveButtons
+                id={room.id}
+                name={room.name}
+                index={index}
+                count={rooms.data.length}
+                disabled={move.isPending}
+                onMove={(by) => move.mutateAsync({ id: room.id, by }).catch(() => undefined)}
+              />
+            </li>
+          ))}
+        </PanelList>
+      ) : null}
+      {rooms.data && rooms.data.length > 0 && !arranging ? (
+        // The house as a set of plans (OD-140): each room's cover or its outline drawn to its
+        // proportions, its size, what's left to buy for it, and how its jobs are going.
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {rooms.data.map((room) => {
             const { dims, sqft } = describeRoom(room);
             const size = dims ? (sqft != null ? `${dims}, ${sqft} sq ft` : dims) : 'Not measured';
             const progress = roomProgressText(room.progress);
             const cover = coverOf.get(room.id);
-            if (arranging) {
-              // Putting the rooms in order: each row moves up or down (OD-117, Q141).
-              return (
-                <li
-                  key={room.id}
-                  className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
-                >
-                  <span className="min-w-0 text-xl font-semibold break-words">{room.name}</span>
-                  <MoveButtons
-                    id={room.id}
-                    name={room.name}
-                    index={index}
-                    count={rooms.data.length}
-                    disabled={move.isPending}
-                    onMove={(by) => move.mutateAsync({ id: room.id, by }).catch(() => undefined)}
-                  />
-                </li>
-              );
-            }
+            const buying = toBuy.get(room.id);
             return (
               <li key={room.id}>
                 <Link
                   to="/rooms/$roomId"
                   params={{ roomId: room.id }}
-                  className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
+                  className="flex h-full gap-4 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:bg-accent"
                 >
                   {cover ? (
                     <img
@@ -159,18 +175,18 @@ export function Rooms() {
                       className="h-14 w-20 shrink-0 rounded-lg border border-border bg-inset object-cover"
                     />
                   ) : (
-                    // On a phone an empty placeholder only takes the name's width (Q139).
-                    <PlanGrid className="hidden h-14 w-20 shrink-0 rounded-lg p-0 sm:flex" />
+                    <RoomOutline lengthIn={room.lengthIn} widthIn={room.widthIn} />
                   )}
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xl font-semibold break-words">{room.name}</span>
-                    <span className="block text-sm text-muted-foreground tabular-nums">{size}</span>
-                    {/* On a phone the progress words go on their own line (Q139). */}
-                    <span className="block text-sm text-muted-foreground tabular-nums sm:hidden">
-                      {progress}
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <h2 className="text-xl break-words">{room.name}</h2>
+                    <span className="text-sm text-muted-foreground tabular-nums">{size}</span>
+                    <span className="text-sm tabular-nums">
+                      {buying
+                        ? buying.totalCents > 0
+                          ? `${buying.count} to buy, ${money(buying.totalCents)}`
+                          : `${buying.count} to buy, no prices yet`
+                        : 'Nothing left to buy'}
                     </span>
-                  </span>
-                  <span className="hidden w-40 shrink-0 sm:block">
                     {room.progress.total > 0 ? (
                       <TapeStrip
                         mode="progress"
@@ -178,18 +194,16 @@ export function Rooms() {
                         done={room.progress.done}
                         total={room.progress.total}
                         label={`${room.name}: ${progress}`}
+                        className="mt-2"
                       />
                     ) : null}
-                  </span>
-                  <span className="hidden shrink-0 text-sm text-muted-foreground tabular-nums sm:block sm:w-36">
-                    {progress}
-                  </span>
-                  <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground tabular-nums">{progress}</span>
+                  </div>
                 </Link>
               </li>
             );
           })}
-        </PanelList>
+        </ul>
       ) : null}
       {move.error ? <FormError>{move.error.message}</FormError> : null}
     </section>

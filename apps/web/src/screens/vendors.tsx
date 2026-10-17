@@ -134,9 +134,11 @@ export function Vendors() {
         </PlanGrid>
       ) : null}
       {vendors.data && vendors.data.length > 0 ? (
-        <PanelList>
+        // A card per vendor, like a stack of business cards (OD-140): who they are, what they
+        // do, how to reach them and how many jobs they have.
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {vendors.data.map((v) => (
-            <li key={v.id} className="px-4 py-3 sm:px-5">
+            <li key={v.id} className="rounded-xl border border-border bg-card p-4">
               <VendorRow
                 vendor={v}
                 documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
@@ -149,7 +151,7 @@ export function Vendors() {
               />
             </li>
           ))}
-        </PanelList>
+        </ul>
       ) : null}
 
       {isAdmin && gone.length > 0 ? (
@@ -217,35 +219,53 @@ function VendorRow({
 }) {
   useReturnFocus(open ? `vendor-${vendor.id}` : null);
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <div className="min-w-0 flex-1">
-        {/* A row's name at the body width, like a job's or a shopping line's (OD-136). */}
-        <h2 className="text-lg font-semibold break-words [font-stretch:normal]">{vendor.name}</h2>
-        {vendor.trade ? <p className="text-sm text-muted-foreground">{vendor.trade}</p> : null}
-      </div>
-      {/* Tap to call from the list (OD-124, Q161). */}
-      {vendor.phone ? (
-        <a
-          href={telHref(vendor.phone)}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm tabular-nums underline underline-offset-4"
+    <div className="flex h-full flex-col">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {/* A name at the body width, like a job's or a shopping line's (OD-136). */}
+          <h2 className="text-lg font-semibold break-words [font-stretch:normal]">{vendor.name}</h2>
+          {vendor.trade ? <p className="text-sm">{vendor.trade}</p> : null}
+          <p className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          className="-mt-1.5 -mr-3 shrink-0"
+          onClick={onOpen}
+          data-return-focus={`vendor-${vendor.id}`}
         >
-          <Phone aria-hidden className="size-4" />
-          {vendor.phone}
-          <span className="sr-only">, call {vendor.name}</span>
-        </a>
-      ) : null}
-      <span className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</span>
-      <Button
-        type="button"
-        variant="ghost"
-        className="-mr-3"
-        onClick={onOpen}
-        data-return-focus={`vendor-${vendor.id}`}
-      >
-        <PanelRightOpen aria-hidden absoluteStrokeWidth strokeWidth={2} />
-        Details
-        <span className="sr-only"> for {vendor.name}</span>
-      </Button>
+          <PanelRightOpen aria-hidden absoluteStrokeWidth strokeWidth={2} />
+          Details
+          <span className="sr-only"> for {vendor.name}</span>
+        </Button>
+      </div>
+      {/* Tap to call or email from the list (OD-124, Q161). */}
+      {vendor.phone || vendor.email ? (
+        <div className="mt-auto flex flex-wrap items-center gap-x-4 pt-1">
+          {vendor.phone ? (
+            <a
+              href={telHref(vendor.phone)}
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm tabular-nums underline underline-offset-4"
+            >
+              <Phone aria-hidden className="size-4" />
+              {vendor.phone}
+              <span className="sr-only">, call {vendor.name}</span>
+            </a>
+          ) : null}
+          {vendor.email ? (
+            <a
+              href={`mailto:${vendor.email}`}
+              className="inline-flex min-h-11 min-w-0 items-center gap-1.5 text-sm underline underline-offset-4"
+            >
+              <Mail aria-hidden className="size-4 shrink-0" />
+              <span className="truncate">{vendor.email}</span>
+              <span className="sr-only">, email {vendor.name}</span>
+            </a>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-auto pt-3 text-sm text-muted-foreground">No phone or email yet</p>
+      )}
       <EditPanel
         open={open}
         title={vendor.name}

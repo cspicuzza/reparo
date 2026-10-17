@@ -64,6 +64,45 @@ export function FloorPlan({
   );
 }
 
+/**
+ * A room as a small plan for lists (OD-140): its outline drawn to its own proportions inside an
+ * 80 × 56 box, solid when it's measured, dashed and square when it isn't, so the Rooms list
+ * shows each room's shape instead of a row of identical empty pictures.
+ */
+export function RoomOutline({
+  lengthIn,
+  widthIn,
+  className,
+}: {
+  lengthIn: Inches | null | undefined;
+  widthIn: Inches | null | undefined;
+  className?: string;
+}) {
+  const measured = lengthIn != null && widthIn != null && lengthIn > 0 && widthIn > 0;
+  // The same 3:1 limit as the floor plan, so a corridor stays legible.
+  const ratio = measured ? Math.min(3, Math.max(1 / 3, lengthIn / widthIn)) : 1;
+  // Fit the box: wide rooms take its width, deep ones its height.
+  const w = ratio >= 80 / 56 ? 80 : 56 * ratio;
+  const h = w / ratio;
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex h-14 w-20 shrink-0 items-center justify-center rounded-lg bg-inset bg-[linear-gradient(var(--grid)_1px,transparent_1px),linear-gradient(90deg,var(--grid)_1px,transparent_1px)] bg-size-[8px_8px]',
+        className,
+      )}
+    >
+      <span
+        className={cn(
+          'block rounded-[2px] border-2',
+          measured ? 'border-foreground bg-card' : 'border-dashed border-muted-foreground',
+        )}
+        style={{ width: Math.round(w * 0.75), height: Math.round(h * 0.75) }}
+      />
+    </span>
+  );
+}
+
 const TICK = 'shrink-0 bg-muted-foreground';
 
 /** A dimension along the top: end ticks, a line, the measurement in the middle. */

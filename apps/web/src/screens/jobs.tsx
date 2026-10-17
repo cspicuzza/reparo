@@ -13,7 +13,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { money } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
-import { groupByPhase, progressText, type Job } from '@/lib/work';
+import { groupByPhase, phaseProgressText, progressText, type Job } from '@/lib/work';
 import { JobEditor } from './job-editor';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
@@ -101,11 +101,38 @@ export function Jobs() {
       ) : null}
       {groups?.map(({ phase, jobs: inPhase }) => (
         <section key={phase.id} aria-labelledby={`phase-${phase.id}`}>
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 id={`phase-${phase.id}`} className="text-2xl">
-              {phase.name}
-            </h2>
-            <PhaseStatusBadge status={phase.status} />
+          {/* Each phase opens with where it stands (OD-140): its status, what's spent and
+              planned in it, and how many of its jobs are done, from `phases.list`. */}
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 id={`phase-${phase.id}`} className="text-2xl">
+                {phase.name}
+              </h2>
+              <PhaseStatusBadge status={phase.status} />
+            </div>
+            <dl className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
+              <div className="flex items-baseline gap-2">
+                <dt className="text-sm text-muted-foreground">Spent</dt>
+                <dd className="font-semibold">{money(phase.money.spentCents)}</dd>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <dt className="text-sm text-muted-foreground">Planned</dt>
+                <dd className="font-semibold">{money(phase.money.toComeCents)}</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="mt-3 flex items-center gap-4">
+            <TapeStrip
+              mode="progress"
+              size="sm"
+              done={phase.progress.done}
+              total={phase.progress.total}
+              label={`${phase.name}: ${phaseProgressText(phase.progress)}`}
+              className="min-w-0 flex-1"
+            />
+            <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+              {phaseProgressText(phase.progress)}
+            </span>
           </div>
           <PanelList className="mt-3">
             {inPhase.map((job) => (
