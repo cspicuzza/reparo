@@ -14,7 +14,10 @@ export const TRPC_ENDPOINT = '/api/trpc';
 /** Build the dependencies once per process from validated env. */
 export function createDeps(env: NodeJS.ProcessEnv = process.env): ContextDeps {
   const cfg = serverEnv(env);
-  const { db } = createDb(cfg.DATABASE_URL);
+  // On Vercel Fluid compute an instance serves many requests and is suspended between them;
+  // Vercel's guidance is a short idle timeout (e.g. 5 s) so unused connections close (OD-149).
+  // https://vercel.com/kb/guide/connection-pooling-with-functions
+  const { db } = createDb(cfg.DATABASE_URL, { idleTimeout: 5 });
   const verify = createTokenVerifier({
     jwksUrl: cfg.SUPABASE_JWKS_URL,
     issuer: supabaseIssuer(cfg.SUPABASE_URL),

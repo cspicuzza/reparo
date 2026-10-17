@@ -48,9 +48,16 @@ export async function withRollback<T>(
  * `prepare: false` because Supabase's pooler runs in transaction mode, which doesn't
  * support prepared statements (Supabase's Drizzle guide:
  * https://supabase.com/docs/guides/database/drizzle). Harmless on a direct connection.
+ *
+ * `idleTimeout` (seconds) closes connections nobody is using; postgres.js keeps them forever
+ * by default (`idle_timeout: 0`, https://github.com/porsager/postgres/blob/v3.4.9/README.md).
  */
-export function createDb(databaseUrl: string, opts: { max?: number } = {}) {
-  const client = postgres(databaseUrl, { prepare: false, max: opts.max ?? 10 });
+export function createDb(databaseUrl: string, opts: { max?: number; idleTimeout?: number } = {}) {
+  const client = postgres(databaseUrl, {
+    prepare: false,
+    max: opts.max ?? 10,
+    idle_timeout: opts.idleTimeout,
+  });
   const db = drizzle({ client, schema });
   return { db, client };
 }
