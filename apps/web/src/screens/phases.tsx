@@ -394,7 +394,7 @@ function PhaseMoney({ phase }: { phase: Phase }) {
           <dd className="font-semibold">{money(m.spentCents)}</dd>
         </div>
         <div className="flex items-baseline gap-2">
-          <dt className="text-sm text-muted-foreground">Still to come</dt>
+          <dt className="text-sm text-muted-foreground">Planned</dt>
           <dd className="font-semibold">{money(m.toComeCents)}</dd>
         </div>
       </dl>

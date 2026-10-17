@@ -27,8 +27,9 @@ export function phaseGlance<J extends Glanceable>(
 }
 
 /**
- * The phase panel's heading, from its jobs rather than the phase's own flag (OD-116, Q119), so
- * it never says "underway" while nothing has started. One spelling: "underway".
+ * The phase panel's heading. An active phase is "underway", the word its status has everywhere
+ * (OD-138; it was "on" here, OD-116), and its jobs add the rest: none yet, none started, all
+ * done. One spelling: "underway".
  */
 export function phaseHeading(
   phase: { name: string; status: 'planned' | 'active' | 'complete' } | null,
@@ -37,9 +38,9 @@ export function phaseHeading(
   if (!phase) return 'No phases yet';
   if (phase.status === 'planned') return `${phase.name} is next`;
   if (phase.status === 'complete') return `${phase.name} is complete`;
-  if (glance.total === 0) return `${phase.name} is on; it has no jobs yet`;
-  if (glance.started === 0) return `${phase.name} is on; nothing has started yet`;
-  if (glance.done === glance.total) return `${phase.name} is on; every job is done`;
+  if (glance.total === 0) return `${phase.name} is underway; it has no jobs yet`;
+  if (glance.started === 0) return `${phase.name} is underway; no job has started yet`;
+  if (glance.done === glance.total) return `${phase.name} is underway; every job is done`;
   return `${phase.name} is underway`;
 }
 

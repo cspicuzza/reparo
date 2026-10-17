@@ -85,3 +85,12 @@ export const COMMITTED_STRIPES: CSSProperties = {
   backgroundImage:
     'repeating-linear-gradient(135deg, var(--tape-fill) 0 3px, var(--tape-committed-gap) 3px 6px)',
 };
+
+/**
+ * What's left, in a legend: the plaster track with the yellow mark down its left side, as on
+ * the tape (OD-138, Q203).
+ */
+export const LEFT_SWATCH: CSSProperties = {
+  backgroundColor: 'var(--tape-track)',
+  boxShadow: 'inset 3px 0 0 var(--tape)',
+};

@@ -1,6 +1,6 @@
 import { BudgetTapeStrip } from '@/components/tape';
 import { money, moneyStep, shortMoney } from '@/lib/money';
-import { budgetSegments, COMMITTED_STRIPES, moneyTicks } from '@/lib/tape';
+import { budgetSegments, COMMITTED_STRIPES, LEFT_SWATCH, moneyTicks } from '@/lib/tape';
 import { cn } from '@/lib/utils';
 
 const SWATCH =
@@ -8,8 +8,8 @@ const SWATCH =
 
 /**
  * The budget as a tape measure (canvas section D): a dollar scale above, the strip filled for
- * what's spent (solid) and committed (striped), yellow for what's left, and a legend that says
- * the same in words. Over budget, the scale runs to everything spent and committed, the
+ * what's spent (solid) and planned (striped), plaster for what's left, and a legend that says
+ * the same in words. Over budget, the scale runs to everything spent and planned, the
  * budget's end is marked and labelled, and the overrun is red (OD-109, Q115–Q116). Every number
  * comes from `money.summary`. Phones show only the labels that matter, so they don't collide.
  */
@@ -76,8 +76,8 @@ export function MoneyTape({
         stepCents={step}
         label={
           availableCents < 0
-            ? `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent and ${money(committedCents)} committed: ${money(-availableCents)} over`
-            : `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent, ${money(committedCents)} committed and ${money(availableCents)} left`
+            ? `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent and ${money(committedCents)} planned: ${money(-availableCents)} over`
+            : `Of the ${money(poolCents)} budget, ${money(spentCents)} is spent, ${money(committedCents)} planned and ${money(availableCents)} left`
         }
       />
       <div
@@ -92,7 +92,7 @@ export function MoneyTape({
         </span>
         <span>
           <span aria-hidden="true" className={SWATCH} style={COMMITTED_STRIPES} />
-          Committed <strong className="font-semibold">{money(committedCents)}</strong>
+          Planned <strong className="font-semibold">{money(committedCents)}</strong>
         </span>
         {availableCents < 0 ? (
           <span>
@@ -102,7 +102,7 @@ export function MoneyTape({
           </span>
         ) : (
           <span>
-            <span aria-hidden="true" className={cn(SWATCH, 'bg-tape')} />
+            <span aria-hidden="true" className={SWATCH} style={LEFT_SWATCH} />
             Left to spend <strong className="font-semibold">{money(availableCents)}</strong>
           </span>
         )}

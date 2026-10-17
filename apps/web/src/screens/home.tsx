@@ -61,10 +61,15 @@ export function Home() {
               greeting={hello}
               money={summary.data.money}
               nothingNeedsYou={
-                summary.data.needsYou.length + summary.data.expiringQuotes.length === 0
+                summary.data.needsYou.length + summary.data.expiringQuotes.length === 0 &&
+                summary.data.money.availableCents >= 0
               }
             />
-            <NeedsYou items={summary.data.needsYou} quotes={summary.data.expiringQuotes} />
+            <NeedsYou
+              items={summary.data.needsYou}
+              quotes={summary.data.expiringQuotes}
+              overCents={Math.max(0, -summary.data.money.availableCents)}
+            />
           </div>
           <PhasePanel summary={summary.data} />
           <Rooms rooms={summary.data.rooms} />
@@ -115,13 +120,12 @@ function MoneyHeadline({
             {tail}
           </h1>
           {m.availableCents < 0 ? (
-            // Over budget the "what remains" line would contradict the headline (OD-109, Q118).
-            <p className="mt-2 mb-5 text-muted-foreground">
-              Everything spent
-              {m.countingPhases.length > 0
-                ? ` and planned for ${listText(m.countingPhases)}`
-                : ''}{' '}
-              comes to more than the {formatMoney(m.poolCents)} budget.{' '}
+            // Over budget: what it's made of, in one line, so the number isn't read as money
+            // already gone (OD-138; the "what remains" line would contradict it, OD-109).
+            <p className="mt-2 mb-5 text-muted-foreground tabular-nums">
+              {formatMoney(m.spentCents)} spent and {formatMoney(m.committedCents)} planned
+              {m.countingPhases.length > 0 ? ` for ${listText(m.countingPhases)}` : ''}, against a{' '}
+              {formatMoney(m.poolCents)} budget.{' '}
               <Link to="/money" className="text-foreground underline underline-offset-4">
                 See where it goes
               </Link>
@@ -168,11 +172,14 @@ function MoneyHeadline({
 function NeedsYou({
   items,
   quotes,
+  overCents,
 }: {
   items: Summary['needsYou'];
   quotes: Summary['expiringQuotes'];
+  /** How far planned spending is over the budget; 0 when it isn't (OD-138). */
+  overCents: number;
 }) {
-  const count = items.length + quotes.length;
+  const count = items.length + quotes.length + (overCents > 0 ? 1 : 0);
   // Nothing waiting: the greeting says so in one line instead (Q121).
   if (count === 0) return null;
   return (
@@ -191,6 +198,27 @@ function NeedsYou({
         ) : null}
       </div>
       <ul className="mt-2 divide-y divide-border">
+        {/* Over budget is something to decide on, so it's listed here too: the headline never
+            sits above "Nothing needs you" while it's over (OD-138). */}
+        {overCents > 0 ? (
+          <li className="flex items-start gap-3 py-4 last:pb-0">
+            <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
+              <CircleAlert aria-hidden className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">The plans are over budget</p>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                By {formatMoney(overCents)}. Trim the shopping list or a job, or add money.
+              </p>
+              <Link
+                to="/money"
+                className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
+              >
+                See the money
+              </Link>
+            </div>
+          </li>
+        ) : null}
         {items.map((n) => (
           <li key={n.id} className="flex items-start gap-3 py-4 last:pb-0">
             <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">

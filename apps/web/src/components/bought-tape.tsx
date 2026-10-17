@@ -1,5 +1,6 @@
 import { TapeStrip } from '@/components/tape';
 import { money, moneyStep } from '@/lib/money';
+import { LEFT_SWATCH } from '@/lib/tape';
 import { cn } from '@/lib/utils';
 
 const SWATCH =
@@ -7,8 +8,8 @@ const SWATCH =
 
 /**
  * What's bought against what's left to buy, drawn as the tape measure (OD-107, Q104): the
- * fill is what's been paid (returns count what wasn't refunded), yellow is the price of what's
- * still to buy. The amounts are written beside it, so the colours never carry them alone. Used
+ * fill is what's been paid (returns count what wasn't refunded), the plaster track the price of
+ * what's still to buy (OD-138). The amounts are written beside it, so the colours never carry them alone. Used
  * on Shopping (following its filters) and on a room's page (OD-118, Q143). Nothing to show
  * when there's nothing priced.
  */
@@ -38,7 +39,7 @@ export function BoughtTape({
           Bought <strong className="font-semibold">{money(boughtCents)}</strong>
         </span>
         <span>
-          <span className={cn(SWATCH, 'bg-tape')} />
+          <span className={SWATCH} style={LEFT_SWATCH} />
           Left to buy <strong className="font-semibold">{money(leftCents)}</strong>
         </span>
       </div>

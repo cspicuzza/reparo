@@ -72,8 +72,8 @@ describe('groupByPhase', () => {
 describe('phase status words (OD-122)', () => {
   it('says what a status does to the money', () => {
     expect(phaseMoneyEffect('planned')).toBe('Not counted until it starts');
-    expect(phaseMoneyEffect('active')).toBe('Counts toward Committed');
-    expect(phaseMoneyEffect('complete')).toBe('Counts toward Committed');
+    expect(phaseMoneyEffect('active')).toBe('Counts toward the budget');
+    expect(phaseMoneyEffect('complete')).toBe('Counts toward the budget');
   });
   it('calls active "Underway"', () => {
     expect(PHASE_STATUS_LABEL.active).toBe('Underway');

@@ -83,10 +83,13 @@ export function listText(names: string[]): string {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1] ?? ''}`;
 }
 
-/** The headline: "You have $X left to spend." or, over budget, "You're $X over budget." */
+/**
+ * The headline: "You have $X left to spend." or, over budget, "Planned spending is $X over
+ * budget." (OD-138: it was "You're $X over budget", which read as money already gone).
+ */
 export function headline(availableCents: number): { lead: string; amount: string; tail: string } {
   if (availableCents < 0) {
-    return { lead: "You're ", amount: money(-availableCents), tail: ' over budget.' };
+    return { lead: 'Planned spending is ', amount: money(-availableCents), tail: ' over budget.' };
   }
   return { lead: 'You have ', amount: money(availableCents), tail: ' left to spend.' };
 }

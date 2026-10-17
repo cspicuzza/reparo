@@ -133,7 +133,7 @@ function Headline({ s }: { s: Summary }) {
       <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4 tabular-nums sm:grid-cols-4">
         <Stat label="Budget" value={money(s.pool.poolCents)} />
         <Stat label="Spent" value={money(s.spentCents)} />
-        <Stat label="Committed" value={money(s.committedCents)} />
+        <Stat label="Planned" value={money(s.committedCents)} />
         <Stat
           label={s.availableCents < 0 ? 'Over by' : 'Left to spend'}
           value={money(Math.abs(s.availableCents))}
@@ -141,7 +141,7 @@ function Headline({ s }: { s: Summary }) {
         />
       </dl>
       <p className="mt-3 text-sm text-muted-foreground">
-        Committed is what jobs still cost and what&apos;s still to buy, in phases that have started.
+        Planned is what jobs still cost and what&apos;s still to buy, in phases that have started.
       </p>
     </Panel>
   );
@@ -568,7 +568,7 @@ function ByPhase({ s }: { s: Summary }) {
         By phase
       </h2>
       <table className="mt-3 w-full table-fixed tabular-nums">
-        <caption className="sr-only">Spent and still to come in each phase</caption>
+        <caption className="sr-only">Spent and planned in each phase</caption>
         {/* Both By phase tables share their columns, so the amounts line up (OD-129, Q183). */}
         <colgroup>
           <col />
@@ -584,7 +584,7 @@ function ByPhase({ s }: { s: Summary }) {
               Spent
             </th>
             <th scope="col" className="py-2 pl-3 text-right font-normal">
-              Still to come
+              Planned
             </th>
           </tr>
         </thead>
@@ -666,7 +666,7 @@ function ByPhase({ s }: { s: Summary }) {
               Spent
             </th>
             <th scope="col" className="py-2 pl-3 text-right font-normal">
-              Committed
+              Planned
             </th>
           </tr>
         </thead>
@@ -747,7 +747,7 @@ function Totals({
                 Spent
               </th>
               <th scope="col" className="py-2 text-right font-normal">
-                Committed
+                Planned
               </th>
             </tr>
           </thead>

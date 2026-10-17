@@ -14,7 +14,7 @@ function useRefresh(pick: (trpc: ReturnType<typeof useTRPC>) => QueryFilters[]) 
 
 /**
  * A job, its rooms, status, vendor or spec: job lists and pages, room progress, phase progress,
- * vendors' job counts, and the money (a job's price counts toward Committed).
+ * vendors' job counts, and the money (a job's price counts toward Planned).
  */
 export function useRefreshJobs() {
   return useRefresh((t) => [

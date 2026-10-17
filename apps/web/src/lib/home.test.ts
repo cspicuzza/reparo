@@ -36,10 +36,14 @@ describe('phaseHeading (OD-116, Q119)', () => {
   const p1 = (status: 'planned' | 'active' | 'complete') => ({ name: 'Phase 1', status });
   const g = (started: number, done: number, total: number) => ({ started, done, total });
   it('says what the jobs say, not just the flag', () => {
-    expect(phaseHeading(p1('active'), g(0, 0, 12))).toBe('Phase 1 is on; nothing has started yet');
+    expect(phaseHeading(p1('active'), g(0, 0, 12))).toBe(
+      'Phase 1 is underway; no job has started yet',
+    );
     expect(phaseHeading(p1('active'), g(3, 1, 12))).toBe('Phase 1 is underway');
-    expect(phaseHeading(p1('active'), g(12, 12, 12))).toBe('Phase 1 is on; every job is done');
-    expect(phaseHeading(p1('active'), g(0, 0, 0))).toBe('Phase 1 is on; it has no jobs yet');
+    expect(phaseHeading(p1('active'), g(12, 12, 12))).toBe(
+      'Phase 1 is underway; every job is done',
+    );
+    expect(phaseHeading(p1('active'), g(0, 0, 0))).toBe('Phase 1 is underway; it has no jobs yet');
   });
   it('names a planned or finished phase, or none', () => {
     expect(phaseHeading(p1('planned'), g(0, 0, 4))).toBe('Phase 1 is next');

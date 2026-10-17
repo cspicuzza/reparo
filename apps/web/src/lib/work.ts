@@ -58,7 +58,7 @@ export function phaseProgressText(p: { done: number; total: number }): string {
 
 /** What a phase's status does to the money (OD-122, Q154; money-rules: active and complete count). */
 export function phaseMoneyEffect(status: PhaseStatusInput): string {
-  return status === 'planned' ? 'Not counted until it starts' : 'Counts toward Committed';
+  return status === 'planned' ? 'Not counted until it starts' : 'Counts toward the budget';
 }
 
 /** A phase marked complete while some of its jobs aren't done: "2 jobs are still open". */

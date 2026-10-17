@@ -61,7 +61,11 @@ describe('money sentences', () => {
       amount: '$27,361.25',
       tail: ' left to spend.',
     });
-    expect(headline(-500)).toEqual({ lead: "You're ", amount: '$5.00', tail: ' over budget.' });
+    expect(headline(-500)).toEqual({
+      lead: 'Planned spending is ',
+      amount: '$5.00',
+      tail: ' over budget.',
+    });
   });
 
   it('says what a planned phase would need and leave', () => {

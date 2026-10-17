@@ -26,10 +26,11 @@ const SIZES = { md: { h: 30, band: 12 }, sm: { h: 16, band: 6 } } as const;
 
 /**
  * The tape-measure strip: tick marks along the top, a dark fill from the left for work done
- * or money committed, yellow for what's left. Values come from the API (web.md); this only
- * draws them. In light mode the tape is outlined in ink (yellow alone is 1.7:1 on panels);
- * in dark mode the outline is yellow and the fill a lighter grey, so a full tape doesn't
- * read as empty (OD-109, Q117).
+ * or money spent, and what's left as pale plaster with a yellow mark where it starts, so an
+ * untouched tape reads as empty and yellow stays for what needs someone (OD-138, Q203; it was
+ * all yellow before). Values come from the API (web.md); this only draws them. The tape is
+ * outlined (ink in light mode, grey in dark), and in dark mode the fill is a lighter grey, so a
+ * full tape doesn't read as empty (OD-109, Q117).
  */
 export function TapeStrip(props: TapeProps) {
   const { label, size = 'md', className } = props;
@@ -52,7 +53,7 @@ export function TapeStrip(props: TapeProps) {
       className={cn('block w-full overflow-visible', className)}
       style={{ height: h }}
     >
-      <rect x="0" y="0" width="1000" height={h} rx="3" className="fill-tape" />
+      <rect x="0" y="0" width="1000" height={h} rx="3" className="fill-tape-track" />
       {/* Scaled rather than resized, so a new value slides in (OD-81) without layout work.
           Always drawn, even empty, so the first payment or purchase slides in from zero rather
           than popping in (OD-131, Q188). A tape that first appears already filled doesn't move:
@@ -76,11 +77,12 @@ export function TapeStrip(props: TapeProps) {
           x2={t.at * 1000}
           y1="0"
           y2={t.major ? band - 1 : props.mode === 'progress' ? band - 1 : band * 0.55}
-          className="stroke-tape-ink"
+          className="stroke-tape-tick"
           strokeWidth={t.major ? 1.6 : 1.1}
           vectorEffect="non-scaling-stroke"
         />
       ))}
+      {filled < 1 ? <LeftMark at={filled} height={h} /> : null}
       {/* Outline last, so the fill never covers it. */}
       <rect
         x="0"
@@ -97,8 +99,28 @@ export function TapeStrip(props: TapeProps) {
 }
 
 /**
- * The budget as a tape (OD-109, Q115–Q116): spent (solid), committed (striped), yellow for
- * what's left. When spending and commitments pass the budget, the strip runs to their total,
+ * Where what's left starts: a yellow mark the full height of the tape, the one touch of yellow
+ * on it (OD-138, Q203). It slides with the fill (300ms, like the fill; reduced motion drops it).
+ */
+function LeftMark({ at, height }: { at: number; height: number }) {
+  return (
+    <line
+      x1="0"
+      x2="0"
+      y1="0"
+      y2={height}
+      // Just inside the start at 0, so the mark isn't cut in half by the tape's edge.
+      style={{ transform: `translateX(${Math.max(at, 0.003) * 1000}px)` }}
+      className="stroke-tape transition-transform duration-300 ease-out"
+      strokeWidth="4"
+      vectorEffect="non-scaling-stroke"
+    />
+  );
+}
+
+/**
+ * The budget as a tape (OD-109, Q115–Q116): spent (solid), planned (striped), pale plaster for
+ * what's left with a yellow mark where it starts (OD-138). When spending and commitments pass the budget, the strip runs to their total,
  * the budget's end gets a full-height mark, and the overrun past it is red. Drawn in HTML
  * rather than SVG so the stripes keep their shape at any width; the ticks are an SVG on top.
  */
@@ -126,7 +148,7 @@ export function BudgetTapeStrip({
     <div
       role="img"
       aria-label={label}
-      className={cn('relative overflow-hidden rounded-sm bg-tape', className)}
+      className={cn('relative overflow-hidden rounded-sm bg-tape-track', className)}
       style={{ height: h }}
     >
       {/* Every part is drawn even at zero width, so a first payment or a first overrun slides
@@ -142,6 +164,14 @@ export function BudgetTapeStrip({
         className={cn(fill, 'bg-destructive')}
         style={{ ...part(segments.budgetAt, segments.over), top: 0 }}
       />
+      {/* Where what's left starts, while anything is (OD-138). */}
+      {segments.over === 0 && segments.spent + segments.committed < 1 ? (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 w-1 -translate-x-1/2 bg-tape transition-[left] duration-300 ease-out"
+          style={{ left: `max(2px, ${(segments.spent + segments.committed) * 100}%)` }}
+        />
+      ) : null}
       <svg
         aria-hidden
         viewBox={`0 0 1000 ${h}`}
@@ -155,7 +185,7 @@ export function BudgetTapeStrip({
             x2={t.at * 1000}
             y1="0"
             y2={t.major ? band - 1 : band * 0.55}
-            className="stroke-tape-ink"
+            className="stroke-tape-tick"
             strokeWidth={t.major ? 1.6 : 1.1}
             vectorEffect="non-scaling-stroke"
           />

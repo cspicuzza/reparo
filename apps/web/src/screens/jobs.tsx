@@ -164,7 +164,10 @@ function JobRow({ job }: { job: Job }) {
             <span className="text-sm text-muted-foreground">No price yet</span>
           )}
         </span>
-        <span className="flex w-28 flex-col items-end gap-1 sm:w-56">
+        {/* Every job shows its status the same way, as a chip; a job with rooms adds how far
+            its rooms are under it (OD-138). */}
+        <span className="flex w-32 flex-col items-end gap-1.5 sm:w-56">
+          <StatusBadge status={job.progress.status} />
           {job.rooms.length > 0 ? (
             <>
               <TapeStrip
@@ -179,9 +182,7 @@ function JobRow({ job }: { job: Job }) {
                 {progress}
               </span>
             </>
-          ) : (
-            <StatusBadge status={job.progress.status} />
-          )}
+          ) : null}
         </span>
       </span>
       <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
