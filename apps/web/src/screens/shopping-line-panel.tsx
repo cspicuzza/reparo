@@ -553,8 +553,8 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
           }}
         />
       ) : line.status === 'to_buy' ? (
-        // Read out, not shown: the greyed-out Returned already says it (OD-97).
-        <p id={`${id}-hint`} className="sr-only">
+        // Why Returned is greyed out, shown as well as read out (OD-137; was read out only, OD-97).
+        <p id={`${id}-hint`} className="mt-1.5 text-sm text-muted-foreground">
           Returned opens up once it&apos;s purchased.
         </p>
       ) : null}

@@ -2120,6 +2120,7 @@ describe('@reparo/api', () => {
         count: number;
         totalCents: number;
         rooms: { roomId: string | null; name: string; count: number; totalCents: number }[];
+        stores: { key: string; name: string; count: number; totalCents: number }[];
       };
       const all = (await query(h, 'viewer', 'shoppingLines.totals')).data as Section[];
       expect(all.map((x) => [x.status, x.count, x.totalCents])).toEqual([
@@ -2137,6 +2138,11 @@ describe('@reparo/api', () => {
         await query(h, 'viewer', 'shoppingLines.list', { store: 'nowhere in particular' }),
       );
       expect(atStore).toEqual([]);
+
+      // By store (OD-137): most lines first, no store last.
+      expect(all[0]?.stores.map((x) => [x.name, x.count, x.totalCents])).toEqual([
+        ['No store', 3, 33000],
+      ]);
 
       const onlyA = (await query(h, 'viewer', 'shoppingLines.totals', { roomId: a.id }))
         .data as Section[];
@@ -2327,6 +2333,24 @@ describe('@reparo/api', () => {
       });
       expect(bad.code).toBe('NOT_FOUND');
       expect((await get(three.id)).roomId).toBeNull();
+
+      // Marking several purchased with what was paid, and Undo back to To buy (OD-137).
+      const bought = await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: [one, two].map((l) => ({ id: l.id, status: 'purchased', paidCents: 1234 })),
+      });
+      expect(bought.data).toEqual({ count: 2 });
+      expect([(await get(one.id)).status, (await get(one.id)).paidCents]).toEqual([
+        'purchased',
+        1234,
+      ]);
+      const noPaid = await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: [{ id: one.id, status: 'purchased' }],
+      });
+      expect(noPaid.status).toBe(400);
+      await mutate(h, 'editor', 'shoppingLines.updateMany', {
+        changes: [one, two].map((l) => ({ id: l.id, status: 'to_buy' })),
+      });
+      expect([(await get(two.id)).status, (await get(two.id)).paidCents]).toEqual(['to_buy', null]);
 
       const removed = await mutate(h, 'editor', 'shoppingLines.removeMany', {
         ids: [one.id, two.id],

@@ -2,13 +2,14 @@ import { Check, ExternalLink, PanelRightOpen } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { Field, FormError, MoneyInput } from '@/components/form';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
+import { useIsPhone } from '@/lib/media';
 import { centsToInput, lineAmountText, money } from '@/lib/money';
 import { lineDetails, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
@@ -71,7 +72,8 @@ export function ShoppingRows({
         <li
           key={l.id}
           className={cn(
-            'relative py-4 sm:col-span-full sm:grid sm:grid-cols-subgrid',
+            // Tighter on a phone, so eight or more rows fit on screen (OD-137).
+            'relative py-2.5 sm:col-span-full sm:grid sm:grid-cols-subgrid sm:py-4',
             // A picked row is tinted edge to edge (OD-104, Q101). Drawn behind the row, past the
             // list's side padding, so the subgrid's columns don't move.
             selection?.selected.has(l.id) &&
@@ -121,6 +123,7 @@ function ShoppingRow({
   onOpen: () => void;
   selection?: RowSelection | undefined;
 }) {
+  const phone = useIsPhone();
   const [buying, setBuying] = useState(false);
   // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
   const [leaving, setLeaving] = useState(false);
@@ -135,8 +138,7 @@ function ShoppingRow({
     <Button
       type="button"
       variant="ghost"
-      // On a phone it starts the row of buttons, so its icon lines up with the name.
-      className={cn(ROW_BUTTON, '-ml-3 sm:ml-0')}
+      className={ROW_BUTTON}
       onClick={onOpen}
       data-return-focus={line.id}
     >
@@ -145,9 +147,10 @@ function ShoppingRow({
       <span className="sr-only"> for {line.name}</span>
     </Button>
   );
+  // Laptop only: the phone row has its own (PhoneRow).
   const actions =
-    buying || selection ? null : (
-      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end">
+    buying || selection || phone ? null : (
+      <div className="flex flex-nowrap items-center justify-end gap-2">
         {details}
         {line.status === 'to_buy' && canEdit ? (
           <Button
@@ -192,93 +195,85 @@ function ShoppingRow({
           : undefined
       }
     >
-      {/* Phone: picture, name and price, with the buttons underneath. Laptop: one line per
-          item, in the list's shared columns. */}
-      <div
-        className={cn(
-          'grid items-start gap-x-3 gap-y-3 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:gap-x-4',
-          selection
-            ? thumbSrc
-              ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
-              : 'grid-cols-[auto_minmax(0,1fr)_auto]'
-            : thumbSrc
-              ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
-              : 'grid-cols-[minmax(0,1fr)_auto]',
-        )}
-      >
-        {selection ? (
-          <label className="-my-2 -ml-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center self-center">
-            <input
-              type="checkbox"
-              checked={selection.selected.has(line.id)}
-              onChange={() => selection.toggle(line)}
-              className="size-5 accent-primary"
+      {phone ? (
+        <PhoneRow
+          line={line}
+          canEdit={canEdit}
+          thumb={
+            thumbSrc && brokenThumb !== thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={() => setBrokenThumb(thumbSrc)}
+                className="size-12 shrink-0 rounded-lg border border-border bg-inset object-cover"
+              />
+            ) : null
+          }
+          onOpen={onOpen}
+          selection={selection}
+          buying={buying}
+          onBuy={() => setBuying(true)}
+        />
+      ) : (
+        // Laptop: one line per item, in the list's shared columns.
+        <div
+          className={cn(
+            'grid items-start gap-x-3 gap-y-3 sm:col-span-full sm:grid-cols-subgrid sm:items-center sm:gap-x-4',
+            selection
+              ? thumbSrc
+                ? 'grid-cols-[auto_auto_minmax(0,1fr)_auto]'
+                : 'grid-cols-[auto_minmax(0,1fr)_auto]'
+              : thumbSrc
+                ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
+                : 'grid-cols-[minmax(0,1fr)_auto]',
+          )}
+        >
+          {selection ? <RowCheckbox line={line} selection={selection} /> : null}
+          {thumbSrc && brokenThumb === thumbSrc ? (
+            // A picture that won't load leaves a plain tile, not a gap (OD-106, Q110).
+            <span
+              aria-hidden
+              className="size-14 shrink-0 rounded-lg border border-border bg-inset"
             />
-            <span className="sr-only">Select {line.name}</span>
-          </label>
-        ) : null}
-        {thumbSrc && brokenThumb === thumbSrc ? (
-          // A picture that won't load leaves a plain tile, not a gap (OD-106, Q110).
-          <span aria-hidden className="size-14 shrink-0 rounded-lg border border-border bg-inset" />
-        ) : thumbSrc ? (
-          <img
-            src={thumbSrc}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            onError={() => setBrokenThumb(thumbSrc)}
-            className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
-          />
-        ) : pictureColumn ? (
-          // A plain tile on a laptop, so the picture column never looks like a gap (OD-108, Q112).
-          <span
-            aria-hidden
-            className="hidden size-14 shrink-0 rounded-lg border border-border bg-inset sm:block"
-          />
-        ) : null}
-        <div className="min-w-0">
-          {/* The name opens the panel too (OD-101, Q90). It looks like plain text until
+          ) : thumbSrc ? (
+            <img
+              src={thumbSrc}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              onError={() => setBrokenThumb(thumbSrc)}
+              className="size-14 shrink-0 rounded-lg border border-border bg-inset object-cover"
+            />
+          ) : pictureColumn ? (
+            // A plain tile, so the picture column never looks like a gap (OD-108, Q112).
+            <span
+              aria-hidden
+              className="hidden size-14 shrink-0 rounded-lg border border-border bg-inset sm:block"
+            />
+          ) : null}
+          <div className="min-w-0">
+            {/* The name opens the panel too (OD-101, Q90). It looks like plain text until
                 hovered, and stays out of Tab order: Details is the keyboard way in. */}
-          <button
-            type="button"
-            tabIndex={-1}
-            // While selecting, the name ticks the row like the rest of it does (OD-104).
-            onClick={selection ? () => selection.toggle(line) : onOpen}
-            className={cn(
-              'text-left text-lg font-semibold break-words underline-offset-4',
-              !selection && 'hover:underline',
-            )}
-          >
-            {line.name}
-          </button>
-          <LineFacts line={line} />
+            <button
+              type="button"
+              tabIndex={-1}
+              // While selecting, the name ticks the row like the rest of it does (OD-104).
+              onClick={selection ? () => selection.toggle(line) : onOpen}
+              className={cn(
+                'text-left text-lg font-semibold break-words underline-offset-4',
+                !selection && 'hover:underline',
+              )}
+            >
+              {line.name}
+            </button>
+            <LineFacts line={line} />
+          </div>
+          <LineAmount line={line} className="text-right text-xl" />
+          {actions ? <div className="col-span-1">{actions}</div> : null}
         </div>
-        {line.status === 'to_buy' && line.priceCents === 0 ? (
-          // No price yet reads as that, not as something free (OD-106, Q105).
-          <span className="text-right whitespace-nowrap text-muted-foreground">No price yet</span>
-        ) : (
-          // On a phone a returned line's "Paid $X, $Y back" gets its own line under the name, and
-          // breaks between its two parts if it must, so it never covers the name (OD-136).
-          <span
-            className={cn(
-              'text-xl font-semibold tabular-nums sm:text-right',
-              line.status === 'returned'
-                ? 'col-span-full sm:col-span-1'
-                : 'text-right whitespace-nowrap',
-            )}
-          >
-            {lineAmountText(line)
-              .split(', ')
-              .map((part, i) => (
-                <span key={part}>
-                  {i > 0 ? ', ' : null}
-                  <span className="whitespace-nowrap">{part}</span>
-                </span>
-              ))}
-          </span>
-        )}
-        {actions ? <div className="col-span-full sm:col-span-1">{actions}</div> : null}
-      </div>
+      )}
       {buying ? (
         <div className="sm:col-span-full">
           <PurchaseForm
@@ -298,12 +293,124 @@ function ShoppingRow({
   );
 }
 
+/** The tick box that picks a row while batch editing (OD-101). */
+function RowCheckbox({ line, selection }: { line: ShoppingLine; selection: RowSelection }) {
+  return (
+    <label className="-my-2 -ml-2 flex min-h-11 min-w-11 shrink-0 cursor-pointer items-center justify-center self-center">
+      <input
+        type="checkbox"
+        checked={selection.selected.has(line.id)}
+        onChange={() => selection.toggle(line)}
+        className="size-5 accent-primary"
+      />
+      <span className="sr-only">Select {line.name}</span>
+    </label>
+  );
+}
+
+/**
+ * What a line costs, as its status counts it: the price, "No price yet", "Paid $X", or
+ * "Paid $X, $Y back", which breaks between its two parts rather than inside one (OD-136).
+ */
+function LineAmount({ line, className }: { line: ShoppingLine; className?: string }) {
+  if (line.status === 'to_buy' && line.priceCents === 0) {
+    // No price yet reads as that, not as something free (OD-106, Q105).
+    return (
+      <span className={cn('whitespace-nowrap text-muted-foreground', className)}>No price yet</span>
+    );
+  }
+  return (
+    <span className={cn('font-semibold text-foreground tabular-nums', className)}>
+      {lineAmountText(line)
+        .split(', ')
+        .map((part, i) => (
+          <span key={part}>
+            {i > 0 ? ', ' : null}
+            <span className="whitespace-nowrap">{part}</span>
+          </span>
+        ))}
+    </span>
+  );
+}
+
+/**
+ * A row on a phone (OD-137): small enough that eight or more fit on screen. The picture, the
+ * name, then the amount, store and details on one grey line, and one "Bought" button for things
+ * still to buy. Tapping the row (or its name, the keyboard way in) opens its panel, where
+ * receipts and everything else live.
+ */
+function PhoneRow({
+  line,
+  canEdit,
+  thumb,
+  onOpen,
+  selection,
+  buying,
+  onBuy,
+}: {
+  line: ShoppingLine;
+  canEdit: boolean;
+  thumb: ReactNode;
+  onOpen: () => void;
+  selection?: RowSelection | undefined;
+  buying: boolean;
+  onBuy: () => void;
+}) {
+  const buyable = line.status === 'to_buy' && canEdit && !selection && !buying;
+  // A column for each thing the row has: tick box, picture, name, button.
+  const columns = [selection && 'auto', thumb && 'auto', 'minmax(0,1fr)', buyable && 'auto']
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div
+      className={cn('grid min-h-12 items-center gap-x-3', !selection && 'cursor-pointer')}
+      style={{ gridTemplateColumns: columns }}
+      onClick={
+        selection
+          ? undefined
+          : (e) => {
+              if ((e.target as Element).closest('a, button, input, label')) return;
+              onOpen();
+            }
+      }
+    >
+      {selection ? <RowCheckbox line={line} selection={selection} /> : null}
+      {thumb}
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={selection ? () => selection.toggle(line) : onOpen}
+          data-return-focus={line.id}
+          className="line-clamp-2 text-left font-semibold break-words"
+        >
+          {line.name}
+          {selection ? null : <span className="sr-only">, details</span>}
+        </button>
+        <LineFacts line={line} lead={<LineAmount line={line} />} />
+      </div>
+      {buyable ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-1.5 px-2.5"
+          onClick={onBuy}
+          data-return-focus={`line-purchase-${line.id}`}
+        >
+          <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
+          Bought
+          <span className="sr-only">: mark {line.name} as purchased</span>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * The grey line under a name: the store as a link to the product page (or "Product page" when
  * there's a link but no store; plain text when there's no link), how many, and a planned phase
  * (OD-82, Q43).
  */
-function LineFacts({ line }: { line: ShoppingLine }) {
+function LineFacts({ line, lead }: { line: ShoppingLine; lead?: ReactNode }) {
   const facts = lineDetails(line);
   const store = line.link ? (
     <a
@@ -320,12 +427,16 @@ function LineFacts({ line }: { line: ShoppingLine }) {
   ) : line.store ? (
     line.store
   ) : null;
-  if (!store && !facts) return null;
+  const parts = [lead, store, facts || null].filter((p) => p != null && p !== '');
+  if (parts.length === 0) return null;
   return (
     <p className="text-sm text-muted-foreground">
-      {store}
-      {store && facts ? ', ' : null}
-      {facts}
+      {parts.map((p, i) => (
+        <Fragment key={i}>
+          {i > 0 ? ', ' : null}
+          {p}
+        </Fragment>
+      ))}
     </p>
   );
 }

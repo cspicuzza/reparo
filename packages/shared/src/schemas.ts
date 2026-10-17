@@ -512,18 +512,26 @@ export const shoppingLineListSchema = z
   })
   .partial();
 /**
- * Batch edits (OD-101): the room, category or job for several lines at once. Each line carries
- * its own values, so Undo can put every line back the way it was.
+ * Batch edits (OD-101): the room, category or job for several lines at once, or marking them
+ * purchased with what was paid, and back to To buy for Undo (OD-137). Each line carries its own
+ * values, so Undo can put every line back the way it was.
  */
 export const shoppingLineUpdateManySchema = z.object({
   changes: z
     .array(
-      z.object({
-        id: idSchema,
-        roomId: shoppingFields.roomId.optional(),
-        categoryId: shoppingFields.categoryId.optional(),
-        jobId: shoppingFields.jobId.optional(),
-      }),
+      z
+        .object({
+          id: idSchema,
+          roomId: shoppingFields.roomId.optional(),
+          categoryId: shoppingFields.categoryId.optional(),
+          jobId: shoppingFields.jobId.optional(),
+          status: z.enum(['to_buy', 'purchased']).optional(),
+          paidCents: moneyInputSchema.optional(),
+        })
+        .refine((v) => v.status !== 'purchased' || v.paidCents !== undefined, {
+          error: 'Say what was paid',
+          path: ['paidCents'],
+        }),
     )
     .min(1)
     .max(500),

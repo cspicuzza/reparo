@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { money } from './money';
 import {
+  activeFilters,
   groupText,
   lineDetails,
   lineWhere,
   parseShoppingSearch,
   shoppingFilter,
+  storeKey,
   summaryText,
 } from './shopping';
 
@@ -28,6 +30,18 @@ describe('shopping filters', () => {
     expect(parseShoppingSearch({ store: '   ' })).toEqual({});
     expect(parseShoppingSearch({ q: ' fan ' })).toEqual({ q: 'fan' });
     expect(parseShoppingSearch({ q: '' })).toEqual({});
+    expect(parseShoppingSearch({ group: 'store' })).toEqual({ group: 'store' });
+    expect(parseShoppingSearch({ group: 'phase' })).toEqual({});
+  });
+
+  it('counts filters, not the search or the grouping (OD-137)', () => {
+    expect(activeFilters({ q: 'fan', group: 'store', store: 'Wayfair', room: ID })).toEqual([
+      'store',
+      'room',
+    ]);
+    expect(activeFilters({ group: 'store' })).toEqual([]);
+    expect(shoppingFilter({ group: 'store' })).toEqual({});
+    expect(storeKey({ store: '  Wayfair ' })).toBe('wayfair');
   });
 
   it('turns them into the API filter; "house" means whole-house lines', () => {

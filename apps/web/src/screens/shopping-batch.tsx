@@ -1,5 +1,6 @@
 import { sumCents } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Check } from 'lucide-react';
 import { useState } from 'react';
 import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
@@ -9,14 +10,22 @@ import { useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { useRefreshShopping } from '@/lib/refresh';
 
-type Change = { id: string; roomId?: string | null; categoryId?: string; jobId?: string | null };
+type Change = {
+  id: string;
+  roomId?: string | null;
+  categoryId?: string;
+  jobId?: string | null;
+  status?: 'to_buy' | 'purchased';
+  paidCents?: number;
+};
 type Field = 'roomId' | 'categoryId' | 'jobId';
 
 const items = (n: number) => `${n} ${n === 1 ? 'item' : 'items'}`;
 
 /**
  * The batch editing bar (OD-101, Q91–Q96): pinned to the bottom while lines are picked, with
- * how many and the four actions. Each action saves every picked line in one transaction and
+ * how many and the actions: Mark as purchased (the picked things still to buy, each at its price,
+ * like checking out; OD-137), Move to room, Set category, Set job and Remove. Each action saves every picked line in one transaction and
  * offers Undo for 10 seconds, which puts each line back the way it was. Remove asks first.
  * Picked lines that a search or filter hides still count, and the bar says so.
  */
@@ -49,14 +58,22 @@ export function BatchBar({
   const before = (field: Field): Change[] => lines.map((l) => ({ id: l.id, [field]: l[field] }));
 
   const update = useMutation({
-    mutationFn: async ({ changes }: { changes: Change[]; undo: Change[]; done: string }) => {
+    mutationFn: async ({
+      changes,
+    }: {
+      changes: Change[];
+      undo: Change[];
+      done: string;
+      detail?: string;
+    }) => {
       await trpcClient.shoppingLines.updateMany.mutate({ changes });
       await invalidate();
     },
-    onSuccess: (_r, { undo, done }) => {
+    onSuccess: (_r, { undo, done, detail }) => {
       onClear();
       toasts.add({
         title: done,
+        ...(detail ? { description: detail } : {}),
         timeout: 10_000,
         actionProps: {
           children: 'Undo',
@@ -98,6 +115,16 @@ export function BatchBar({
       undo: before(field),
       done,
     });
+  // Checking out: only what's still to buy, each at its price, which can be corrected in the
+  // line's Details afterwards (OD-137).
+  const buyable = lines.filter((l) => l.status === 'to_buy');
+  const purchase = () =>
+    update.mutate({
+      changes: buyable.map((l) => ({ id: l.id, status: 'purchased', paidCents: l.priceCents })),
+      undo: buyable.map((l) => ({ id: l.id, status: 'to_buy' })),
+      done: `Marked ${items(buyable.length)} as purchased`,
+      detail: `${money(sumCents(buyable.map((l) => l.priceCents)))} paid, at their prices`,
+    });
   const busy = update.isPending || remove.isPending;
   const error = update.error ?? remove.error;
 
@@ -136,6 +163,20 @@ export function BatchBar({
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:order-2 sm:flex sm:flex-wrap sm:items-center">
+            {buyable.length > 0 ? (
+              <Button
+                type="button"
+                disabled={busy}
+                onClick={purchase}
+                className="col-span-2 sm:col-span-1"
+              >
+                <Check aria-hidden absoluteStrokeWidth strokeWidth={2} />
+                Mark as purchased
+                {buyable.length < lines.length ? (
+                  <span className="font-normal"> ({buyable.length} still to buy)</span>
+                ) : null}
+              </Button>
+            ) : null}
             <BatchSelect
               label="Move to room…"
               disabled={busy}

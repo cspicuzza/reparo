@@ -17,6 +17,8 @@ export type ShoppingSearch = {
   store?: string;
   /** Search text (OD-98). */
   q?: string;
+  /** Group the list by store instead of room (OD-137). Not a filter. */
+  group?: 'store';
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,8 +41,20 @@ export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearc
   }
   const q = raw['q'];
   if (typeof q === 'string' && q.trim() !== '' && q.length <= 120) out.q = q.trim();
+  if (raw['group'] === 'store') out.group = 'store';
   return out;
 }
+
+/** The filters in use: everything in the search but the search text and the grouping. */
+export function activeFilters(s: ShoppingSearch) {
+  return (Object.keys(s) as (keyof ShoppingSearch)[]).filter(
+    (k): k is Exclude<keyof ShoppingSearch, 'q' | 'group'> =>
+      k !== 'q' && k !== 'group' && s[k] !== undefined,
+  );
+}
+
+/** A line's store as `totals` groups it ("" for none), matching a store group's `key`. */
+export const storeKey = (l: { store: string }) => l.store.trim().toLowerCase();
 
 /** The filters as `shoppingLines.list` takes them. */
 export function shoppingFilter(s: ShoppingSearch) {

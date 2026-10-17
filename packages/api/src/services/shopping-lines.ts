@@ -277,8 +277,44 @@ export async function shoppingTotals(db: Db, filter: ShoppingLineList = {}) {
       count: inSection.length,
       totalCents: sumCents(inSection.map(lineSectionCents)),
       rooms: roomsInSection,
+      stores: storeGroups(inSection),
     };
   });
+}
+
+/**
+ * A section's lines by store, for shopping store by store (OD-137): one group per store whatever
+ * the case, spelled the way most of its lines spell it, most lines first, then by name; lines
+ * with no store last, as "No store". `key` is what the `store` filter takes ("" for none).
+ */
+function storeGroups<L extends Parameters<typeof lineSectionCents>[0] & { store: string }>(
+  ls: L[],
+) {
+  const groups = new Map<string, { spellings: Map<string, number>; lines: L[] }>();
+  for (const l of ls) {
+    const key = l.store.trim().toLowerCase();
+    const g = groups.get(key) ?? { spellings: new Map<string, number>(), lines: [] };
+    g.spellings.set(l.store.trim(), (g.spellings.get(l.store.trim()) ?? 0) + 1);
+    g.lines.push(l);
+    groups.set(key, g);
+  }
+  return [...groups.entries()]
+    .map(([key, g]) => ({
+      key,
+      name:
+        key === ''
+          ? 'No store'
+          : ([...g.spellings.entries()].sort(
+              (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+            )[0]?.[0] ?? key),
+      count: g.lines.length,
+      totalCents: sumCents(g.lines.map(lineSectionCents)),
+    }))
+    .sort((a, b) => {
+      if (a.key === '') return 1;
+      if (b.key === '') return -1;
+      return b.count - a.count || a.name.localeCompare(b.name);
+    });
 }
 
 // --- stores (Workflow polish, OD-69) ----------------------------------------------------------
