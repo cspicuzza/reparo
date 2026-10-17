@@ -5,6 +5,7 @@ import {
   members,
   Rollback,
   rooms,
+  sql,
   upsertMembers,
   withRollback,
   type Db,
@@ -19,6 +20,7 @@ import { createTokenVerifier, supabaseIssuer, type TokenVerifier } from './auth'
 import { createContext } from './context';
 import { createFetchHandler, TRPC_ENDPOINT } from './handler';
 import { undoChoose } from './services/estimates';
+import { removeFile } from './services/files';
 import { rollUp } from './services/jobs';
 import { editorProcedure, router } from './trpc';
 import { createFakeStorage } from './storage/fake';
@@ -1585,6 +1587,33 @@ describe('@reparo/api', () => {
         400,
         'Only progress photos have a date and a job',
       ]);
+    }));
+
+  it('files: a remove that fails part-way keeps the cover (OD-161)', () =>
+    withSeeded(async (tx, h) => {
+      const kitchen = row(await mutate(h, 'editor', 'rooms.create', { name: 'Kitchen' }));
+      const pic = (
+        await upload(h, 'editor', {
+          ownerType: 'room',
+          ownerId: kitchen.id,
+          originalName: 'a.webp',
+          mimeType: 'image/webp',
+          sizeBytes: 10,
+          kind: 'rendering',
+        })
+      ).data as FileRow;
+      await mutate(h, 'editor', 'rooms.setCover', { roomId: kitchen.id, fileId: pic.id });
+
+      // Force the second write (the file's soft delete) to fail. Schema changes roll back with
+      // this test's transaction (https://wiki.postgresql.org/wiki/Transactional_DDL_in_PostgreSQL:_A_Competitive_Analysis).
+      await tx.execute(sql`CREATE FUNCTION test_fail_files_update() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'forced failure'; END; $$`);
+      await tx.execute(sql`CREATE TRIGGER test_fail_files_update BEFORE UPDATE ON files
+        FOR EACH ROW EXECUTE FUNCTION test_fail_files_update()`);
+      // Called on the service directly: the test handler rolls back every failed request itself.
+      await expect(removeFile(tx, pic.id)).rejects.toThrow();
+      const [room] = await tx.select().from(rooms).where(eq(rooms.id, kitchen.id));
+      expect(room?.coverFileId).toBe(pic.id);
     }));
 
   it('files: a room cover is one of its renderings; removing it clears the cover', () =>

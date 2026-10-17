@@ -361,16 +361,22 @@ export async function updateFile(db: Db, input: FileUpdate) {
   return row ?? f;
 }
 
-/** Soft delete (Q10: no restore screen). A removed cover stops being the cover. */
+/**
+ * Soft delete (Q10: no restore screen). A removed cover stops being the cover. Both writes are
+ * one transaction, so a failure can't leave a room without its cover and the file still there
+ * (OD-161).
+ */
 export async function removeFile(db: Db, id: string) {
-  const f = await getLive(db, id);
-  await db.update(rooms).set({ coverFileId: null }).where(eq(rooms.coverFileId, f.id));
-  const [row] = await db
-    .update(files)
-    .set({ deletedAt: new Date() })
-    .where(eq(files.id, f.id))
-    .returning();
-  return row;
+  return db.transaction(async (tx) => {
+    const f = await getLive(tx, id);
+    await tx.update(rooms).set({ coverFileId: null }).where(eq(rooms.coverFileId, f.id));
+    const [row] = await tx
+      .update(files)
+      .set({ deletedAt: new Date() })
+      .where(eq(files.id, f.id))
+      .returning();
+    return row;
+  });
 }
 
 /** A room's cover is one of its own live renderings, or none (Q16). */
