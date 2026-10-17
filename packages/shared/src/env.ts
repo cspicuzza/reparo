@@ -16,6 +16,11 @@ export const webEnvSchema = z.object({
 });
 export type WebEnv = z.infer<typeof webEnvSchema>;
 
+/** `APP_ENV`: where the server runs. Only `local` shows raw server errors (OD-168). */
+export const appEnvSchema = z.enum(APP_ENVS, {
+  error: `APP_ENV must be one of ${APP_ENVS.join(', ')}`,
+});
+
 /** Server-only variables. Never import this from `apps/web/src`. */
 export const serverEnvSchema = z.object({
   SUPABASE_URL: z.url({ error: 'SUPABASE_URL must be a URL' }),
@@ -27,7 +32,7 @@ export const serverEnvSchema = z.object({
     .string()
     .min(1, 'DATABASE_URL is required')
     .refine((s) => /^postgres(ql)?:\/\//.test(s), 'DATABASE_URL must start with postgres://'),
-  APP_ENV: z.enum(APP_ENVS, { error: `APP_ENV must be one of ${APP_ENVS.join(', ')}` }),
+  APP_ENV: appEnvSchema,
 });
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 

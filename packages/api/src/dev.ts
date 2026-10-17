@@ -4,7 +4,7 @@
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createHTTPServer } from '@trpc/server/adapters/standalone';
-import { createDeps, TRPC_ENDPOINT } from './handler';
+import { createDeps, logError, TRPC_ENDPOINT } from './handler';
 import { createContext } from './context';
 import { appRouter } from './routers';
 
@@ -26,6 +26,7 @@ createHTTPServer({
     }
     return createContext(deps, new Request(`http://localhost${req.url ?? '/'}`, { headers }));
   },
+  onError: logError,
 }).listen(port);
 
 console.log(`api: http://127.0.0.1:${port}${TRPC_ENDPOINT}`);

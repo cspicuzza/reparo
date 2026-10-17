@@ -1,21 +1,50 @@
-import { initTRPC, TRPCError } from '@trpc/server';
+import { initTRPC, TRPCError, type TRPCDefaultErrorShape } from '@trpc/server';
 import { ZodError } from 'zod';
 import type { MemberRole } from '@reparo/db';
+import { appEnvSchema } from '@reparo/shared';
 import type { Context } from './context';
 
+/** What the browser gets for an unexpected server error outside local development (OD-168). */
+export const INTERNAL_MESSAGE = 'Something went wrong on the server. Try again.';
+
 /**
- * Input that fails its schema reads as the schema's own words ("Enter a name"), not the raw
- * list of issues as JSON (OD-125, Q164). The issues stay in `data.issues` for anything that
- * needs them.
+ * Raw error text and stack traces show only on this machine (`APP_ENV=local`, OD-168). Read on
+ * every error, not once at import: dev.ts and the tests load .env after their imports run. A
+ * missing or unknown APP_ENV counts as hosted, so the text stays hidden.
  */
+export function showsRawErrors(env: NodeJS.ProcessEnv = process.env): boolean {
+  const parsed = appEnvSchema.safeParse(env['APP_ENV']);
+  return parsed.success && parsed.data === 'local';
+}
+
+/**
+ * - Input that fails its schema reads as the schema's own words ("Enter a name"), not the raw
+ *   list of issues as JSON (OD-125, Q164). The issues stay in `data.issues`.
+ * - Outside local development (OD-168): no stack, and an unexpected error (a failed query
+ *   carries its SQL and values) reads as INTERNAL_MESSAGE. NOT_FOUND, CONFLICT, FORBIDDEN and
+ *   the like keep their own messages. tRPC's formatter: https://trpc.io/docs/server/error-formatting
+ */
+export function formatError(
+  { shape, error }: { shape: TRPCDefaultErrorShape; error: TRPCError },
+  raw: boolean,
+) {
+  const data = { ...shape.data };
+  if (!raw) delete data.stack;
+  if (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError) {
+    const words = [...new Set(error.cause.issues.map((i) => i.message))].join('. ');
+    return { ...shape, message: words, data: { ...data, issues: error.cause.issues } };
+  }
+  if (error.code === 'INTERNAL_SERVER_ERROR' && !raw) {
+    return { ...shape, message: INTERNAL_MESSAGE, data };
+  }
+  return { ...shape, data };
+}
+
+// isDev only decides whether tRPC puts a stack in the shape; formatError takes it out again
+// unless APP_ENV is local (https://trpc.io/docs/server/error-handling).
 const t = initTRPC.context<Context>().create({
-  errorFormatter({ shape, error }) {
-    if (error.code === 'BAD_REQUEST' && error.cause instanceof ZodError) {
-      const words = [...new Set(error.cause.issues.map((i) => i.message))].join('. ');
-      return { ...shape, message: words, data: { ...shape.data, issues: error.cause.issues } };
-    }
-    return shape;
-  },
+  isDev: true,
+  errorFormatter: (opts) => formatError(opts, showsRawErrors()),
 });
 
 export const router = t.router;

@@ -15,14 +15,14 @@ import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTVerifyGetKey } from 'jose';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTokenVerifier, supabaseIssuer, type TokenVerifier } from './auth';
 import { createContext } from './context';
-import { createFetchHandler, TRPC_ENDPOINT } from './handler';
+import { createFetchHandler, logError, TRPC_ENDPOINT } from './handler';
 import { undoChoose } from './services/estimates';
 import { removeFile } from './services/files';
 import { rollUp } from './services/jobs';
-import { editorProcedure, router } from './trpc';
+import { editorProcedure, INTERNAL_MESSAGE, router } from './trpc';
 import { createFakeStorage } from './storage/fake';
 
 // Integration tests: real Postgres (DATABASE_URL), fake Supabase Auth. Tokens are minted with
@@ -2195,6 +2195,49 @@ describe('@reparo/api', () => {
       expect(editor.status).toBe(200);
       expect((await body(editor)).result?.data).toBe('ok');
     }));
+
+  it('an unexpected error is hidden from the browser and logged with its path (OD-168)', () =>
+    withSeeded(async (tx) => {
+      const testRouter = router({
+        boom: editorProcedure.mutation(() => {
+          throw new Error('Failed query: select … params: secret@example.com');
+        }),
+      });
+      const req = new Request(`http://localhost${TRPC_ENDPOINT}/boom`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${await sign({ sub: SUB.editor, email: 'editor@example.com' })}`,
+          'content-type': 'application/json',
+        },
+        body: 'null',
+      });
+      vi.stubEnv('APP_ENV', 'production');
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        const res = await fetchRequestHandler({
+          endpoint: TRPC_ENDPOINT,
+          req,
+          router: testRouter,
+          createContext: ({ req }) => createContext({ db: tx, verify, storage }, req),
+          onError: logError,
+        });
+        expect(res.status).toBe(500);
+        const text = await res.text();
+        expect(text).not.toContain('secret@example.com');
+        expect(text).not.toContain('Failed query');
+        const out = JSON.parse(text) as Body;
+        expect(out.error?.data.code).toBe('INTERNAL_SERVER_ERROR');
+        expect(out.error?.message).toBe(INTERNAL_MESSAGE);
+        expect(logged).toHaveBeenCalledTimes(1);
+        expect(String(logged.mock.calls[0]?.[0])).toBe('api: mutation boom failed');
+        expect(String(logged.mock.calls[0]?.[1])).toMatch(/Failed query/);
+      } finally {
+        logged.mockRestore();
+        vi.unstubAllEnvs();
+      }
+    }));
+
+  // --- Workflow polish (OD-68, OD-69) -----------------------------------------------------------
 
   // --- Workflow polish (OD-68, OD-69) -----------------------------------------------------------
 

@@ -1,3 +1,4 @@
+import type { TRPCError } from '@trpc/server';
 import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
 import { createDb } from '@reparo/db';
 import { FILE_MAX_BYTES, FILE_MIME_TYPES, serverEnv } from '@reparo/shared';
@@ -33,6 +34,25 @@ export function createDeps(env: NodeJS.ProcessEnv = process.env): ContextDeps {
 }
 
 /**
+ * Log unexpected server errors with their path and cause to stderr (OD-168), which Vercel keeps
+ * as runtime logs (https://vercel.com/docs/logs/runtime). Expected ones (400, 401, 403, 404,
+ * 409) aren't logged. Never the request (it carries the bearer token) or the context.
+ * tRPC sends every procedure error through `onError`: https://trpc.io/docs/server/error-handling
+ */
+export function logError({
+  error,
+  path,
+  type,
+}: {
+  error: TRPCError;
+  path: string | undefined;
+  type: string;
+}): void {
+  if (error.code !== 'INTERNAL_SERVER_ERROR') return;
+  console.error(`api: ${type} ${path ?? '(unknown path)'} failed`, error.cause ?? error);
+}
+
+/**
  * Web-standard handler (Request → Response). Used verbatim by the Vercel function
  * (https://trpc.io/docs/server/adapters/fetch) and by tests.
  */
@@ -43,5 +63,6 @@ export function createFetchHandler(deps: ContextDeps) {
       req,
       router: appRouter,
       createContext: ({ req }) => createContext(deps, req),
+      onError: logError,
     });
 }
