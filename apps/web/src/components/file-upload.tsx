@@ -75,7 +75,8 @@ export function FileUpload({
   };
 
   return (
-    <div className={cn('flex flex-col gap-3', className)}>
+    // No wider than its row, so a long label wraps at large text (OD-142).
+    <div className={cn('flex max-w-full min-w-0 flex-col gap-3', className)}>
       <div
         role="group"
         aria-label={label}

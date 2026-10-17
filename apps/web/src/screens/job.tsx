@@ -175,7 +175,7 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
             <Link
               to="/vendors"
               search={{ vendor: v.id }}
-              className="inline-flex min-h-11 min-w-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+              className="inline-flex min-h-11 min-w-11 items-center text-xl font-semibold underline underline-offset-4 hover:decoration-2"
             >
               {v.name}
             </Link>
@@ -252,6 +252,10 @@ function JobBody({
   const trpc = useTRPC();
   const navigate = useNavigate();
   const [editingRoom, setEditingRoom] = useState<string | null>(null);
+  // Whether the page opened with no room done, so the progress tape that appears at the first
+  // finished room slides in rather than popping in (OD-131). Opening with some done, it's
+  // simply there.
+  const [openedEmpty] = useState(job.progress.done === 0);
   useReturnFocus(editingRoom ? `jr-${editingRoom}` : null);
   const toasts = useToasts();
   const invalidate = useRefreshJobs();
@@ -294,6 +298,7 @@ function JobBody({
                     done={job.progress.done}
                     total={job.progress.total}
                     label={`${job.name}: ${progress}`}
+                    growIn={openedEmpty}
                   />
                   <span className="text-muted-foreground tabular-nums">{progress}</span>
                 </div>
@@ -308,7 +313,7 @@ function JobBody({
                         <Link
                           to="/rooms/$roomId"
                           params={{ roomId: r.room.id }}
-                          className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
+                          className="inline-flex min-h-11 items-center text-lg font-semibold underline underline-offset-4 hover:decoration-2"
                         >
                           {r.room.name}
                         </Link>
@@ -458,7 +463,9 @@ function RoomStatus({
     }),
   );
   return (
-    <div className="flex flex-col items-end gap-1">
+    // Can shrink, so a long status at large text truncates instead of pushing the page
+    // sideways (OD-142).
+    <div className="flex max-w-full min-w-0 flex-col items-end gap-1">
       <StatusSelect
         id={`room-status-${jobRoomId}`}
         label={what}

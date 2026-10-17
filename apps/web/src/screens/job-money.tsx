@@ -70,7 +70,10 @@ export function JobMoney({ job, canEdit }: { job: Job; canEdit: boolean }) {
             ['Still to pay', owedCents],
           ] as const
         ).map(([label, cents]) => (
-          <div key={label} className="flex items-baseline justify-between gap-4 sm:block">
+          <div
+            key={label}
+            className="flex flex-wrap items-baseline justify-between gap-x-4 sm:block"
+          >
             <dt className="text-sm text-muted-foreground">{label}</dt>
             <dd className="text-xl font-semibold">{money(cents)}</dd>
           </div>

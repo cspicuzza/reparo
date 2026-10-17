@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import {
   COMMITTED_STRIPES,
@@ -14,6 +14,12 @@ type Common = {
   label: string;
   size?: 'md' | 'sm';
   className?: string;
+  /**
+   * Start empty and slide to the value, for a tape that only appears once something is done
+   * (a job's progress at its first finished room), so it doesn't pop in already filled
+   * (OD-131). Pass it only when the tape is new to a page that's already showing.
+   */
+  growIn?: boolean;
 };
 
 type TapeProps = Common &
@@ -33,8 +39,15 @@ const SIZES = { md: { h: 30, band: 12 }, sm: { h: 16, band: 6 } } as const;
  * full tape doesn't read as empty (OD-109, Q117).
  */
 export function TapeStrip(props: TapeProps) {
-  const { label, size = 'md', className } = props;
+  const { label, size = 'md', className, growIn = false } = props;
   const { h, band } = SIZES[size];
+  // Drawn empty for one frame, then at its value, so the usual transition slides it in.
+  const [grown, setGrown] = useState(!growIn);
+  useEffect(() => {
+    if (grown) return;
+    const frame = requestAnimationFrame(() => setGrown(true));
+    return () => cancelAnimationFrame(frame);
+  }, [grown]);
   let filled: number;
   let ticks: Tick[];
   if (props.mode === 'progress') {
@@ -44,6 +57,7 @@ export function TapeStrip(props: TapeProps) {
     filled = tapeFraction(props.usedCents, props.totalCents);
     ticks = moneyTicks(props.totalCents, props.stepCents);
   }
+  if (!grown) filled = 0;
   return (
     <svg
       role="img"

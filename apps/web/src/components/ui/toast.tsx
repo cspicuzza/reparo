@@ -13,6 +13,7 @@ import { buttonVariants } from '@/components/ui/button';
  *   into them (Base UI), and Ctrl+Z (Command+Z on a Mac) presses the newest Undo while focus
  *   isn't in a field; both are said in the message for screen readers, and the shortcut is
  *   shown on a laptop (OD-136).
+ * - Pressing the action (Undo) closes the message (OD-103).
  * - Only an opacity fade, so reduced motion needs nothing special.
  */
 
@@ -58,7 +59,7 @@ export function Toaster() {
 }
 
 function ToastList() {
-  const { toasts } = Toast.useToastManager();
+  const { toasts, close } = Toast.useToastManager();
   return toasts.map((toast) => {
     const undoable = toast.actionProps?.children === 'Undo';
     return (
@@ -88,6 +89,9 @@ function ToastList() {
               <Toast.Action
                 data-undo={undoable ? '' : undefined}
                 className={buttonVariants({ variant: 'default' })}
+                // Once its action is pressed the message has done its job, so it goes; a failed
+                // Undo puts up its own message (OD-103).
+                onClick={() => close(toast.id)}
               />
             ) : null}
             <Toast.Close className={buttonVariants({ variant: 'ghost', className: 'px-3' })}>

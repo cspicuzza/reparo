@@ -116,13 +116,14 @@ function HorizontalDimension({ children }: { children: ReactNode }) {
       />
       <span
         aria-hidden="true"
-        className={cn(TICK, 'h-px min-w-3 flex-1')}
+        className={cn(TICK, 'h-px min-w-0 flex-1')}
         style={{ marginBottom: 'var(--dim-mid)' }}
       />
-      <div className="w-24 max-w-[30vw] shrink-0 sm:w-32 sm:max-w-none">{children}</div>
+      {/* Can shrink with its lines at large text, so the plan stays inside the panel (OD-142). */}
+      <div className="w-24 max-w-[30vw] min-w-0 shrink sm:w-32 sm:max-w-none">{children}</div>
       <span
         aria-hidden="true"
-        className={cn(TICK, 'h-px min-w-3 flex-1')}
+        className={cn(TICK, 'h-px min-w-0 flex-1')}
         style={{ marginBottom: 'var(--dim-mid)' }}
       />
       <span

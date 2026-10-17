@@ -3,6 +3,7 @@ import {
   Children,
   cloneElement,
   isValidElement,
+  useCallback,
   type ComponentProps,
   type ReactElement,
   type ReactNode,
@@ -92,8 +93,34 @@ export function FormError({
   );
 }
 
-export function Input({ className, ...props }: ComponentProps<'input'>) {
-  return <input {...NOT_A_LOGIN} {...props} className={cn(inputClass, className)} />;
+/** An empty date field is marked, so its "mm/dd/yyyy" shows grey like a placeholder (index.css). */
+const markEmptyDate = (el: HTMLInputElement | null) => {
+  if (el?.type === 'date') el.toggleAttribute('data-empty', el.value === '');
+};
+
+export function Input({ className, ref, onChange, ...props }: ComponentProps<'input'>) {
+  // The caller's ref first (react-hook-form fills the value in it), then the empty check
+  // (OD-145; the auto-saving fields mark themselves).
+  const setRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      if (typeof ref === 'function') ref(el);
+      else if (ref) ref.current = el;
+      markEmptyDate(el);
+    },
+    [ref],
+  );
+  return (
+    <input
+      {...NOT_A_LOGIN}
+      {...props}
+      ref={setRef}
+      onChange={(e) => {
+        markEmptyDate(e.currentTarget);
+        onChange?.(e);
+      }}
+      className={cn(inputClass, className)}
+    />
+  );
 }
 
 /**

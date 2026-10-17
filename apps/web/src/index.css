@@ -255,6 +255,18 @@
     accent-color: var(--primary);
   }
 
+  /* Headlines and figures (anything tabular-nums) break inside a word only when even that word
+     alone can't fit, so an amount at large text on a narrow phone wraps instead of pushing the
+     page sideways (OD-142; "$322,468.05" at 200% in 320px). `break-word` leaves their layout
+     width alone, so nothing breaks at normal sizes. Table cells use `anywhere`, so a table can
+     narrow to fit. */
+  :where(h1, h2, dd, .tabular-nums) {
+    overflow-wrap: break-word;
+  }
+  :where(td) {
+    overflow-wrap: anywhere;
+  }
+
   ::selection {
     background: var(--selection);
     color: var(--foreground);

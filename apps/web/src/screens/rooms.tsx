@@ -160,7 +160,7 @@ export function Rooms() {
                 <Link
                   to="/rooms/$roomId"
                   params={{ roomId: room.id }}
-                  className="flex h-full gap-4 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:bg-accent"
+                  className="flex h-full flex-wrap gap-4 rounded-xl border border-border bg-card p-4 transition-colors duration-150 hover:bg-accent"
                 >
                   {cover ? (
                     <img
@@ -173,7 +173,9 @@ export function Rooms() {
                   ) : (
                     <RoomOutline lengthIn={room.lengthIn} widthIn={room.widthIn} />
                   )}
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  {/* At least 10rem wide, so at large text it drops under the picture rather
+                      than squeezing beside it (OD-142). */}
+                  <div className="flex min-w-0 grow basis-40 flex-col gap-0.5">
                     <h2 className="text-xl break-words">{room.name}</h2>
                     <span className="text-sm text-muted-foreground tabular-nums">{size}</span>
                     {/* Said only once the totals are in: never "nothing" while loading, and

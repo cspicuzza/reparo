@@ -124,7 +124,7 @@ export function Shell() {
       {/* The first thing a keyboard reaches: straight past the bars to the page (OD-142). */}
       <a
         href="#main"
-        className="sr-only z-50 rounded-lg bg-primary px-4 py-3 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+        className="sr-only z-50 rounded-lg bg-primary text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:inline-flex focus:min-h-11 focus:items-center focus:px-4"
       >
         Skip to the page
       </a>
@@ -278,8 +278,15 @@ export function Shell() {
   );
 }
 
+/**
+ * A bottom-bar tab. Its label grows with the text size until it would no longer fit its fifth
+ * of the screen (about 117% on a 390px phone), then holds; past that, at the narrowest phones, a
+ * label breaks inside the word rather than running into the next tab (OD-142, OD-145:
+ * "ShoppingMenu" at 200%). Like a phone's own tab bar, the label sits beside its icon, and the
+ * page's text keeps growing.
+ */
 const TAB_CLASS =
-  'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-sm break-words text-muted-foreground [&_svg]:size-6';
+  'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-center text-[min(0.875rem,4.2vw)] leading-tight hyphens-auto text-muted-foreground [overflow-wrap:anywhere] [&_svg]:size-6';
 /** A row in the phone's Menu panel: the sections, then Manage lists and Sign out (OD-145). */
 const MENU_ROW_CLASS =
   'flex min-h-12 items-center gap-3 rounded-lg px-3 text-lg text-muted-foreground hover:bg-accent hover:text-foreground';

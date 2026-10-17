@@ -122,11 +122,11 @@ export function Jobs() {
               <PhaseStatusBadge status={phase.status} />
             </div>
             <dl className="flex flex-wrap gap-x-6 gap-y-1 tabular-nums">
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-2">
                 <dt className="text-sm text-muted-foreground">Spent</dt>
                 <dd className="font-semibold">{money(phase.money.spentCents)}</dd>
               </div>
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-2">
                 {/* What the phase still needs, jobs and shopping together, so it isn't read as
                     the jobs listed under it (OD-143). */}
                 <dt className="text-sm text-muted-foreground">Planned, jobs and shopping</dt>
@@ -164,20 +164,36 @@ export function Jobs() {
  * One job: name and vendor on the left; the price in a right-aligned column at 20px with what's
  * paid beneath it, so prices can be scanned down the list like Shopping's (OD-91); then where
  * the work stands. On a phone the price sits above the status, at the right.
+ *
+ * The whole row opens the job: the name is the link, stretched over the row. The vendor's name
+ * is its own link on top, to the vendor's panel (`?vendor=`; OD-112, Q127), since a link can't
+ * sit inside another.
  */
 function JobRow({ job }: { job: Job }) {
   const progress = progressText(job.progress, job.rooms.length);
   const priced = job.money.costCents > 0;
   return (
-    <Link
-      to="/jobs/$jobId"
-      params={{ jobId: job.id }}
-      className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
-    >
+    <div className="relative flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5">
       <span className="min-w-0 flex-1">
-        <span className="block text-lg font-semibold break-words">{job.name}</span>
+        <Link
+          to="/jobs/$jobId"
+          params={{ jobId: job.id }}
+          className="block text-lg font-semibold break-words outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring focus-visible:after:outline-solid"
+        >
+          {job.name}
+        </Link>
         <span className="block text-sm text-muted-foreground">
-          {job.vendor ? job.vendor.name : 'No vendor yet'}
+          {job.vendor ? (
+            <Link
+              to="/vendors"
+              search={{ vendor: job.vendor.id }}
+              className="relative z-10 underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-2 hover:text-foreground"
+            >
+              {job.vendor.name}
+            </Link>
+          ) : (
+            'No vendor yet'
+          )}
         </span>
         {job.estimates.total > 0 && !job.estimates.chosen ? (
           <span className={labelClass}>
@@ -186,11 +202,11 @@ function JobRow({ job }: { job: Job }) {
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-6">
+      <span className="flex min-w-0 flex-col items-end gap-1.5 sm:shrink-0 sm:flex-row sm:items-center sm:gap-6">
         <span className="flex flex-col items-end tabular-nums sm:w-36">
           {priced ? (
             <>
-              <span className="text-xl font-semibold whitespace-nowrap">
+              <span className="text-xl font-semibold [overflow-wrap:anywhere]">
                 {money(job.money.costCents)}
               </span>
               {/* "$0.00 paid" said nothing; only once something is paid (OD-120, Q149). */}
@@ -206,7 +222,7 @@ function JobRow({ job }: { job: Job }) {
         </span>
         {/* Every job shows its status the same way, as a chip; a job with rooms adds how far
             its rooms are under it (OD-138). */}
-        <span className="flex w-32 flex-col items-end gap-1.5 sm:w-56">
+        <span className="flex w-32 max-w-full flex-col items-end gap-1.5 sm:w-56">
           <StatusBadge status={job.progress.status} />
           {job.rooms.length > 0 ? (
             <>
@@ -231,6 +247,6 @@ function JobRow({ job }: { job: Job }) {
         strokeWidth={1.5}
         className="size-5 shrink-0 text-muted-foreground"
       />
-    </Link>
+    </div>
   );
 }

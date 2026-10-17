@@ -514,8 +514,10 @@ function ShoppingSection({
   const title = SECTION_TITLE[section.status];
   return (
     <section aria-labelledby={headingId}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <div className="flex flex-wrap items-baseline gap-x-3">
+      {/* The heading and its count wrap among themselves; Show/Hide stays at the right edge
+          instead of dropping to an indented line of its own on a phone (OD-145). */}
+      <div className="flex items-baseline justify-between gap-x-4">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3">
           <h2 id={headingId} className="text-2xl">
             {title}
           </h2>
@@ -957,7 +959,7 @@ function StoreChips({
         <Button
           type="button"
           variant="link"
-          className="relative min-h-8 px-1 text-sm after:absolute after:inset-x-0 after:-inset-y-1.5"
+          className="relative min-h-8 px-0 text-sm after:absolute after:-inset-x-1 after:-inset-y-1.5"
           aria-expanded={more}
           onClick={() => setMore((v) => !v)}
         >

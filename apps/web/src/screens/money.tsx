@@ -17,7 +17,7 @@ import {
 } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { Field, FormError, Input, MoneyInput, Textarea } from '@/components/form';
 import { MoneyTape } from '@/components/money-tape';
@@ -132,7 +132,9 @@ function Headline({ s }: { s: Summary }) {
           unpricedCount={s.unpricedCount}
         />
       </div>
-      <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4 tabular-nums sm:grid-cols-4">
+      {/* As many columns as fit at 8rem each: two on a phone, four on a laptop, one at large text,
+          where an amount (which can't wrap) needs the whole row (OD-142). */}
+      <dl className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-4 border-t border-border pt-4 tabular-nums">
         <Stat label="Budget" value={money(s.pool.poolCents)} />
         <Stat label="Spent" value={money(s.spentCents)} />
         <Stat label="Planned" value={money(s.committedCents)} />
@@ -489,7 +491,7 @@ function AdjustmentForm({
   onSubmit: (v: AdjustmentCreate) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { register, handleSubmit, formState, watch, setValue } = useForm<
+  const { register, handleSubmit, formState, control, setValue } = useForm<
     AdjustmentFormInput,
     unknown,
     AdjustmentCreate
@@ -505,8 +507,10 @@ function AdjustmentForm({
   const errors = formState.errors;
   const id = (f: string) => `${idPrefix}-${f}`;
   const formRef = useFocusFirstField<HTMLFormElement>();
-  const direction = watch('direction');
-  const label = (namesResult ? resultLabel(direction, watch('amountCents')) : null) ?? submitLabel;
+  // `useWatch`, not `watch`, so the React Compiler can still compile this form (OD-121).
+  const direction = useWatch({ control, name: 'direction' });
+  const amount = useWatch({ control, name: 'amountCents' });
+  const label = (namesResult ? resultLabel(direction, amount) : null) ?? submitLabel;
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <div className="grid gap-4">
@@ -750,16 +754,22 @@ function Totals({
         <p className="mt-3 text-muted-foreground">{empty}</p>
       ) : (
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full tabular-nums">
+          <table className="w-full table-fixed tabular-nums">
+            {/* The same columns as By phase, so the amounts line up down the page (OD-145). */}
+            <colgroup>
+              <col />
+              <col className="w-28 sm:w-44" />
+              <col className="w-28 sm:w-44" />
+            </colgroup>
             <thead>
               <tr className="text-left text-sm text-muted-foreground">
                 <th scope="col" className="py-2 font-normal">
                   <span className="sr-only">Name</span>
                 </th>
-                <th scope="col" className="py-2 text-right font-normal">
+                <th scope="col" className="py-2 pl-3 text-right font-normal">
                   Spent
                 </th>
-                <th scope="col" className="py-2 text-right font-normal">
+                <th scope="col" className="py-2 pl-3 text-right font-normal">
                   Planned
                 </th>
               </tr>

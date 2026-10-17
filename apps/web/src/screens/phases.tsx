@@ -190,7 +190,9 @@ export function Phases() {
                 id={`phase-${phase.id}`}
                 className="flex scroll-mt-24 flex-col gap-3 px-4 py-4 sm:px-5"
               >
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                {/* Edit stays at the right edge; the name, status and money note wrap beside it
+                    (OD-145). */}
+                <div className="flex items-start justify-between gap-x-4">
                   <div className="flex min-w-0 flex-wrap items-center gap-3">
                     <h2 className="text-2xl">{phase.name}</h2>
                     {isAdmin ? (
@@ -209,6 +211,7 @@ export function Phases() {
                       onClick={() => setEditingId(phase.id)}
                       data-return-focus={`phase-${phase.id}`}
                       variant="ghost"
+                      className="-mr-3 shrink-0"
                     >
                       <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                       Edit

@@ -407,22 +407,26 @@ function VendorBody({
         <p className="max-w-prose whitespace-pre-wrap">{vendor.notes}</p>
       ) : null}
 
+      {/* Each section after the fields starts with a rule, as in the other panels (web.md →
+          Jobs: sections inside a panel; OD-145). */}
       <VendorWork vendor={vendor} />
 
-      <FileSection
-        id={id('docs')}
-        title="Documents"
-        description="Insurance certificate, license, W-9. Add a caption to say which is which."
-        files={documents}
-        source={docsSource}
-        target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
-        uploadLabel="Add documents"
-        emptyText="No documents yet"
-        canEdit={canEdit}
-      />
+      <div className="border-t border-border pt-6">
+        <FileSection
+          id={id('docs')}
+          title="Documents"
+          description="Insurance certificate, license, W-9. Add a caption to say which is which."
+          files={documents}
+          source={docsSource}
+          target={() => ({ ownerType: 'vendor', ownerId: vendor.id, kind: 'vendor_document' })}
+          uploadLabel="Add documents"
+          emptyText="No documents yet"
+          canEdit={canEdit}
+        />
+      </div>
 
       {isAdmin ? (
-        <div className="border-t border-border pt-4">
+        <div className="border-t border-border pt-6">
           <ConfirmRemove
             strong
             what={vendor.name}
@@ -448,7 +452,10 @@ function VendorWork({ vendor }: { vendor: Vendor }) {
   const work = useQuery(trpc.vendors.work.queryOptions({ id: vendor.id }));
   const headingId = `vendor-${vendor.id}-jobs`;
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-2 border-t border-border pt-6"
+    >
       <h3 id={headingId} className="text-lg">
         Jobs
       </h3>

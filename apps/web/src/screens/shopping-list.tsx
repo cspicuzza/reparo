@@ -2,7 +2,7 @@ import { Check, ExternalLink, PanelRightOpen } from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { amountFormSchema, type AmountForm, type AmountFormInput } from '@reparo/shared';
 import { useMutation } from '@tanstack/react-query';
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useRef, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { AttachedFiles } from '@/components/attached-files';
 import { Field, FormError, MoneyInput } from '@/components/form';
@@ -134,6 +134,7 @@ function ShoppingRow({
   // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
   const [leaving, setLeaving] = useState(false);
   const [brokenThumb, setBrokenThumb] = useState<string | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
   // The smallest copy there is for a 56px tile: 160px (OD-141), then 640px (OD-115, Q136),
@@ -186,6 +187,7 @@ function ShoppingRow({
 
   return (
     <div
+      ref={rowRef}
       className={cn(
         'flex flex-col gap-3 transition-[opacity,translate] duration-150 ease-out sm:col-span-full sm:grid sm:grid-cols-subgrid',
         leaving && '-translate-y-3 opacity-0',
@@ -294,17 +296,53 @@ function ShoppingRow({
             line={line}
             onDone={() => setBuying(false)}
             onLeaving={async (refresh) => {
+              const next = focusAfterLeaving(rowRef.current);
               setLeaving(true);
               await new Promise((done) => setTimeout(done, 150));
               await refresh();
               // Where the list shows every status, the row stays: bring it back.
               setLeaving(false);
+              next();
             }}
           />
         </div>
       ) : null}
     </div>
   );
+}
+
+/**
+ * Where focus goes once a row has left To buy (OD-78): the next row's Mark as purchased (or its
+ * name, when it has none), else the one before, else the section's heading, so it never falls
+ * to the top of the page. Worked out before the row goes, applied after the list refreshes,
+ * and only if focus was lost (where the list shows every status, the row stays).
+ */
+function focusAfterLeaving(row: HTMLElement | null): () => void {
+  const li = row?.closest('li');
+  const keyIn = (el: Element | null | undefined) => {
+    if (!el) return null;
+    const target =
+      el.querySelector<HTMLElement>('[data-return-focus^="line-purchase-"]') ??
+      el.querySelector<HTMLElement>('[data-return-focus]');
+    return target?.dataset.returnFocus ?? null;
+  };
+  const key = keyIn(li?.nextElementSibling) ?? keyIn(li?.previousElementSibling);
+  const section = li?.closest<HTMLElement>('section[aria-labelledby]');
+  const headingId = section?.getAttribute('aria-labelledby');
+  return () =>
+    requestAnimationFrame(() => {
+      const active = document.activeElement;
+      if (active && active !== document.body && active.isConnected) return;
+      const target = key
+        ? document.querySelector<HTMLElement>(`[data-return-focus="${CSS.escape(key)}"]`)
+        : null;
+      if (target) return target.focus();
+      const heading = headingId ? document.getElementById(headingId) : null;
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus();
+      }
+    });
 }
 
 /** The tick box that picks a row while batch editing (OD-101). */
@@ -375,14 +413,14 @@ function PhoneRow({
   byStore: boolean;
 }) {
   const buyable = line.status === 'to_buy' && canEdit && !selection && !buying;
-  // A column for each thing the row has: tick box, picture, name, button.
-  const columns = [selection && 'auto', thumb && 'auto', 'minmax(0,1fr)', buyable && 'auto']
-    .filter(Boolean)
-    .join(' ');
+  // One line: tick box, picture, name, Bought. The name keeps at least 8rem, so at large text
+  // Bought drops to its own line at the right instead of pushing the page sideways (OD-142).
   return (
     <div
-      className={cn('grid min-h-12 items-center gap-x-3', !selection && 'cursor-pointer')}
-      style={{ gridTemplateColumns: columns }}
+      className={cn(
+        'flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2',
+        !selection && 'cursor-pointer',
+      )}
       onClick={
         selection
           ? undefined
@@ -394,7 +432,7 @@ function PhoneRow({
     >
       {selection ? <RowCheckbox line={line} selection={selection} /> : null}
       {thumb}
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1 basis-32">
         <button
           type="button"
           onClick={selection ? () => selection.toggle(line) : onOpen}
@@ -410,7 +448,7 @@ function PhoneRow({
         <Button
           type="button"
           variant="outline"
-          className="gap-1.5 px-2.5"
+          className="ml-auto gap-1.5 px-2.5"
           onClick={onBuy}
           data-return-focus={`line-purchase-${line.id}`}
         >

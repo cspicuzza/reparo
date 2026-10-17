@@ -105,7 +105,7 @@ function JobRow({
           <Link
             to="/jobs/$jobId"
             params={{ jobId: j.job.id }}
-            className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-lg font-semibold underline underline-offset-4 hover:decoration-2"
           >
             {j.job.name}
           </Link>
@@ -119,7 +119,9 @@ function JobRow({
           ) : null}
         </div>
         {canEdit ? (
-          <div className="flex flex-col items-end gap-1">
+          // Can shrink, so a long status at large text truncates instead of pushing the page
+          // sideways (OD-142).
+          <div className="flex max-w-full min-w-0 flex-col items-end gap-1">
             <StatusSelect
               id={`status-${j.id}`}
               label={what}

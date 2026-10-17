@@ -311,12 +311,15 @@ function PhasePanel({ summary }: { summary: Summary }) {
             <Link
               to="/jobs"
               search={phase ? { phase: phase.id } : {}}
-              className={buttonVariants({ variant: 'link', className: 'px-0' })}
+              className={buttonVariants({ variant: 'link', className: 'px-0 whitespace-nowrap' })}
             >
               See all {phaseJobs.length} {phaseJobs.length === 1 ? 'job' : 'jobs'}
             </Link>
           ) : null}
-          <Link to="/phases" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+          <Link
+            to="/phases"
+            className={buttonVariants({ variant: 'link', className: 'px-0 whitespace-nowrap' })}
+          >
             See all phases
           </Link>
         </div>
@@ -425,7 +428,10 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
         <h2 id="rooms" className="text-2xl">
           Rooms
         </h2>
-        <Link to="/rooms" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+        <Link
+          to="/rooms"
+          className={buttonVariants({ variant: 'link', className: 'px-0 whitespace-nowrap' })}
+        >
           {rooms.length > HOME_ROOMS ? `See all ${rooms.length} rooms` : 'All rooms'}
         </Link>
       </div>

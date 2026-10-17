@@ -236,7 +236,7 @@ function CategoryRow({
       </span>
       {/* On a phone the actions take their own line, their words lined up with the name
           above; on a laptop they sit at the right of the row (OD-145). */}
-      <span className="-ml-3 flex basis-full gap-1 sm:-mr-3 sm:ml-0 sm:basis-auto">
+      <span className="-ml-3 flex basis-full flex-wrap gap-1 sm:-mr-3 sm:ml-0 sm:basis-auto">
         <Button
           type="button"
           variant="ghost"
