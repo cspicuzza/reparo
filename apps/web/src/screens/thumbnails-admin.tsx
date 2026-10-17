@@ -7,6 +7,7 @@ import { LinesPlaceholder } from '@/components/placeholder';
 import { Button } from '@/components/ui/button';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { sendThumbnail } from '@/lib/upload';
+import { TINY_LONGEST } from '@/lib/thumbnail';
 
 type Run = { done: number; failed: number; total: number; running: boolean };
 
@@ -14,8 +15,9 @@ type Run = { done: number; failed: number; total: number; running: boolean };
 const AT_ONCE = 3;
 
 /**
- * Thumbnails for pictures from before them (OD-115, Q170): the admin's browser fetches each
- * original, makes the small JPEG and sends it, the same way new uploads do. Storage allows the
+ * Thumbnails for pictures from before them (OD-115, Q170), and the 160px copies for pictures
+ * from before those (OD-141): the admin's browser fetches each original, makes the small JPEGs
+ * it's missing and sends them, the same way new uploads do. Storage allows the
  * browser to read the originals for this (checked in Chrome, 2026-10-16). Until a picture has
  * one, lists show the original.
  */
@@ -40,9 +42,18 @@ export function ThumbnailsAdmin() {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
             return r.blob();
           });
-          const { thumbPath, uploadUrl } = await trpcClient.files.thumbLink.mutate({ id: f.id });
-          if (await sendThumbnail(original, uploadUrl)) {
-            await trpcClient.files.setThumb.mutate({ id: f.id, thumbPath });
+          // Only the copies this picture is missing get a link (OD-141).
+          const link = await trpcClient.files.thumbLink.mutate({ id: f.id });
+          const [thumb, tiny] = await Promise.all([
+            link.uploadUrl ? sendThumbnail(original, link.uploadUrl) : false,
+            link.tinyUploadUrl ? sendThumbnail(original, link.tinyUploadUrl, TINY_LONGEST) : false,
+          ]);
+          if ((thumb && link.thumbPath) || (tiny && link.tinyPath)) {
+            await trpcClient.files.setThumb.mutate({
+              id: f.id,
+              ...(thumb && link.thumbPath ? { thumbPath: link.thumbPath } : {}),
+              ...(tiny && link.tinyPath ? { tinyPath: link.tinyPath } : {}),
+            });
             ok = true;
           }
         } catch {

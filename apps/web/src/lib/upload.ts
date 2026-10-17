@@ -8,7 +8,7 @@ import {
 } from '@reparo/shared';
 import type { RouterOutputs } from '@reparo/api';
 import { env } from './env';
-import { makeThumbnail } from './thumbnail';
+import { makeThumbnail, TINY_LONGEST } from './thumbnail';
 import { trpcClient } from './trpc';
 
 // Uploading one file (M4, OD-56): ask the API for a link, send the bytes straight to storage
@@ -86,12 +86,16 @@ export async function uploadFile(
     mimeType: file.type,
     sizeBytes: file.size,
   };
-  const { path, uploadUrl, thumbPath, thumbUploadUrl } =
+  const { path, uploadUrl, thumbPath, thumbUploadUrl, tinyPath, tinyUploadUrl } =
     await trpcClient.files.uploadLink.mutate(base);
   await put(uploadUrl, file, onProgress);
-  // Pictures also send a small JPEG for lists and tiles (OD-115, Q169). If it can't be made or
-  // sent, the picture is saved anyway and lists show the original.
-  const thumb = thumbUploadUrl ? await sendThumbnail(file, thumbUploadUrl) : false;
+  // Pictures also send small JPEGs for lists and tiles: 640px (OD-115, Q169) and 160px for the
+  // smallest (OD-141, Q208). If one can't be made or sent, the picture is saved anyway and
+  // lists use the next size up.
+  const [thumb, tiny] = await Promise.all([
+    thumbUploadUrl ? sendThumbnail(file, thumbUploadUrl) : false,
+    tinyUploadUrl ? sendThumbnail(file, tinyUploadUrl, TINY_LONGEST) : false,
+  ]);
   onProgress(1);
   return trpcClient.files.create.mutate({
     ...base,
@@ -100,13 +104,18 @@ export async function uploadFile(
     takenOn: target.takenOn ?? null,
     jobId: target.jobId ?? null,
     thumbPath: thumb ? thumbPath : null,
+    tinyPath: tiny ? tinyPath : null,
   });
 }
 
 /** Make a picture's thumbnail and send it; false when either step fails. */
-export async function sendThumbnail(source: Blob, uploadUrl: string): Promise<boolean> {
+export async function sendThumbnail(
+  source: Blob,
+  uploadUrl: string,
+  longest?: number,
+): Promise<boolean> {
   try {
-    const thumb = await makeThumbnail(source);
+    const thumb = await makeThumbnail(source, longest);
     await put(uploadUrl, thumb, () => {});
     return true;
   } catch {

@@ -10,6 +10,7 @@ import {
   isNull,
   jobRooms,
   jobs,
+  or,
   payments,
   rooms,
   shoppingLines,
@@ -69,6 +70,13 @@ function thumbPathFor(owner: string, ownerId: string): string {
 
 const THUMB_RE = /^([a-z_]+)\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.thumb\.jpg$/;
 
+/** The 160px copy sits beside it the same way: `room/<uuid>/<uuid>.tiny.jpg` (OD-141). */
+function tinyPathFor(owner: string, ownerId: string): string {
+  return `${owner}/${ownerId}/${randomUUID()}.tiny.jpg`;
+}
+
+const TINY_RE = /^([a-z_]+)\/([0-9a-f-]{36})\/[0-9a-f-]{36}\.tiny\.jpg$/;
+
 /**
  * The thumbnail path to record, or null (OD-115, Q169): it has to sit beside this owner's
  * files and storage has to hold a small JPEG there. A bad or missing thumbnail never fails the
@@ -78,10 +86,11 @@ async function checkedThumb(
   storage: Storage,
   owner: string,
   ownerId: string,
-  thumbPath: string | null,
+  thumbPath: string | null | undefined,
+  pattern: RegExp = THUMB_RE,
 ): Promise<string | null> {
   if (!thumbPath) return null;
-  const m = THUMB_RE.exec(thumbPath);
+  const m = pattern.exec(thumbPath);
   if (!m || m[1] !== owner || m[2] !== ownerId) return null;
   const stored = await storage.stat(thumbPath);
   if (!stored || stored.mimeType !== 'image/jpeg') return null;
@@ -178,12 +187,31 @@ export async function startUpload(db: Db, storage: Storage, input: FileStart) {
   const path = pathFor(input.ownerType, input.ownerId, input.mimeType);
   const { url } = await storage.createUploadUrl(path);
   if (!PICTURE_KINDS.includes(input.kind)) {
-    return { path, uploadUrl: url, thumbPath: null, thumbUploadUrl: null };
+    return {
+      path,
+      uploadUrl: url,
+      thumbPath: null,
+      thumbUploadUrl: null,
+      tinyPath: null,
+      tinyUploadUrl: null,
+    };
   }
-  // Pictures also get a link for the small JPEG the browser makes (OD-115, Q169).
+  // Pictures also get links for the small JPEGs the browser makes: 640px (OD-115, Q169) and
+  // 160px for the smallest tiles (OD-141, Q208).
   const thumbPath = thumbPathFor(input.ownerType, input.ownerId);
-  const thumb = await storage.createUploadUrl(thumbPath);
-  return { path, uploadUrl: url, thumbPath, thumbUploadUrl: thumb.url };
+  const tinyPath = tinyPathFor(input.ownerType, input.ownerId);
+  const [thumb, tiny] = await Promise.all([
+    storage.createUploadUrl(thumbPath),
+    storage.createUploadUrl(tinyPath),
+  ]);
+  return {
+    path,
+    uploadUrl: url,
+    thumbPath,
+    thumbUploadUrl: thumb.url,
+    tinyPath,
+    tinyUploadUrl: tiny.url,
+  };
 }
 
 /** Step 3: record the file, going by what storage actually holds (size and type). */
@@ -207,8 +235,12 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
     .from(files)
     .where(and(eq(files.bucket, storage.bucket), eq(files.path, input.path)));
   if (existing.length > 0) throw conflict('That file is already saved');
-  const thumbPath = PICTURE_KINDS.includes(input.kind)
+  const picture = PICTURE_KINDS.includes(input.kind);
+  const thumbPath = picture
     ? await checkedThumb(storage, input.ownerType, input.ownerId, input.thumbPath)
+    : null;
+  const tinyPath = picture
+    ? await checkedThumb(storage, input.ownerType, input.ownerId, input.tinyPath, TINY_RE)
     : null;
 
   const [row] = await db
@@ -218,6 +250,7 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
       bucket: storage.bucket,
       path: input.path,
       thumbPath,
+      tinyPath,
       mimeType: stored.mimeType,
       sizeBytes: stored.sizeBytes,
       originalName: input.originalName,
@@ -243,7 +276,9 @@ type Row = { file: File; jobName: string | null };
  */
 async function withUrls(storage: Storage, rows: Row[], coverId: string | null) {
   const urls = await storage.createViewUrls(
-    rows.flatMap((r) => (r.file.thumbPath ? [r.file.path, r.file.thumbPath] : [r.file.path])),
+    rows.flatMap((r) =>
+      [r.file.path, r.file.thumbPath, r.file.tinyPath].filter((p): p is string => p !== null),
+    ),
     VIEW_SECONDS,
   );
   return rows.map(({ file: f, jobName }) => ({
@@ -265,6 +300,8 @@ async function withUrls(storage: Storage, rows: Row[], coverId: string | null) {
     url: urls.get(f.path) ?? null,
     /** The small JPEG for lists and tiles; null when there's none, so lists use `url`. */
     thumbUrl: f.thumbPath ? (urls.get(f.thumbPath) ?? null) : null,
+    /** The 160px copy for the smallest tiles; null when there's none (OD-141). */
+    tinyUrl: f.tinyPath ? (urls.get(f.tinyPath) ?? null) : null,
   }));
 }
 
@@ -354,20 +391,25 @@ export async function listRoomCovers(db: Db, storage: Storage) {
       fileId: files.id,
       path: files.path,
       thumbPath: files.thumbPath,
+      tinyPath: files.tinyPath,
       caption: files.caption,
     })
     .from(rooms)
     .innerJoin(files, and(eq(files.id, rooms.coverFileId), live()))
     .where(isNull(rooms.deletedAt));
   const urls = await storage.createViewUrls(
-    rows.flatMap((r) => (r.thumbPath ? [r.path, r.thumbPath] : [r.path])),
+    rows.flatMap((r) => [r.path, r.thumbPath, r.tinyPath].filter((p): p is string => p !== null)),
     VIEW_SECONDS,
   );
   return rows.flatMap((r) => {
     const url = urls.get(r.path);
-    // Covers are only ever shown small, so the thumbnail is the link when there is one.
+    // Covers are only ever shown small, so the thumbnail is the link when there is one; the
+    // 160px copy too, for the Rooms list's 80 × 56 tiles (OD-141).
     const thumb = r.thumbPath ? urls.get(r.thumbPath) : null;
-    return url ? [{ roomId: r.roomId, id: r.fileId, url: thumb ?? url, caption: r.caption }] : [];
+    const tiny = r.tinyPath ? (urls.get(r.tinyPath) ?? null) : null;
+    return url
+      ? [{ roomId: r.roomId, id: r.fileId, url: thumb ?? url, tinyUrl: tiny, caption: r.caption }]
+      : [];
   });
 }
 
@@ -400,7 +442,7 @@ export async function listJobProgressPhotos(db: Db, storage: Storage, jobId: str
 }
 
 /**
- * Pictures that have no thumbnail yet, oldest first, with a link to the original so the
+ * Pictures missing a thumbnail or the 160px copy (OD-141), oldest first, with a link to the original so the
  * admin's browser can make one (the backfill in Manage; OD-115, Q170).
  */
 export async function listPicturesWithoutThumbs(db: Db, storage: Storage) {
@@ -410,7 +452,7 @@ export async function listPicturesWithoutThumbs(db: Db, storage: Storage) {
     .where(
       and(
         live(),
-        isNull(files.thumbPath),
+        or(isNull(files.thumbPath), isNull(files.tinyPath)),
         inArray(files.kind, [...PICTURE_KINDS]),
         sql`${files.mimeType} like 'image/%'`,
       ),
@@ -419,24 +461,45 @@ export async function listPicturesWithoutThumbs(db: Db, storage: Storage) {
   return withUrls(storage, rows, null);
 }
 
-/** A link for one picture's thumbnail, made later (Q170). */
+/**
+ * Links for the copies one picture is missing, made later (Q170; the 160px one, OD-141). A copy
+ * it already has gets no link (null).
+ */
 export async function startThumb(db: Db, storage: Storage, id: string) {
   const f = await getLive(db, id);
   if (!PICTURE_KINDS.includes(f.kind)) throw badRequest('Only pictures get a thumbnail');
-  const thumbPath = thumbPathFor(f.ownerType, f.ownerId);
-  const { url } = await storage.createUploadUrl(thumbPath);
-  return { thumbPath, uploadUrl: url };
+  const thumbPath = f.thumbPath ? null : thumbPathFor(f.ownerType, f.ownerId);
+  const tinyPath = f.tinyPath ? null : tinyPathFor(f.ownerType, f.ownerId);
+  const [thumb, tiny] = await Promise.all([
+    thumbPath ? storage.createUploadUrl(thumbPath) : null,
+    tinyPath ? storage.createUploadUrl(tinyPath) : null,
+  ]);
+  return {
+    thumbPath,
+    uploadUrl: thumb?.url ?? null,
+    tinyPath,
+    tinyUploadUrl: tiny?.url ?? null,
+  };
 }
 
-/** Record a thumbnail made later, once storage holds it (Q170). */
-export async function finishThumb(db: Db, storage: Storage, { id, thumbPath }: FileThumb) {
+/** Record the copies made later, once storage holds them (Q170; OD-141). */
+export async function finishThumb(
+  db: Db,
+  storage: Storage,
+  { id, thumbPath, tinyPath }: FileThumb,
+) {
   const f = await getLive(db, id);
-  const checked = await checkedThumb(storage, f.ownerType, f.ownerId, thumbPath);
-  if (!checked) throw badRequest('The thumbnail didn’t arrive. Try again.');
+  const thumb = await checkedThumb(storage, f.ownerType, f.ownerId, thumbPath);
+  const tiny = await checkedThumb(storage, f.ownerType, f.ownerId, tinyPath, TINY_RE);
+  if (!thumb && !tiny) throw badRequest('The thumbnail didn’t arrive. Try again.');
   const [row] = await db
     .update(files)
-    .set({ thumbPath: checked })
+    .set({ ...(thumb ? { thumbPath: thumb } : {}), ...(tiny ? { tinyPath: tiny } : {}) })
     .where(eq(files.id, f.id))
     .returning();
-  return { id: row?.id ?? f.id, thumbPath: checked };
+  return {
+    id: row?.id ?? f.id,
+    thumbPath: row?.thumbPath ?? f.thumbPath,
+    tinyPath: row?.tinyPath ?? f.tinyPath,
+  };
 }

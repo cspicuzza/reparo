@@ -1367,8 +1367,14 @@ describe('@reparo/api', () => {
         mimeType: 'image/png',
         sizeBytes: 3_900_000,
       };
-      type Start = { path: string; thumbPath: string | null; thumbUploadUrl: string | null };
-      type WithThumb = FileRow & { thumbUrl: string | null };
+      type Start = {
+        path: string;
+        thumbPath: string | null;
+        thumbUploadUrl: string | null;
+        tinyPath: string | null;
+        tinyUploadUrl: string | null;
+      };
+      type WithThumb = FileRow & { thumbUrl: string | null; tinyUrl: string | null };
 
       // A PDF gets no thumbnail link.
       const phase = rows(await query(h, 'viewer', 'phases.list'))[0];
@@ -1383,22 +1389,39 @@ describe('@reparo/api', () => {
       });
       expect(pdf.status).toBe(200);
       expect((pdf.data as Start).thumbPath).toBeNull();
+      expect((pdf.data as Start).tinyPath).toBeNull();
 
       // A picture with its thumbnail: lists carry both links.
       const start = (await mutate(h, 'editor', 'files.uploadLink', pic)).data as Start;
       expect(start.thumbPath).toMatch(/^room\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.thumb\.jpg$/);
       expect(start.thumbUploadUrl).toBe(`fake://files/upload/${start.thumbPath}`);
+      // And the 160px copy for the smallest tiles (OD-141).
+      expect(start.tinyPath).toMatch(/^room\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.tiny\.jpg$/);
+      expect(start.tinyUploadUrl).toBe(`fake://files/upload/${start.tinyPath}`);
       storage.put(start.path, 3_900_000, 'image/png');
       storage.put(start.thumbPath ?? '', 40_000, 'image/jpeg');
+      storage.put(start.tinyPath ?? '', 5_000, 'image/jpeg');
       const made = await mutate(h, 'editor', 'files.create', {
         ...pic,
         path: start.path,
         thumbPath: start.thumbPath,
+        tinyPath: start.tinyPath,
       });
       expect(made.status).toBe(200);
       expect((made.data as WithThumb).thumbUrl).toBe(
         `fake://files/${start.thumbPath}?expires=3600`,
       );
+      expect((made.data as WithThumb).tinyUrl).toBe(`fake://files/${start.tinyPath}?expires=3600`);
+      // A thumbnail's path can't stand in for the tiny copy.
+      const s4 = (await mutate(h, 'editor', 'files.uploadLink', pic)).data as Start;
+      storage.put(s4.path, 1000, 'image/png');
+      storage.put(s4.thumbPath ?? '', 1000, 'image/jpeg');
+      const swapped = await mutate(h, 'editor', 'files.create', {
+        ...pic,
+        path: s4.path,
+        tinyPath: s4.thumbPath,
+      });
+      expect((swapped.data as WithThumb).tinyUrl).toBeNull();
 
       // Never arrived, the wrong type, or another room's path: the upload still saves, without.
       const tries: [string, string | null, number][] = [
@@ -1453,6 +1476,7 @@ describe('@reparo/api', () => {
 
       const link = (await mutate(h, 'chris', 'files.thumbLink', { id: old.id })).data as {
         thumbPath: string;
+        tinyPath: string;
       };
       const early = await mutate(h, 'chris', 'files.setThumb', {
         id: old.id,
@@ -1467,11 +1491,25 @@ describe('@reparo/api', () => {
         (await mutate(h, 'chris', 'files.setThumb', { id: old.id, thumbPath: link.thumbPath }))
           .status,
       ).toBe(200);
+      // Still missing its 160px copy (OD-141): it's listed, and a new link is only for that.
+      expect(await waiting()).toContain(old.id);
+      const again = (await mutate(h, 'chris', 'files.thumbLink', { id: old.id })).data as {
+        thumbPath: string | null;
+        tinyPath: string | null;
+      };
+      expect(again.thumbPath).toBeNull();
+      expect(again.tinyPath).toMatch(/\.tiny\.jpg$/);
+      storage.put(again.tinyPath ?? '', 4_000, 'image/jpeg');
+      expect(
+        (await mutate(h, 'chris', 'files.setThumb', { id: old.id, tinyPath: again.tinyPath }))
+          .status,
+      ).toBe(200);
       expect(await waiting()).not.toContain(old.id);
       const listed = (
         await query(h, 'viewer', 'files.list', { ownerType: 'room', ownerId: nook.id })
-      ).data as (FileRow & { thumbUrl: string | null })[];
+      ).data as (FileRow & { thumbUrl: string | null; tinyUrl: string | null })[];
       expect(listed[0]?.thumbUrl).toBe(`fake://files/${link.thumbPath}?expires=3600`);
+      expect(listed[0]?.tinyUrl).toBe(`fake://files/${again.tinyPath}?expires=3600`);
     }));
 
   it('files: progress photos carry a date and a job that covers the room; captions change', () =>

@@ -136,8 +136,9 @@ function ShoppingRow({
   const [brokenThumb, setBrokenThumb] = useState<string | null>(null);
   useReturnFocus(buying ? `line-purchase-${line.id}` : null);
   const thumb = files.find((f) => f.kind === 'product_image' && f.url);
-  // The small JPEG when there is one; the original before thumbnails (OD-115, Q136).
-  const thumbSrc = thumb ? (thumb.thumbUrl ?? thumb.url) : null;
+  // The smallest copy there is for a 56px tile: 160px (OD-141), then 640px (OD-115, Q136),
+  // then the original.
+  const thumbSrc = thumb ? (thumb.tinyUrl ?? thumb.thumbUrl ?? thumb.url) : null;
   const receipts = files.filter((f) => f.kind === 'receipt');
 
   const details = (

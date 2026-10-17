@@ -31,7 +31,8 @@ export function Rooms() {
   const { canEdit } = useMe();
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const covers = useQuery(trpc.files.roomCovers.queryOptions());
-  const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
+  // The 160px copy suits these 80 × 56 tiles (OD-141); the thumbnail when there's none yet.
+  const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.tinyUrl ?? c.url]));
   // What's left to buy for each room, from the shopping totals (OD-140).
   const shopping = useQuery(trpc.shoppingLines.totals.queryOptions({}));
   const toBuy = new Map(

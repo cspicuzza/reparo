@@ -127,6 +127,13 @@
       "when": 1792179691296,
       "tag": "0017_file_thumbnails",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792209429151,
+      "tag": "0018_file_tiny_thumbnails",
+      "breakpoints": true
     }
   ]
 }

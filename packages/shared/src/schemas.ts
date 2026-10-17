@@ -285,11 +285,22 @@ export const fileFinishSchema = fileStartSchema.extend({
    * it couldn't make one; the original is shown then (OD-115, Q169).
    */
   thumbPath: z.string().min(1).max(500).nullable().default(null),
+  /** The 160px copy for the smallest tiles (OD-141). */
+  tinyPath: z.string().min(1).max(500).nullable().default(null),
 });
 export type FileFinish = z.infer<typeof fileFinishSchema>;
 
 /** A thumbnail made later for a picture that has none (the backfill in Manage, Q170). */
-export const fileThumbSchema = z.object({ id: idSchema, thumbPath: z.string().min(1).max(500) });
+export const fileThumbSchema = z
+  .object({
+    id: idSchema,
+    thumbPath: z.string().min(1).max(500).optional(),
+    /** The 160px copy (OD-141). */
+    tinyPath: z.string().min(1).max(500).optional(),
+  })
+  .refine((v) => v.thumbPath !== undefined || v.tinyPath !== undefined, {
+    error: 'Send a thumbnail',
+  });
 export type FileThumb = z.infer<typeof fileThumbSchema>;
 
 /** A thumbnail is a JPEG of at most this many bytes (640px at 0.82 is 10–80 KB; Q171). */

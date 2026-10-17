@@ -9,6 +9,11 @@
 
 /** The longest side of a thumbnail, in pixels. */
 export const THUMB_LONGEST = 640;
+/**
+ * The longest side of the copy for the smallest tiles (OD-141, Q208): a shopping row's 56px
+ * picture and a room card's 80 × 56 cover, at 2× on a laptop or phone.
+ */
+export const TINY_LONGEST = 160;
 /** JPEG quality: 0.82 kept product shots crisp at 16–71 KB (measured 2026-10-16). */
 export const THUMB_QUALITY = 0.82;
 
@@ -30,10 +35,10 @@ export function thumbSize(
  * EXIF orientation by default (MDN: https://developer.mozilla.org/docs/Web/API/createImageBitmap;
  * Safari 15+). JPEG has no transparency, so a transparent product shot gets a white background.
  */
-export async function makeThumbnail(source: Blob): Promise<Blob> {
+export async function makeThumbnail(source: Blob, longest = THUMB_LONGEST): Promise<Blob> {
   const bitmap = await createImageBitmap(source, { imageOrientation: 'from-image' });
   try {
-    const { width, height } = thumbSize(bitmap.width, bitmap.height);
+    const { width, height } = thumbSize(bitmap.width, bitmap.height, longest);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;

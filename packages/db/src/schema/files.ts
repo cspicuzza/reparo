@@ -63,6 +63,13 @@ export const files = pgTable(
      * from before thumbnails, which show the original (OD-115, Q136; Q169–Q171).
      */
     thumbPath: text('thumb_path'),
+    /**
+     * Pictures: a smaller JPEG (160px on the longest side) for the smallest tiles, such as a
+     * shopping row's picture and a room's card, so a long list doesn't load 640px pictures to
+     * show them at 56px. Null when there's none yet; those tiles then use the thumbnail
+     * (OD-141, Q208).
+     */
+    tinyPath: text('tiny_path'),
     mimeType: text('mime_type').notNull(),
     sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
     originalName: text('original_name').notNull(),
