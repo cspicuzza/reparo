@@ -158,8 +158,9 @@ export function Shell() {
           {me.data ? (
             <DropdownMenu>
               <DropdownMenuTrigger
+                // Borderless: it reads as "you" rather than an action (OD-135, Q201).
                 className={buttonVariants({
-                  variant: 'outline',
+                  variant: 'ghost',
                   className: cn(
                     'hidden pl-2.5 md:inline-flex',
                     // On /manage the account menu holds the current page (Q128).
