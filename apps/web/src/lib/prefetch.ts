@@ -1,3 +1,4 @@
+import { shoppingFilter, withoutStore, type ShoppingSearch } from './shopping';
 import { queryClient, trpcOptions as t } from './trpc';
 
 /**
@@ -58,4 +59,55 @@ export function prefetchJob(jobId: string): void {
     queryClient.ensureQueryData(t.files.list.queryOptions({ ownerType: 'job', ownerId: jobId })),
   );
   void ensure(queryClient.ensureQueryData(t.files.forJob.queryOptions({ jobId })));
+}
+
+// The list pages (OD-154): each starts the queries its screen reads first, with the same input,
+// so hovering a link fetches the data as well as the code. Fire and forget, as above.
+// https://tanstack.com/router/latest/docs/guide/external-data-loading
+
+export function prefetchHome(): void {
+  void ensure(queryClient.ensureQueryData(t.home.summary.queryOptions()));
+  void ensure(queryClient.ensureQueryData(t.files.roomCovers.queryOptions()));
+}
+
+export function prefetchRooms(): void {
+  void ensure(queryClient.ensureQueryData(t.rooms.list.queryOptions()));
+  void ensure(queryClient.ensureQueryData(t.files.roomCovers.queryOptions()));
+  void ensure(queryClient.ensureQueryData(t.shoppingLines.totals.queryOptions({})));
+}
+
+/** Jobs reads every job and the phases they're grouped under. */
+export function prefetchJobs(): void {
+  void ensure(queryClient.ensureQueryData(t.jobs.list.queryOptions()));
+  void ensure(queryClient.ensureQueryData(t.phases.list.queryOptions()));
+}
+
+/** Phases reads the phases, and the open phase's jobs when one is open (`?phase=`). */
+export function prefetchPhases({ phase }: { phase: string | undefined }): void {
+  void ensure(queryClient.ensureQueryData(t.phases.list.queryOptions()));
+  if (phase) void ensure(queryClient.ensureQueryData(t.jobs.list.queryOptions({ phaseId: phase })));
+}
+
+/** The shopping filters as the screen turns its search into them. */
+export function shoppingDeps(search: ShoppingSearch) {
+  return { filter: shoppingFilter(search), stores: shoppingFilter(withoutStore(search)) };
+}
+
+export function prefetchShopping({ filter, stores }: ReturnType<typeof shoppingDeps>): void {
+  void ensure(queryClient.ensureQueryData(t.shoppingLines.list.queryOptions(filter)));
+  void ensure(queryClient.ensureQueryData(t.shoppingLines.totals.queryOptions(filter)));
+  void ensure(queryClient.ensureQueryData(t.shoppingLines.totals.queryOptions(stores)));
+}
+
+export function prefetchMoney(): void {
+  void ensure(queryClient.ensureQueryData(t.money.summary.queryOptions()));
+  void ensure(queryClient.ensureQueryData(t.budget.get.queryOptions()));
+}
+
+export function prefetchVendors(): void {
+  void ensure(queryClient.ensureQueryData(t.vendors.list.queryOptions()));
+}
+
+export function prefetchManage(): void {
+  void ensure(queryClient.ensureQueryData(t.categories.list.queryOptions()));
 }

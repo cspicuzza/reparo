@@ -23,6 +23,7 @@ import {
   storeKey,
   summaryText,
   type ShoppingLine,
+  withoutStore,
   type ShoppingSearch,
 } from '@/lib/shopping';
 import { useIsPhone } from '@/lib/media';
@@ -613,13 +614,6 @@ function ShoppingSection({
       </Reveal>
     </section>
   );
-}
-
-/** The search without its store filter, for the store chips' counts. */
-function withoutStore(search: ShoppingSearch): ShoppingSearch {
-  const next = { ...search };
-  delete next.store;
-  return next;
 }
 
 const FILTER_LABEL = { room: 'Room', category: 'Category', store: 'Store', phase: 'Phase' };

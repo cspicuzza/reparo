@@ -12,6 +12,10 @@ const router = createRouter({
   defaultPreload: 'intent',
   // Something that breaks while showing a page gets Reparo's words, not the router's (Q124).
   defaultErrorComponent: PageError,
+  // TanStack Query owns freshness: the router always runs a loader on preload or visit, and
+  // the query decides whether that fetches (OD-154,
+  // https://tanstack.com/router/latest/docs/guide/data-loading).
+  defaultPreloadStaleTime: 0,
 });
 
 declare module '@tanstack/react-router' {

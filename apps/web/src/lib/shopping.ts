@@ -78,6 +78,13 @@ export function shoppingFilter(s: ShoppingSearch) {
   };
 }
 
+/** The search without its store filter, for the store chips' counts. */
+export function withoutStore(search: ShoppingSearch): ShoppingSearch {
+  const next = { ...search };
+  delete next.store;
+  return next;
+}
+
 /** Where a line goes: its room, or the whole house. */
 export const lineWhere = (l: { room: { name: string } | null }) => l.room?.name ?? 'Whole house';
 
