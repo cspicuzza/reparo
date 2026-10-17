@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { useIsPhone } from '@/lib/media';
 import { centsToInput, lineAmountText, money } from '@/lib/money';
-import { lineDetails, type ShoppingLine } from '@/lib/shopping';
+import { lineDetails, lineWhere, type ShoppingLine } from '@/lib/shopping';
 import { useToasts } from '@/lib/toasts';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
@@ -34,9 +34,12 @@ export function ShoppingRows({
   canEdit,
   onOpen,
   selection,
+  byStore = false,
   className,
 }: {
   lines: ShoppingLine[];
+  /** Grouped by store: rows name the room instead of repeating the store (OD-144). */
+  byStore?: boolean;
   /** The lines' pictures and receipts, fetched once by the page. */
   files: FileView[];
   canEdit: boolean;
@@ -87,6 +90,7 @@ export function ShoppingRows({
             pictureColumn={withPictures}
             onOpen={() => onOpen(l)}
             selection={selection}
+            byStore={byStore}
           />
         </li>
       ))}
@@ -114,10 +118,12 @@ function ShoppingRow({
   pictureColumn,
   onOpen,
   selection,
+  byStore,
 }: {
   line: ShoppingLine;
   canEdit: boolean;
   files: FileView[];
+  byStore: boolean;
   /** The list has a picture column on a laptop, so this row fills its cell even without one. */
   pictureColumn: boolean;
   onOpen: () => void;
@@ -215,6 +221,7 @@ function ShoppingRow({
           selection={selection}
           buying={buying}
           onBuy={() => setBuying(true)}
+          byStore={byStore}
         />
       ) : (
         // Laptop: one line per item, in the list's shared columns.
@@ -268,7 +275,7 @@ function ShoppingRow({
             >
               {line.name}
             </button>
-            <LineFacts line={line} />
+            <LineFacts line={line} byStore={byStore} />
           </div>
           <LineAmount line={line} className="text-right text-xl" />
           {actions ? <div className="col-span-1">{actions}</div> : null}
@@ -347,6 +354,7 @@ function PhoneRow({
   selection,
   buying,
   onBuy,
+  byStore,
 }: {
   line: ShoppingLine;
   canEdit: boolean;
@@ -355,6 +363,7 @@ function PhoneRow({
   selection?: RowSelection | undefined;
   buying: boolean;
   onBuy: () => void;
+  byStore: boolean;
 }) {
   const buyable = line.status === 'to_buy' && canEdit && !selection && !buying;
   // A column for each thing the row has: tick box, picture, name, button.
@@ -386,7 +395,7 @@ function PhoneRow({
           {line.name}
           {selection ? null : <span className="sr-only">, details</span>}
         </button>
-        <LineFacts line={line} lead={<LineAmount line={line} />} />
+        <LineFacts line={line} lead={<LineAmount line={line} />} byStore={byStore} />
       </div>
       {buyable ? (
         <Button
@@ -410,8 +419,19 @@ function PhoneRow({
  * there's a link but no store; plain text when there's no link), how many, and a planned phase
  * (OD-82, Q43).
  */
-function LineFacts({ line, lead }: { line: ShoppingLine; lead?: ReactNode }) {
+function LineFacts({
+  line,
+  lead,
+  byStore = false,
+}: {
+  line: ShoppingLine;
+  lead?: ReactNode;
+  byStore?: boolean;
+}) {
   const facts = lineDetails(line);
+  // Under a store's heading the store goes without saying; the room is what tells two curtain
+  // rods apart, and the product page stays a link (OD-144).
+  const where = byStore ? lineWhere(line) : null;
   const store = line.link ? (
     <a
       href={line.link}
@@ -420,14 +440,14 @@ function LineFacts({ line, lead }: { line: ShoppingLine; lead?: ReactNode }) {
       // 20px of text, but an invisible margin makes the tap area 44px tall (OD-96).
       className="relative inline-flex items-center gap-1 text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
     >
-      {line.store || 'Product page'}
+      {byStore ? 'Product page' : line.store || 'Product page'}
       <ExternalLink aria-hidden className="size-3.5 shrink-0" />
       <span className="sr-only"> for {line.name} (opens in a new tab)</span>
     </a>
-  ) : line.store ? (
+  ) : line.store && !byStore ? (
     line.store
   ) : null;
-  const parts = [lead, store, facts || null].filter((p) => p != null && p !== '');
+  const parts = [lead, where, store, facts || null].filter((p) => p != null && p !== '');
   if (parts.length === 0) return null;
   return (
     <p className="text-sm text-muted-foreground">

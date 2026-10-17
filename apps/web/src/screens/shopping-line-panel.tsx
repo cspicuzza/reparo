@@ -30,6 +30,7 @@ import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { useRefreshShopping } from '@/lib/refresh';
 import { cn } from '@/lib/utils';
+import { useIsPhone } from '@/lib/media';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
 
 type LinePatch = Omit<Parameters<typeof trpcClient.shoppingLines.update.mutate>[0], 'id'>;
@@ -58,6 +59,7 @@ export function ShoppingLinePanel({
   onClose: () => void;
 }) {
   const own = line ? files.filter((f) => f.ownerId === line.id) : [];
+  const phone = useIsPhone();
   return (
     <EditPanel
       open={line !== undefined}
@@ -67,13 +69,85 @@ export function ShoppingLinePanel({
       onClose={onClose}
     >
       {line ? (
-        canEdit ? (
+        canEdit && phone ? (
+          // On a phone, in a store, the panel is read first: what it is, what it costs, where
+          // to get it, where it goes. Editing follows under its own heading (OD-144, Q214).
+          <div key={line.id} className="flex flex-col gap-8">
+            <LineSummary line={line} files={own} />
+            <section aria-labelledby={`edit-${line.id}`} className="border-t border-border pt-6">
+              <h3 id={`edit-${line.id}`} className="text-xl">
+                Edit
+              </h3>
+              <div className="mt-4">
+                <EditBody line={line} files={own} onRemoved={onClose} />
+              </div>
+            </section>
+          </div>
+        ) : canEdit ? (
           <EditBody key={line.id} line={line} files={own} onRemoved={onClose} />
         ) : (
           <ReadBody key={line.id} line={line} files={own} />
         )
       ) : null}
     </EditPanel>
+  );
+}
+
+/**
+ * The line at a glance, for reading in a store (OD-144): its picture, what it costs and how
+ * many, its status, the product page, the room it's for and the job.
+ */
+function LineSummary({ line, files }: { line: ShoppingLine; files: FileView[] }) {
+  const picture = files.find((f) => f.kind === 'product_image' && f.url);
+  const facts: [string, string][] = [
+    ['For', lineWhere(line)],
+    ...(line.store ? ([['Store', line.store]] as [string, string][]) : []),
+    ...(line.job ? ([['Job', line.job.name]] as [string, string][]) : []),
+  ];
+  return (
+    <section aria-label="At a glance" className="flex flex-col gap-4">
+      {picture ? (
+        <img
+          src={picture.thumbUrl ?? picture.url ?? undefined}
+          alt=""
+          className="max-h-56 w-full rounded-lg border border-border bg-inset object-contain"
+        />
+      ) : null}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-2xl font-semibold tabular-nums">
+          {line.status === 'to_buy' && line.priceCents === 0
+            ? 'No price yet'
+            : lineAmountText(line)}
+          {line.quantity > 1 ? (
+            <span className="text-base font-normal text-muted-foreground">
+              {' '}
+              for {line.quantity}
+            </span>
+          ) : null}
+        </span>
+        <ShoppingStatusBadge status={line.status} />
+      </div>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
+        {facts.map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="break-words">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {line.link ? (
+        <a
+          href={line.link}
+          target="_blank"
+          rel="noreferrer"
+          className={buttonVariants({ variant: 'outline', className: 'self-start' })}
+        >
+          Open product page
+          <ExternalLink aria-hidden className="size-4" />
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      ) : null}
+    </section>
   );
 }
 

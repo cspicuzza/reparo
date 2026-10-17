@@ -163,6 +163,17 @@ export function Shopping() {
     }),
   );
 
+  const setGroup = (g: Grouping) =>
+    void navigate({
+      to: '/shopping',
+      search: (prev: ShoppingSearch) => {
+        const next = { ...prev };
+        if (g === 'store') next.group = 'store';
+        else delete next.group;
+        return next;
+      },
+      replace: true,
+    });
   const filtered = activeFilters(search).length > 0 || search.q !== undefined;
   const toBuy = totals.data?.find((s) => s.status === 'to_buy');
   const stores = storeTotals.data?.find((s) => s.status === 'to_buy')?.stores ?? [];
@@ -223,6 +234,7 @@ export function Shopping() {
       <Filters
         search={search}
         stores={stores}
+        onGroup={setGroup}
         select={
           canEdit ? (
             // The label says the state (Select, then Done), so it isn't also an on/off button.
@@ -281,20 +293,12 @@ export function Shopping() {
         </PlanGrid>
       ) : null}
       {lines.data && lines.data.length > 0 ? (
+        // On a phone the switch lives in the Filter panel, so the list starts higher (OD-144).
         <GroupSwitch
+          name="shopping-group"
           value={search.group ?? 'room'}
-          onChange={(g) =>
-            void navigate({
-              to: '/shopping',
-              search: (prev: ShoppingSearch) => {
-                const next = { ...prev };
-                if (g === 'store') next.group = 'store';
-                else delete next.group;
-                return next;
-              },
-              replace: true,
-            })
-          }
+          onChange={setGroup}
+          className="hidden sm:flex"
         />
       ) : null}
       {lines.data && lines.data.length > 0 && totals.data
@@ -345,7 +349,8 @@ function ShoppingTape({ sections }: { sections: Section[] }) {
     <BoughtTape
       boughtCents={cents('purchased') + cents('returned')}
       leftCents={cents('to_buy')}
-      className="-mt-2"
+      // On a phone the To buy heading says the same in one line (OD-144).
+      className="-mt-2 hidden sm:block"
     />
   );
 }
@@ -357,19 +362,29 @@ type Grouping = 'room' | 'store';
  * Room or store (OD-137): a two-way switch like Money in or out. Grouping by store is for
  * walking a store's aisles; it lives in the URL like the filters.
  */
-function GroupSwitch({ value, onChange }: { value: Grouping; onChange: (g: Grouping) => void }) {
+function GroupSwitch({
+  name,
+  value,
+  onChange,
+  className,
+}: {
+  name: string;
+  value: Grouping;
+  onChange: (g: Grouping) => void;
+  className?: string;
+}) {
   const options = [
     ['room', 'By room'],
     ['store', 'By store'],
   ] as const;
   return (
-    <fieldset className="flex items-center gap-3">
+    <fieldset className={cn('flex items-center gap-3', className)}>
       <legend className="sr-only">Group the list</legend>
       <span aria-hidden className="text-sm font-semibold">
         Group
       </span>
       <SegmentedSwitch
-        name="shopping-group"
+        name={name}
         value={value}
         options={options.map(([v, text]) => ({ value: v, label: text }))}
         onChange={onChange}
@@ -553,6 +568,7 @@ function ShoppingSection({
               </div>
               <Reveal open={groupShown} id={groupBodyId}>
                 <ShoppingRows
+                  byStore={group === 'store'}
                   lines={g.lines}
                   files={files}
                   canEdit={canEdit}
@@ -668,9 +684,12 @@ function SearchBox({
 function Filters({
   search,
   stores,
+  onGroup,
   select,
 }: {
   search: ShoppingSearch;
+  /** Room or store grouping; its switch sits in the Filter panel on a phone (OD-144). */
+  onGroup: (g: Grouping) => void;
   /** What's left to buy at each store, under every filter but the store (OD-137). */
   stores: StoreGroup[];
   select: ReactNode;
@@ -715,26 +734,27 @@ function Filters({
     <div className="contents">
       {/* Pinned under the top of the screen while the list scrolls (OD-137). Full-bleed, so
           rows don't show at its sides. */}
-      <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:gap-3 sm:px-6">
-        <SearchBox
-          value={search.q ?? ''}
-          onChange={(q) => setFilter('q', q)}
-          className="min-w-0 flex-1"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen((v) => !v)}
-          className="px-3 sm:px-4"
-        >
-          <ListFilter aria-hidden absoluteStrokeWidth strokeWidth={2} />
-          {panelCount > 0 ? `Filter (${panelCount})` : 'Filter'}
-        </Button>
-        {select}
-      </div>
-      <div className="-mt-3 flex flex-col gap-3 empty:hidden">
+      <div className="sticky top-0 z-30 -mx-4 flex flex-col gap-2 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <SearchBox
+            value={search.q ?? ''}
+            onChange={(q) => setFilter('q', q)}
+            className="min-w-0 flex-1"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen((v) => !v)}
+            className="px-3 sm:px-4"
+          >
+            <ListFilter aria-hidden absoluteStrokeWidth strokeWidth={2} />
+            {panelCount > 0 ? `Filter (${panelCount})` : 'Filter'}
+          </Button>
+          {select}
+        </div>
+        {/* The store chips stay pinned with the search: in a store they're the way in (OD-144). */}
         {named.length > 0 ? (
           <StoreChips
             stores={named}
@@ -742,6 +762,8 @@ function Filters({
             onPick={(store) => setFilter('store', store ?? '')}
           />
         ) : null}
+      </div>
+      <div className="-mt-3 flex flex-col gap-3 empty:hidden">
         <div className="flex flex-wrap items-center gap-2 empty:hidden">
           {active.map((key) => {
             const value = search[key] ?? '';
@@ -790,6 +812,12 @@ function Filters({
         </div>
         <Reveal open={open} id={panelId} role="group" aria-label="Show only">
           <div className="grid grid-cols-1 gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3">
+            <GroupSwitch
+              name="shopping-group-phone"
+              value={search.group ?? 'room'}
+              onChange={onGroup}
+              className="sm:hidden"
+            />
             <FilterSelect
               id="filter-room"
               label={FILTER_LABEL.room}
