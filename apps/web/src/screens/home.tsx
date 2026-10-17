@@ -321,7 +321,7 @@ function MovingJobs({ jobs }: { jobs: Summary['phaseJobs'] }) {
             <Link
               to="/jobs/$jobId"
               params={{ jobId: j.id }}
-              className="truncate font-semibold underline-offset-4 hover:underline"
+              className="truncate font-semibold underline underline-offset-4 hover:decoration-2"
             >
               {j.name}
             </Link>

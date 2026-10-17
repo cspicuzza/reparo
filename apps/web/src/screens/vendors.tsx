@@ -219,7 +219,8 @@ function VendorRow({
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       <div className="min-w-0 flex-1">
-        <h2 className="text-lg font-semibold break-words">{vendor.name}</h2>
+        {/* A row's name at the body width, like a job's or a shopping line's (OD-136). */}
+        <h2 className="text-lg font-semibold break-words [font-stretch:normal]">{vendor.name}</h2>
         {vendor.trade ? <p className="text-sm text-muted-foreground">{vendor.trade}</p> : null}
       </div>
       {/* Tap to call from the list (OD-124, Q161). */}

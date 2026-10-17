@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  *   `border-transparent` against a variant's border colour the same way <Button> does.
  */
 const buttonStyles = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-clip-padding text-base font-medium whitespace-nowrap transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive active:not-aria-[haspopup]:translate-y-px [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-clip-padding max-w-full text-center text-base font-medium transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive active:not-aria-[haspopup]:translate-y-px [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
@@ -28,7 +28,7 @@ const buttonStyles = cva(
         link: 'text-foreground underline underline-offset-4 hover:decoration-2',
       },
       size: {
-        default: 'min-h-11 px-4',
+        default: 'min-h-11 px-4 py-1.5',
         icon: 'size-11',
       },
     },

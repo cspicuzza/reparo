@@ -606,7 +606,7 @@ function ByPhase({ s }: { s: Summary }) {
                     <Link
                       to="/phases"
                       hash={`phase-${p.id}`}
-                      className="inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline"
+                      className="inline-flex min-h-11 min-w-11 items-center font-semibold underline underline-offset-4 hover:decoration-2"
                     >
                       {p.name}
                     </Link>
@@ -679,7 +679,7 @@ function ByPhase({ s }: { s: Summary }) {
               <th scope="row" className="py-1 text-left font-semibold">
                 <Link
                   to={t.to}
-                  className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                  className="inline-flex min-h-11 min-w-11 items-center underline underline-offset-4 hover:decoration-2"
                 >
                   {t.name}
                 </Link>
@@ -758,7 +758,7 @@ function Totals({
                   <Link
                     to="/shopping"
                     search={filter(r)}
-                    className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                    className="inline-flex min-h-11 min-w-11 items-center underline underline-offset-4 hover:decoration-2"
                   >
                     {r.name}
                     <span className="sr-only"> on the shopping list</span>

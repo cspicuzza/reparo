@@ -102,6 +102,8 @@ export function FileUpload({
           accept={acceptFor(kind)}
           className="sr-only"
           tabIndex={-1}
+          // Named like the button that opens it, for screen readers that reach it (OD-136).
+          aria-label={label}
           onChange={(e) => {
             send(Array.from(e.currentTarget.files ?? []));
             e.currentTarget.value = '';

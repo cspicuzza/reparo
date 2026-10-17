@@ -257,8 +257,24 @@ function ShoppingRow({
           // No price yet reads as that, not as something free (OD-106, Q105).
           <span className="text-right whitespace-nowrap text-muted-foreground">No price yet</span>
         ) : (
-          <span className="text-right text-xl font-semibold whitespace-nowrap tabular-nums">
-            {lineAmountText(line)}
+          // On a phone a returned line's "Paid $X, $Y back" gets its own line under the name, and
+          // breaks between its two parts if it must, so it never covers the name (OD-136).
+          <span
+            className={cn(
+              'text-xl font-semibold tabular-nums sm:text-right',
+              line.status === 'returned'
+                ? 'col-span-full sm:col-span-1'
+                : 'text-right whitespace-nowrap',
+            )}
+          >
+            {lineAmountText(line)
+              .split(', ')
+              .map((part, i) => (
+                <span key={part}>
+                  {i > 0 ? ', ' : null}
+                  <span className="whitespace-nowrap">{part}</span>
+                </span>
+              ))}
           </span>
         )}
         {actions ? <div className="col-span-full sm:col-span-1">{actions}</div> : null}

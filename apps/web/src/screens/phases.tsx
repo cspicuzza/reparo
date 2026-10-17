@@ -434,7 +434,7 @@ function PhaseJobs({ phase }: { phase: Phase }) {
               <Link
                 to="/jobs/$jobId"
                 params={{ jobId: j.id }}
-                className="inline-flex min-h-11 min-w-0 items-center font-semibold break-words underline-offset-4 hover:underline"
+                className="inline-flex min-h-11 min-w-0 items-center font-semibold break-words underline underline-offset-4 hover:decoration-2"
               >
                 {j.name}
               </Link>

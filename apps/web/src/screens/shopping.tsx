@@ -92,9 +92,14 @@ export function Shopping() {
           }),
       }
     : undefined;
+  // Whatever ends Select mode or empties the selection (Done, Escape, Clear, a batch action)
+  // takes away the control that had focus, so focus goes back to Select (OD-136).
+  const selectButton = useRef<HTMLButtonElement>(null);
+  const focusSelect = () => requestAnimationFrame(() => selectButton.current?.focus());
   const stopSelecting = () => {
     setSelected(new Map());
     setSelecting(false);
+    focusSelect();
   };
   // Escape leaves Select mode, like Done (OD-104, Q103), unless something on top of the list
   // (a side panel) is what Escape should close.
@@ -105,6 +110,7 @@ export function Shopping() {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       setSelected(new Map());
       setSelecting(false);
+      requestAnimationFrame(() => selectButton.current?.focus());
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -191,6 +197,7 @@ export function Shopping() {
           canEdit ? (
             // The label says the state (Select, then Done), so it isn't also an on/off button.
             <Button
+              ref={selectButton}
               type="button"
               variant="outline"
               onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
@@ -265,7 +272,10 @@ export function Shopping() {
         <BatchBar
           selected={picked}
           shownIds={new Set(current.keys())}
-          onClear={() => setSelected(new Map())}
+          onClear={() => {
+            setSelected(new Map());
+            focusSelect();
+          }}
         />
       ) : null}
 
