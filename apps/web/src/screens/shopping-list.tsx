@@ -57,6 +57,8 @@ export function ShoppingRows({
   );
   const withPictures = lines.some((l) => pictured.has(l.id));
   const filesOf = groupBy(files, (f) => f.ownerId);
+  // One phone check for the whole list, not one listener per row (OD-156).
+  const phone = useIsPhone();
   return (
     <ul
       className={cn(
@@ -90,6 +92,7 @@ export function ShoppingRows({
             canEdit={canEdit}
             files={filesOf.get(l.id) ?? NONE}
             pictureColumn={withPictures}
+            phone={phone}
             onOpen={() => onOpen(l)}
             selection={selection}
             byStore={byStore}
@@ -118,6 +121,7 @@ function ShoppingRow({
   canEdit,
   files,
   pictureColumn,
+  phone,
   onOpen,
   selection,
   byStore,
@@ -128,10 +132,11 @@ function ShoppingRow({
   byStore: boolean;
   /** The list has a picture column on a laptop, so this row fills its cell even without one. */
   pictureColumn: boolean;
+  /** Below Tailwind's `sm`, read once by the list (OD-156). */
+  phone: boolean;
   onOpen: () => void;
   selection?: RowSelection | undefined;
 }) {
-  const phone = useIsPhone();
   const [buying, setBuying] = useState(false);
   // Fading out before the list refreshes, so the row visibly leaves To buy (OD-81).
   const [leaving, setLeaving] = useState(false);
