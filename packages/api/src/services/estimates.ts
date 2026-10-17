@@ -62,6 +62,25 @@ async function getLive(db: Db, id: string): Promise<Estimate> {
   return row.estimate;
 }
 
+/**
+ * Read a live estimate with its job's row locked until the transaction ends (OD-160), so two
+ * writes to the same job's estimates (a double click, two people) take turns instead of both
+ * seeing "nothing chosen". The estimate is read again after the lock: under Read Committed a
+ * second SELECT sees what the other transaction committed meanwhile.
+ * https://www.postgresql.org/docs/17/explicit-locking.html (FOR UPDATE),
+ * https://www.postgresql.org/docs/17/transaction-iso.html (Read Committed)
+ */
+async function lockedLive(db: Db, id: string): Promise<Estimate> {
+  const first = await getLive(db, id);
+  const [job] = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.id, first.jobId), isNull(jobs.deletedAt)))
+    .for('update');
+  if (!job) throw notFound('Estimate');
+  return getLive(db, id);
+}
+
 /** A job's estimates, oldest first, with the vendor and which Received one is cheapest (Q14). */
 export async function listEstimates(db: Db, jobId: string) {
   await liveJob(db, jobId);
@@ -163,44 +182,46 @@ const quoteLine = (vendorName: string) => `${vendorName} quote`;
  * quote line and vendor, so the job's price always reflects the chosen quote (Q12).
  */
 export async function updateEstimate(db: Db, { id, ...patch }: EstimateUpdate) {
-  const e = await getLive(db, id);
-  if (patch.vendorId !== undefined && patch.vendorId !== e.vendorId) {
-    await liveVendor(db, patch.vendorId);
-  }
-  if (e.status === 'chosen' && patch.status !== undefined) {
-    throw badRequest('Choose another estimate, or remove this one, to change the chosen one');
-  }
-  const status = patch.status ?? e.status;
-  const amount = patch.amountCents === undefined ? e.amountCents : patch.amountCents;
-  if (status !== 'requested' && amount === null) {
-    throw badRequest('Enter the amount, or mark it as requested');
-  }
-  if (e.status === 'chosen' && amount === null) {
-    throw badRequest('The chosen estimate needs an amount');
-  }
-  const set: Partial<Estimate> = {};
-  if (patch.vendorId !== undefined) set.vendorId = patch.vendorId;
-  if (patch.amountCents !== undefined) set.amountCents = patch.amountCents;
-  if (patch.receivedOn !== undefined) set.receivedOn = patch.receivedOn;
-  if (patch.validUntil !== undefined) set.validUntil = patch.validUntil;
-  if (patch.notes !== undefined) set.notes = patch.notes;
-  if (patch.status !== undefined) {
-    set.status = patch.status;
-    // A status set by hand clears any "declined because another was chosen" memory.
-    set.declinedFrom = null;
-  }
-  const [row] = await db.update(estimates).set(set).where(eq(estimates.id, id)).returning();
-  if (!row) throw notFound('Estimate');
+  return db.transaction(async (tx) => {
+    const e = await lockedLive(tx, id);
+    if (patch.vendorId !== undefined && patch.vendorId !== e.vendorId) {
+      await liveVendor(tx, patch.vendorId);
+    }
+    if (e.status === 'chosen' && patch.status !== undefined) {
+      throw badRequest('Choose another estimate, or remove this one, to change the chosen one');
+    }
+    const status = patch.status ?? e.status;
+    const amount = patch.amountCents === undefined ? e.amountCents : patch.amountCents;
+    if (status !== 'requested' && amount === null) {
+      throw badRequest('Enter the amount, or mark it as requested');
+    }
+    if (e.status === 'chosen' && amount === null) {
+      throw badRequest('The chosen estimate needs an amount');
+    }
+    const set: Partial<Estimate> = {};
+    if (patch.vendorId !== undefined) set.vendorId = patch.vendorId;
+    if (patch.amountCents !== undefined) set.amountCents = patch.amountCents;
+    if (patch.receivedOn !== undefined) set.receivedOn = patch.receivedOn;
+    if (patch.validUntil !== undefined) set.validUntil = patch.validUntil;
+    if (patch.notes !== undefined) set.notes = patch.notes;
+    if (patch.status !== undefined) {
+      set.status = patch.status;
+      // A status set by hand clears any "declined because another was chosen" memory.
+      set.declinedFrom = null;
+    }
+    const [row] = await tx.update(estimates).set(set).where(eq(estimates.id, id)).returning();
+    if (!row) throw notFound('Estimate');
 
-  if (row.status === 'chosen' && row.costLineId) {
-    const vendor = await liveVendorOrAny(db, row.vendorId);
-    await db
-      .update(costLines)
-      .set({ amountCents: row.amountCents ?? 0, description: quoteLine(vendor.name) })
-      .where(eq(costLines.id, row.costLineId));
-    await db.update(jobs).set({ vendorId: row.vendorId }).where(eq(jobs.id, row.jobId));
-  }
-  return row;
+    if (row.status === 'chosen' && row.costLineId) {
+      const vendor = await liveVendorOrAny(tx, row.vendorId);
+      await tx
+        .update(costLines)
+        .set({ amountCents: row.amountCents ?? 0, description: quoteLine(vendor.name) })
+        .where(eq(costLines.id, row.costLineId));
+      await tx.update(jobs).set({ vendorId: row.vendorId }).where(eq(jobs.id, row.jobId));
+    }
+    return row;
+  });
 }
 
 async function liveVendorOrAny(db: Db, id: string) {
@@ -220,73 +241,78 @@ async function liveVendorOrAny(db: Db, id: string) {
  * the caller can say so.
  */
 export async function chooseEstimate(db: Db, id: string) {
-  const e = await getLive(db, id);
-  if (e.status === 'requested' || e.amountCents === null) {
-    throw badRequest('Add the amount before choosing this estimate');
-  }
-  const paidCents = (await jobMoneyTotals(db, [e.jobId])).get(e.jobId)?.paidCents ?? 0;
-  const [job] = await db.select({ vendorId: jobs.vendorId }).from(jobs).where(eq(jobs.id, e.jobId));
-  // What Undo needs to put things back (OD-119, Q147).
-  const before = {
-    previousChosenId: null as string | null,
-    previousVendorId: job?.vendorId ?? null,
-  };
-  if (e.status === 'chosen') return { estimate: e, paidCents, ...before };
+  return db.transaction(async (tx) => {
+    const e = await lockedLive(tx, id);
+    if (e.status === 'requested' || e.amountCents === null) {
+      throw badRequest('Add the amount before choosing this estimate');
+    }
+    const paidCents = (await jobMoneyTotals(tx, [e.jobId])).get(e.jobId)?.paidCents ?? 0;
+    const [job] = await tx
+      .select({ vendorId: jobs.vendorId })
+      .from(jobs)
+      .where(eq(jobs.id, e.jobId));
+    // What Undo needs to put things back (OD-119, Q147).
+    const before = {
+      previousChosenId: null as string | null,
+      previousVendorId: job?.vendorId ?? null,
+    };
+    if (e.status === 'chosen') return { estimate: e, paidCents, ...before };
 
-  const vendor = await liveVendorOrAny(db, e.vendorId);
-  const [current] = await db
-    .select()
-    .from(estimates)
-    .where(and(eq(estimates.jobId, e.jobId), eq(estimates.status, 'chosen'), live()));
-  before.previousChosenId = current?.id ?? null;
+    const vendor = await liveVendorOrAny(tx, e.vendorId);
+    const [current] = await tx
+      .select()
+      .from(estimates)
+      .where(and(eq(estimates.jobId, e.jobId), eq(estimates.status, 'chosen'), live()));
+    before.previousChosenId = current?.id ?? null;
 
-  // The quote line: moved from the previous choice, or new and listed before the others.
-  let lineId: string;
-  if (current?.costLineId) {
-    lineId = current.costLineId;
-    await db
+    // The quote line: moved from the previous choice, or new and listed before the others.
+    let lineId: string;
+    if (current?.costLineId) {
+      lineId = current.costLineId;
+      await tx
+        .update(estimates)
+        .set({ status: 'declined', declinedFrom: 'received', costLineId: null })
+        .where(eq(estimates.id, current.id));
+      await tx
+        .update(costLines)
+        .set({ amountCents: e.amountCents, description: quoteLine(vendor.name), deletedAt: null })
+        .where(eq(costLines.id, lineId));
+    } else {
+      const [line] = await tx
+        .insert(costLines)
+        .values({
+          jobId: e.jobId,
+          description: quoteLine(vendor.name),
+          amountCents: e.amountCents,
+          sortOrder: 0,
+        })
+        .returning();
+      if (!line) throw new Error('insert returned no row');
+      lineId = line.id;
+    }
+
+    // Decline the rest, remembering what each was. Already-declined ones keep their memory.
+    for (const from of ['received', 'requested'] as const) {
+      await tx
+        .update(estimates)
+        .set({ status: 'declined', declinedFrom: from })
+        .where(
+          and(
+            eq(estimates.jobId, e.jobId),
+            ne(estimates.id, e.id),
+            eq(estimates.status, from),
+            live(),
+          ),
+        );
+    }
+    const [chosen] = await tx
       .update(estimates)
-      .set({ status: 'declined', declinedFrom: 'received', costLineId: null })
-      .where(eq(estimates.id, current.id));
-    await db
-      .update(costLines)
-      .set({ amountCents: e.amountCents, description: quoteLine(vendor.name), deletedAt: null })
-      .where(eq(costLines.id, lineId));
-  } else {
-    const [line] = await db
-      .insert(costLines)
-      .values({
-        jobId: e.jobId,
-        description: quoteLine(vendor.name),
-        amountCents: e.amountCents,
-        sortOrder: 0,
-      })
+      .set({ status: 'chosen', declinedFrom: null, costLineId: lineId })
+      .where(eq(estimates.id, e.id))
       .returning();
-    if (!line) throw new Error('insert returned no row');
-    lineId = line.id;
-  }
-
-  // Decline the rest, remembering what each was. Already-declined ones keep their memory.
-  for (const from of ['received', 'requested'] as const) {
-    await db
-      .update(estimates)
-      .set({ status: 'declined', declinedFrom: from })
-      .where(
-        and(
-          eq(estimates.jobId, e.jobId),
-          ne(estimates.id, e.id),
-          eq(estimates.status, from),
-          live(),
-        ),
-      );
-  }
-  const [chosen] = await db
-    .update(estimates)
-    .set({ status: 'chosen', declinedFrom: null, costLineId: lineId })
-    .where(eq(estimates.id, e.id))
-    .returning();
-  await db.update(jobs).set({ vendorId: e.vendorId }).where(eq(jobs.id, e.jobId));
-  return { estimate: chosen ?? e, paidCents, ...before };
+    await tx.update(jobs).set({ vendorId: e.vendorId }).where(eq(jobs.id, e.jobId));
+    return { estimate: chosen ?? e, paidCents, ...before };
+  });
 }
 
 /** Put back the estimates a choice declined: each to what it was before (Q28). */
@@ -315,28 +341,30 @@ export async function undoChoose(
   db: Db,
   input: { id: string; previousChosenId: string | null; previousVendorId: string | null },
 ) {
-  const e = await getLive(db, input.id);
-  if (e.status !== 'chosen') return { undone: false };
-  if (input.previousChosenId) {
-    const prev = await getLive(db, input.previousChosenId);
-    if (prev.jobId !== e.jobId) throw badRequest('That estimate is on another job');
-    await chooseEstimate(db, prev.id);
-  } else {
-    if (e.costLineId) {
-      await db
-        .update(costLines)
-        .set({ deletedAt: new Date() })
-        .where(eq(costLines.id, e.costLineId));
+  return db.transaction(async (tx) => {
+    const e = await lockedLive(tx, input.id);
+    if (e.status !== 'chosen') return { undone: false };
+    if (input.previousChosenId) {
+      const prev = await getLive(tx, input.previousChosenId);
+      if (prev.jobId !== e.jobId) throw badRequest('That estimate is on another job');
+      await chooseEstimate(tx, prev.id);
+    } else {
+      if (e.costLineId) {
+        await tx
+          .update(costLines)
+          .set({ deletedAt: new Date() })
+          .where(eq(costLines.id, e.costLineId));
+      }
+      await tx
+        .update(estimates)
+        .set({ status: 'received', declinedFrom: null, costLineId: null })
+        .where(eq(estimates.id, e.id));
+      await restoreDeclined(tx, e.jobId);
     }
-    await db
-      .update(estimates)
-      .set({ status: 'received', declinedFrom: null, costLineId: null })
-      .where(eq(estimates.id, e.id));
-    await restoreDeclined(db, e.jobId);
-  }
-  if (input.previousVendorId) await liveVendorOrAny(db, input.previousVendorId);
-  await db.update(jobs).set({ vendorId: input.previousVendorId }).where(eq(jobs.id, e.jobId));
-  return { undone: true };
+    if (input.previousVendorId) await liveVendorOrAny(tx, input.previousVendorId);
+    await tx.update(jobs).set({ vendorId: input.previousVendorId }).where(eq(jobs.id, e.jobId));
+    return { undone: true };
+  });
 }
 
 /**
@@ -344,21 +372,26 @@ export async function undoChoose(
  * puts back the estimates its choice declined; the job keeps its vendor (Q28).
  */
 export async function removeEstimate(db: Db, id: string) {
-  const e = await getLive(db, id);
-  if (e.status === 'chosen' && e.costLineId) {
-    await db.update(costLines).set({ deletedAt: new Date() }).where(eq(costLines.id, e.costLineId));
-    await db
-      .update(estimates)
-      .set({ status: sql`${estimates.declinedFrom}`, declinedFrom: null })
-      .where(
-        and(
-          eq(estimates.jobId, e.jobId),
-          eq(estimates.status, 'declined'),
-          sql`${estimates.declinedFrom} IS NOT NULL`,
-          live(),
-        ),
-      );
-  }
-  await db.update(estimates).set({ deletedAt: new Date() }).where(eq(estimates.id, id));
-  return { id };
+  return db.transaction(async (tx) => {
+    const e = await lockedLive(tx, id);
+    if (e.status === 'chosen' && e.costLineId) {
+      await tx
+        .update(costLines)
+        .set({ deletedAt: new Date() })
+        .where(eq(costLines.id, e.costLineId));
+      await tx
+        .update(estimates)
+        .set({ status: sql`${estimates.declinedFrom}`, declinedFrom: null })
+        .where(
+          and(
+            eq(estimates.jobId, e.jobId),
+            eq(estimates.status, 'declined'),
+            sql`${estimates.declinedFrom} IS NOT NULL`,
+            live(),
+          ),
+        );
+    }
+    await tx.update(estimates).set({ deletedAt: new Date() }).where(eq(estimates.id, id));
+    return { id };
+  });
 }

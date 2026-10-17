@@ -18,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createTokenVerifier, supabaseIssuer, type TokenVerifier } from './auth';
 import { createContext } from './context';
 import { createFetchHandler, TRPC_ENDPOINT } from './handler';
+import { undoChoose } from './services/estimates';
 import { rollUp } from './services/jobs';
 import { editorProcedure, router } from './trpc';
 import { createFakeStorage } from './storage/fake';
@@ -2027,6 +2028,57 @@ describe('@reparo/api', () => {
       // Too late: once it isn't the chosen one, Undo changes nothing.
       const late = await mutate(h, 'editor', 'estimates.undoChoose', { id: a.id, ...first });
       expect(late.data).toEqual({ undone: false });
+    }));
+
+  it('estimates: a failed undo changes nothing; choosing again never adds a quote line (OD-160)', () =>
+    withSeeded(async (tx, h) => {
+      const { phase1 } = await moneyFixtures(h);
+      const v = async (name: string) => row(await mutate(h, 'editor', 'vendors.create', { name }));
+      const [acme, best] = [await v('Tx Acme'), await v('Tx Best')];
+      const job = row(
+        await mutate(h, 'editor', 'jobs.create', { phaseId: phase1.id, name: 'Tx roof' }),
+      );
+      const add = async (vendorId: string, amountCents: string) =>
+        row(
+          await mutate(h, 'editor', 'estimates.create', { jobId: job.id, vendorId, amountCents }),
+        );
+      const a = await add(acme.id, '12,000');
+      const b = await add(best.id, '10,500');
+      const statuses = async () =>
+        ((await query(h, 'viewer', 'estimates.list', { jobId: job.id })).data as EstimateRow[]).map(
+          (e) => [e.vendor.name, e.status],
+        );
+      const quoteLines = async () =>
+        (
+          rows(await query(h, 'viewer', 'costLines.list', { jobId: job.id })) as (Row & {
+            description: string;
+          })[]
+        )
+          .map((l) => l.description)
+          .filter((d) => d.endsWith(' quote'));
+      expect((await mutate(h, 'editor', 'estimates.choose', { id: a.id })).status).toBe(200);
+
+      // Undo whose last step fails (a vendor that doesn't exist): called on the service
+      // directly, because the test handler rolls back every failed request on its own.
+      await expect(
+        undoChoose(tx, {
+          id: a.id,
+          previousChosenId: null,
+          previousVendorId: '99999999-9999-4999-8999-999999999999',
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      expect(await statuses()).toEqual([
+        ['Tx Acme', 'chosen'],
+        ['Tx Best', 'declined'],
+      ]);
+      expect(await quoteLines()).toEqual(['Tx Acme quote']);
+
+      // A, A again, B, A: still one quote line and one chosen estimate.
+      for (const id of [a.id, b.id, a.id]) {
+        expect((await mutate(h, 'editor', 'estimates.choose', { id })).status).toBe(200);
+      }
+      expect(await quoteLines()).toEqual(['Tx Acme quote']);
+      expect((await statuses()).filter(([, s]) => s === 'chosen')).toEqual([['Tx Acme', 'chosen']]);
     }));
 
   it('estimates: quote PDFs attach; a hand decline is not undone; expiring quotes reach Home', () =>
