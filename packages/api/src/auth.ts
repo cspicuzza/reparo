@@ -1,12 +1,7 @@
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from 'jose';
-import { z } from 'zod';
+import { tokenClaimsSchema, type TokenClaims } from '@reparo/shared';
 
-/** The claims we rely on from a Supabase Auth access token (https://supabase.com/docs/guides/auth/jwts). */
-export const tokenClaimsSchema = z.object({
-  sub: z.uuid(),
-  email: z.email(),
-});
-export type TokenClaims = z.infer<typeof tokenClaimsSchema>;
+export type { TokenClaims };
 
 /** Returns claims for a valid token, or null for anything else. Never throws. */
 export type TokenVerifier = (token: string) => Promise<TokenClaims | null>;
@@ -29,9 +24,14 @@ export function createTokenVerifier(opts: VerifierOptions): TokenVerifier {
   const getKey = opts.getKey ?? createRemoteJWKSet(new URL(opts.jwksUrl));
   return async (token) => {
     try {
+      // `aud` is "authenticated" for a signed-in user ("anon" otherwise), and `exp` must be
+      // there, not just valid when present (OD-167). Supabase: https://supabase.com/docs/guides/auth/jwt-fields;
+      // jose: https://github.com/panva/jose/blob/v6.2.12/docs/jwt/verify/interfaces/JWTVerifyOptions.md
       const { payload } = await jwtVerify(token, getKey, {
         issuer: opts.issuer,
         algorithms: ['ES256'],
+        audience: 'authenticated',
+        requiredClaims: ['exp', 'sub', 'email'],
       });
       const parsed = tokenClaimsSchema.safeParse(payload);
       return parsed.success ? parsed.data : null;

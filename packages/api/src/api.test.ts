@@ -49,7 +49,9 @@ const SUB = {
   editor: '44444444-4444-4444-8444-444444444444',
 };
 
-type SignOpts = { issuer?: string; kid?: string };
+type SignOpts = { issuer?: string; kid?: string; audience?: string | null; exp?: false };
+/** What a Google-only Supabase user carries in `app_metadata` (OD-167). */
+const GOOGLE = { provider: 'google', providers: ['google'] };
 type Handler = (req: Request) => Promise<Response>;
 type Body = { result?: { data: unknown }; error?: { message: string; data: { code: string } } };
 
@@ -65,13 +67,15 @@ describe('@reparo/api', () => {
     const { publicKey, privateKey } = await generateKeyPair('ES256');
     const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'ES256', use: 'sig' };
     getKey = createLocalJWKSet({ keys: [jwk] });
-    sign = (claims, opts = {}) =>
-      new SignJWT(claims)
+    sign = (claims, opts = {}) => {
+      const jwt = new SignJWT({ app_metadata: GOOGLE, ...claims })
         .setProtectedHeader({ alg: 'ES256', kid: opts.kid ?? 'test-key' })
         .setIssuer(opts.issuer ?? ISSUER)
-        .setIssuedAt()
-        .setExpirationTime('5m')
-        .sign(privateKey);
+        .setIssuedAt();
+      if (opts.audience !== null) jwt.setAudience(opts.audience ?? 'authenticated');
+      if (opts.exp !== false) jwt.setExpirationTime('5m');
+      return jwt.sign(privateKey);
+    };
 
     verify = createTokenVerifier({
       jwksUrl: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
@@ -158,6 +162,25 @@ describe('@reparo/api', () => {
       expect((await ping(handler, await sign({ sub: SUB.chris }))).status).toBe(401);
       const badSub = await sign({ sub: 'not-a-uuid', email: 'chris@example.com' });
       expect((await ping(handler, badSub)).status).toBe(401);
+    }));
+
+  it('401 unless it is a Google-only sign-in for a signed-in user (OD-167)', () =>
+    withSeeded(async (_tx, handler) => {
+      const me = { sub: SUB.chris, email: 'chris@example.com' };
+      const status = async (claims: Record<string, unknown>, opts?: SignOpts) =>
+        (await ping(handler, await sign({ ...me, ...claims }, opts))).status;
+      expect(await status({})).toBe(200);
+      expect(await status({ app_metadata: { provider: 'email', providers: ['email'] } })).toBe(401);
+      expect(
+        await status({ app_metadata: { provider: 'google', providers: ['google', 'email'] } }),
+      ).toBe(401);
+      expect(
+        await status({ app_metadata: { provider: 'email', providers: ['email', 'google'] } }),
+      ).toBe(401);
+      expect(await status({ app_metadata: undefined })).toBe(401);
+      expect(await status({}, { audience: 'anon' })).toBe(401);
+      expect(await status({}, { audience: null })).toBe(401);
+      expect(await status({}, { exp: false })).toBe(401);
     }));
 
   it('403 for a valid token whose email is not a member', () =>

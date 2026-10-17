@@ -771,3 +771,21 @@ export type EstimateFormInput = z.input<typeof estimateFormSchema>;
 export const VIEW_AS_HEADER = 'x-reparo-view-as';
 export const viewAsSchema = z.enum(['editor', 'viewer']);
 export type ViewAs = z.infer<typeof viewAsSchema>;
+
+/**
+ * The claims the API relies on from a Supabase Auth access token (OD-167, Q15): a Google
+ * account that signed up with Google and has no other way to sign in. Read from
+ * `app_metadata`, which the user can't change
+ * (https://supabase.com/docs/guides/database/postgres/row-level-security); `provider` is how
+ * the account signed up and `providers` every way it can sign in
+ * (https://supabase.com/docs/guides/auth/users). Never `user_metadata`: the user can edit it.
+ */
+export const tokenClaimsSchema = z.object({
+  sub: z.uuid(),
+  email: z.email(),
+  app_metadata: z.object({
+    provider: z.literal('google'),
+    providers: z.array(z.literal('google')).length(1),
+  }),
+});
+export type TokenClaims = z.infer<typeof tokenClaimsSchema>;
