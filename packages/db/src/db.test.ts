@@ -167,6 +167,18 @@ describe('@reparo/db', () => {
       expect(after?.createdAt.getTime()).toBe(past.getTime());
     }));
 
+  it('set_updated_at() has a fixed search_path (OD-162, Supabase lint 0011)', async () => {
+    // The linter's own test: a function config with a search_path= entry
+    // (https://github.com/supabase/splinter/blob/main/lints/0011_function_search_path_mutable.sql).
+    const rows = await client<{ nspname: string; proconfig: string[] | null }[]>`
+      SELECT n.nspname, p.proconfig FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE p.proname = 'set_updated_at'`;
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.nspname).toBe('public');
+    expect(rows[0]?.proconfig?.some((c) => c.startsWith('search_path='))).toBe(true);
+  });
+
   it('files reference a member; a bad uploader is rejected', async () => {
     await withRollback(db, async (tx) => {
       const [m] = await tx
