@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import {
   CalendarRange,
+  CircleUserRound,
   Contact,
   Hammer,
   House,
@@ -160,12 +161,14 @@ export function Shell() {
                 className={buttonVariants({
                   variant: 'outline',
                   className: cn(
-                    'hidden md:inline-flex',
+                    'hidden pl-2.5 md:inline-flex',
                     // On /manage the account menu holds the current page (Q128).
                     onManage && 'shadow-[inset_0_-3px_0_var(--tape)]',
                   ),
                 })}
               >
+                {/* A plain person icon, the same for everyone (OD-134, Q198–Q199). */}
+                <CircleUserRound aria-hidden className="size-7" strokeWidth={1.5} />
                 {me.data.member.displayName}
               </DropdownMenuTrigger>
               {/* Wide enough for the longest Appearance wording, so switching it doesn't
@@ -286,9 +289,15 @@ function MenuPanel({
         </nav>
         {member ? (
           <div className="mt-auto border-t border-border px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <p className="text-sm text-muted-foreground">Signed in as</p>
-            <p className="font-semibold">{member.displayName}</p>
-            <p className="text-sm text-muted-foreground">{ROLE_LABEL[role ?? member.role]}</p>
+            {/* The same person icon as the laptop's account button (OD-134, Q200). */}
+            <div className="flex items-center gap-3">
+              <CircleUserRound aria-hidden className="size-7 shrink-0" strokeWidth={1.5} />
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Signed in as</p>
+                <p className="font-semibold">{member.displayName}</p>
+                <p className="text-sm text-muted-foreground">{ROLE_LABEL[role ?? member.role]}</p>
+              </div>
+            </div>
             <ThemeSwitch className="mt-4" />
             <ViewAsSwitch className="mt-4" />
             {isAdmin ? (
