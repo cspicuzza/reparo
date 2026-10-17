@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
+import { preconnect } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
+import { env } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 import { queryClient } from '@/lib/trpc';
 import { PageError } from '@/screens/not-here';
@@ -40,6 +42,11 @@ supabase.auth.onAuthStateChange((event, session) => {
     void router.invalidate();
   }
 });
+
+// Sign-in and every picture and PDF come from the Supabase project, another origin in
+// production: open that connection now instead of on the first request (OD-159).
+// https://react.dev/reference/react-dom/preconnect
+preconnect(new URL(env.VITE_SUPABASE_URL).origin);
 
 const container = document.getElementById('root');
 if (!container) throw new Error('#root not found');
