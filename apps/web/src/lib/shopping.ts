@@ -1,5 +1,6 @@
 import type { RouterOutputs } from '@reparo/api';
 import type { ShoppingStatusInput } from '@reparo/shared';
+import { searchId } from './search-id';
 
 export type ShoppingLine = RouterOutputs['shoppingLines']['list'][number];
 
@@ -25,8 +26,7 @@ export type ShoppingSearch = {
   line?: string;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const id = (v: unknown) => (typeof v === 'string' && UUID.test(v) ? v : undefined);
+const id = searchId;
 
 /** Keep only filters that make sense; anything else in the URL is dropped. */
 export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearch {

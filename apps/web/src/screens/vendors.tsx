@@ -200,7 +200,7 @@ export function Vendors() {
 }
 
 /**
- * One vendor per line (OD-93): name and what they do, how many jobs, and Details, which opens
+ * One card per vendor (OD-93): name and what they do, how many jobs, and Details, which opens
  * the vendor's panel with everything else.
  */
 function VendorRow({
@@ -427,7 +427,7 @@ function VendorBody({
             strong
             what={vendor.name}
             label={`Archive ${vendor.name}`}
-            question={`Archive ${vendor.name}? They stay on their jobs but aren’t offered for new ones.`}
+            question={`Archive ${vendor.name}? They stay on their jobs but aren't offered for new ones.`}
             confirmLabel="Yes, archive"
             disabled={archive.isPending}
             onConfirm={() => archive.mutate({ id: vendor.id })}

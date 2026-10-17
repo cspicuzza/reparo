@@ -45,8 +45,12 @@ import { LoadError } from '@/components/load-error';
 import { MoveButtons } from '@/components/move-buttons';
 import { useRefreshPhases } from '@/lib/refresh';
 import { PlanGrid } from '@/components/plan-grid';
+import { StableLabel } from '@/components/stable-label';
 
-/** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
+/**
+ * Phases of the renovation (ADR-009): each with its status, what it does to the money, its
+ * jobs-done tape, Spent and Planned, and a panel (`?phase=`) with its jobs (OD-122, OD-123).
+ */
 export function Phases() {
   const trpc = useTRPC();
   const { isAdmin } = useMe();
@@ -92,7 +96,7 @@ export function Phases() {
             <div className="flex flex-wrap gap-2">
               {phases.data && phases.data.length > 1 ? (
                 <Button type="button" variant="outline" onClick={() => setArranging((v) => !v)}>
-                  {arranging ? 'Done' : 'Change order'}
+                  <StableLabel on={arranging} onLabel="Done" offLabel="Change order" />
                 </Button>
               ) : null}
               <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-phase">

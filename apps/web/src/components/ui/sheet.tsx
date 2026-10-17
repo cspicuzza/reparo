@@ -25,10 +25,6 @@ function SheetTrigger(props: SheetPrimitive.Trigger.Props) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
 }
 
-function SheetClose(props: SheetPrimitive.Close.Props) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />;
-}
-
 function SheetContent({
   className,
   children,
@@ -88,4 +84,4 @@ function SheetTitle({ className, ...props }: SheetPrimitive.Title.Props) {
   );
 }
 
-export { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger };
+export { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger };

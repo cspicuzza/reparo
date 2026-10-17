@@ -38,6 +38,7 @@ import { ShoppingRows, type RowSelection } from './shopping-list';
 import { useLineFiles } from '@/lib/use-line-files';
 import { Loading, PanelShape } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { StableLabel } from '@/components/stable-label';
 
 const route = getRouteApi('/_app/shopping/');
 
@@ -194,12 +195,22 @@ export function Shopping() {
 
   return (
     <section className={cn('flex flex-col gap-6', picked.size > 0 && 'pb-56 md:pb-40')}>
+      {/* Read out as the search changes: a live region that's always there, so the first
+          result is announced too (OD-145). */}
+      <p role="status" className="sr-only">
+        {toBuy && search.q !== undefined
+          ? summaryText(toBuy.count, toBuy.totalCents, money, search.q)
+          : ''}
+      </p>
       <PageHeader
         title="Shopping"
+        // Aligned to the top, so Add something doesn't jump down when a search adds a line
+        // under the title (OD-145).
+        className="items-start"
         // The count and total live in the To buy heading (OD-137); a search says what it found.
         description={
           toBuy && search.q !== undefined ? (
-            <span role="status" className="text-foreground tabular-nums">
+            <span className="text-foreground tabular-nums">
               {summaryText(toBuy.count, toBuy.totalCents, money, search.q)}
             </span>
           ) : undefined
@@ -256,7 +267,7 @@ export function Shopping() {
               variant="outline"
               onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
             >
-              {selecting ? 'Done' : 'Select'}
+              <StableLabel on={selecting} onLabel="Done" offLabel="Select" />
             </Button>
           ) : null
         }
@@ -950,7 +961,7 @@ function StoreChips({
           aria-expanded={more}
           onClick={() => setMore((v) => !v)}
         >
-          {more ? 'Fewer stores' : `${hidden} more stores`}
+          {more ? 'Fewer stores' : `${hidden} more ${hidden === 1 ? 'store' : 'stores'}`}
         </Button>
       ) : null}
     </div>
@@ -1012,7 +1023,7 @@ function SelectAll({
           if (el) el.indeterminate = count > 0 && !all;
         }}
         onChange={() => onPick(!all)}
-        className="size-5 accent-primary"
+        className="size-5"
       />
       <span className="sr-only">Select all in {groupName}</span>
     </label>

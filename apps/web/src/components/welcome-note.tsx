@@ -16,7 +16,7 @@ const WHAT_YOU_CAN_DO = {
   editor:
     'As an editor you can add and change rooms, jobs, estimates, payments and the shopping list. The budget, phases and categories are kept by the admin.',
   viewer:
-    'You can see everything here: the money, the rooms, the jobs and the shopping list. Nothing you do here changes it; ask the admin if you’d like to help edit.',
+    "You can see everything here: the money, the rooms, the jobs and the shopping list. Nothing you do here changes it; ask the admin if you'd like to help edit.",
 } as const;
 
 /**

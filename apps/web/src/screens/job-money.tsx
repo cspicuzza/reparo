@@ -298,7 +298,10 @@ function CostLines({
                 line={editingLine}
                 submitLabel="Save"
                 serverError={update.error?.message}
-                onCancel={() => setEditing(null)}
+                onCancel={() => {
+                  update.reset();
+                  setEditing(null);
+                }}
                 onSubmit={async (v) => {
                   await update
                     .mutateAsync({
@@ -524,7 +527,10 @@ function Payments({
                 payment={editingPayment}
                 submitLabel="Save"
                 serverError={update.error?.message}
-                onCancel={() => setEditing(null)}
+                onCancel={() => {
+                  update.reset();
+                  setEditing(null);
+                }}
                 onSubmit={async (v) => {
                   await update
                     .mutateAsync({

@@ -422,7 +422,7 @@ function EditBody({
         <AutoSaveSelect
           id={id('phase')}
           label="Phase"
-          hint="Planned phases don't count against the money yet."
+          hint="Phases that haven't started don't count against the money yet."
           value={line.phaseId}
           options={phases.data.map((p) => ({
             value: p.id,

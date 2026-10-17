@@ -55,13 +55,13 @@
      2026-10-16: text 11.95:1, secondary text 5.03:1, 1.29:1 against the panel. */
   --band: #dcd9d1;
   --grid: rgb(30 29 26 / 0.07); /* drafting grid lines in placeholders */
-  --float-shadow: rgb(30 29 26 / 0.1); /* shadow under things that float (phone bottom bar) */
+  --float-shadow: rgb(30 29 26 / 0.1); /* shadow under things that float (menus, bars) */
   --scrim: rgb(30 29 26 / 0.35); /* dims the page behind a slide-out panel */
-  --tape: #e8b520; /* yellow: needs someone, the tape, current page. A fill, never text on light. */
+  --tape: #e8b520; /* yellow: needs someone, where a tape's left starts, current page. A fill. */
   --tape-ink: #1e1d1a; /* text and ticks on the tape, in both modes */
   --tape-edge: #1e1d1a; /* light mode: yellow alone is 1.7:1 on panels, so the tape is outlined */
   /* The tape's fill for what's done or spent, and the gaps between committed's stripes
-     (OD-109). Checked 2026-10-16: the gap is 3.01:1 on the yellow, 2.95:1 against the fill. */
+     (OD-109). Checked 2026-10-16: the gap is 2.95:1 against the fill; on the track, below. */
   --tape-fill: #1e1d1a;
   --tape-committed-gap: #6a665e;
   /* What's left on a tape: pale plaster, not yellow, so an untouched tape reads as empty and
@@ -79,6 +79,9 @@
   /* Behind brick-red text: the Returned position of a line's purchase switch (OD-132, Q192).
      Checked 2026-10-16: destructive text 5.11:1 on it. */
   --destructive-tint: #f2dfd9;
+  /* Selected text (OD-145), from the focus blue. Checked 2026-10-17: text 11.4:1, secondary
+     text 4.79:1 on it. */
+  --selection: #c7d6e6;
 
   --radius: 0.375rem; /* 6px: buttons, fields, chips */
 }
@@ -132,6 +135,7 @@
   --status-done: #8ccb9f;
   --status-done-tint: #1f3127;
   --destructive-tint: #3b2521; /* dark: destructive text 5.58:1 on it */
+  --selection: #24394f; /* dark: text 9.94:1, secondary text 4.82:1 on it */
 }
 
 /* The page's ring, computed on the root only, so an .ink chip (which redefines --ring for what's
@@ -243,6 +247,29 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* The browser's own surfaces in the app's colors (OD-145): a scrollbar in the field-border
+       grey (3.7:1 on the page) that keeps its room, so pages don't shift sideways as they
+       grow past the screen, and checkboxes and radios in the text color. */
+    scrollbar-color: var(--input) transparent;
+    scrollbar-gutter: stable;
+    accent-color: var(--primary);
+  }
+
+  ::selection {
+    background: var(--selection);
+    color: var(--foreground);
+  }
+
+  /* Autofill keeps the field's own colors instead of the browser's pale yellow or blue (OD-145).
+     The inset shadow paints over the browser's fill; the long transition keeps it from
+     flashing back. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    box-shadow: 0 0 0 1000px var(--card) inset;
+    transition: background-color 600000s 0s;
   }
 
   * {

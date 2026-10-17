@@ -13,8 +13,8 @@ describe('loadProblem', () => {
 
   it('turns tRPC codes into household words', () => {
     expect(loadProblem(trpcError('UNAUTHORIZED'))).toMatch(/sign-in has run out/);
-    expect(loadProblem(trpcError('FORBIDDEN'))).toMatch(/can’t see it/);
-    expect(loadProblem(trpcError('NOT_FOUND'))).toMatch(/isn’t here/);
+    expect(loadProblem(trpcError('FORBIDDEN'))).toMatch(/can't see it/);
+    expect(loadProblem(trpcError('NOT_FOUND'))).toMatch(/isn't here/);
     expect(loadProblem(trpcError('INTERNAL_SERVER_ERROR'))).toMatch(/went wrong/);
   });
 

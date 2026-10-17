@@ -156,7 +156,7 @@ export function RoomDetail() {
           Pictures
         </h2>
         <div className="mt-4">
-          <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
+          <RoomPictures roomId={r.id} canEdit={canEdit} />
         </div>
       </Panel>
 
@@ -184,7 +184,7 @@ export function RoomDetail() {
               initial={r.notes}
               multiline
               inputClassName="max-w-prose"
-              what={`Notes for the ${r.name}`}
+              what={`Notes for ${r.name}`}
               validate={(v) => problemWith(roomUpdateSchema.shape.notes, v)}
               onSave={(v) => saveRoom({ id: r.id, notes: v })}
             />
@@ -288,7 +288,7 @@ function RoomSizeFields({ room: r }: { room: Room }) {
         labelClassName="text-center w-full"
         initial={value == null ? '' : formatLength(value)}
         inputClassName="text-center text-xl font-semibold tabular-nums"
-        what={`${label} of the ${r.name}`}
+        what={`${label} of ${r.name}`}
         validate={(v) => problemWith(roomUpdateSchema.shape[key], v)}
         onSave={(v) => save({ id: r.id, [key]: v })}
       />

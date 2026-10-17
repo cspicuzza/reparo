@@ -21,6 +21,7 @@ import { FormError } from '@/components/form';
 import { LoadError } from '@/components/load-error';
 import { MoveButtons } from '@/components/move-buttons';
 import { useRefreshRooms } from '@/lib/refresh';
+import { StableLabel } from '@/components/stable-label';
 
 /**
  * The rooms (M1; as plans, OD-140): a card per room with its cover or its outline, size, what's
@@ -68,7 +69,7 @@ export function Rooms() {
             <div className="flex flex-wrap gap-2">
               {rooms.data && rooms.data.length > 1 ? (
                 <Button type="button" variant="outline" onClick={() => setArranging((v) => !v)}>
-                  {arranging ? 'Done' : 'Change order'}
+                  <StableLabel on={arranging} onLabel="Done" offLabel="Change order" />
                 </Button>
               ) : null}
               <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-room">

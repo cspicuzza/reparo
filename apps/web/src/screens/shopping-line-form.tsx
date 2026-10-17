@@ -245,7 +245,7 @@ function LineFields({
           <Field
             label="Phase"
             htmlFor={id('phase')}
-            hint="Planned phases don't count against the money yet."
+            hint="Phases that haven't started don't count against the money yet."
             error={errors.phaseId?.message}
           >
             <Select id={id('phase')} {...register('phaseId')}>

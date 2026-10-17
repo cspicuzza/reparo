@@ -220,7 +220,7 @@ function JobForm({
                       type="checkbox"
                       checked={picked.has(r.id)}
                       onChange={(e) => toggle(r.id, e.target.checked)}
-                      className="size-5 accent-primary"
+                      className="size-5"
                     />
                     {r.name}
                   </label>

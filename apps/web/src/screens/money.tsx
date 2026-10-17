@@ -114,7 +114,7 @@ function Headline({ s }: { s: Summary }) {
     <Panel aria-labelledby="money-left">
       <h2 id="money-left" className="text-3xl tabular-nums">
         {s.pool.poolCents === 0 ? (
-          'The budget isn’t in yet.'
+          "The budget isn't in yet."
         ) : (
           <>
             {lead}
@@ -267,11 +267,21 @@ function Pool({ budget }: { budget: Budget }) {
           </tbody>
         </table>
       </div>
-      <EditPanel open={editing} title="The starting balance" onClose={() => setEditing(false)}>
+      <EditPanel
+        open={editing}
+        title="The starting balance"
+        onClose={() => {
+          update.reset();
+          setEditing(false);
+        }}
+      >
         <BudgetForm
           budget={budget}
           serverError={update.error?.message}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            update.reset();
+            setEditing(false);
+          }}
           onSubmit={async (v) => {
             await update
               .mutateAsync(v)
@@ -357,7 +367,10 @@ function Pool({ budget }: { budget: Budget }) {
                 adjustment={editingAdjustment}
                 submitLabel="Save"
                 serverError={updateAdj.error?.message}
-                onCancel={() => setEditingAdj(null)}
+                onCancel={() => {
+                  updateAdj.reset();
+                  setEditingAdj(null);
+                }}
                 onSubmit={async (v) => {
                   const before = editingAdjustment;
                   await updateAdj

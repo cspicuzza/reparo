@@ -315,7 +315,7 @@ function RowCheckbox({ line, selection }: { line: ShoppingLine; selection: RowSe
         type="checkbox"
         checked={selection.selected.has(line.id)}
         onChange={() => selection.toggle(line)}
-        className="size-5 accent-primary"
+        className="size-5"
       />
       <span className="sr-only">Select {line.name}</span>
     </label>

@@ -100,7 +100,8 @@ export function MoneyTape({
           Planned <strong className="font-semibold">{money(committedCents)}</strong>{' '}
           <WhatsThis title="Planned">
             What jobs still cost and what&apos;s still to buy, in phases that have started. It
-            becomes Spent as it&apos;s paid for. Planned phases don&apos;t count until they start.
+            becomes Spent as it&apos;s paid for. Phases that haven&apos;t started don&apos;t count
+            until they do.
           </WhatsThis>
         </span>
         {availableCents < 0 ? (

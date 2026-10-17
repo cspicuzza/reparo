@@ -223,7 +223,7 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
                   tone="neutral"
                   what={job.name}
                   label="All rooms"
-                  question={`Add ${toAdd.length === 1 ? 'the 1 room' : `all ${toAdd.length} rooms`} it doesn’t cover yet to ${job.name}?`}
+                  question={`Add ${toAdd.length === 1 ? 'the 1 room' : `all ${toAdd.length} rooms`} it doesn't cover yet to ${job.name}?`}
                   confirmLabel={`Yes, add ${toAdd.length === 1 ? 'it' : `all ${toAdd.length}`}`}
                   keepLabel="Keep"
                   disabled={change.isPending || toAdd.length === 0}
@@ -280,7 +280,7 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
                       if (e.target.checked) change.mutate({ add: [r.id], remove: [] });
                       else ask(e.currentTarget, off([r.id]));
                     }}
-                    className="size-5 accent-primary"
+                    className="size-5"
                   />
                   {r.name}
                 </label>

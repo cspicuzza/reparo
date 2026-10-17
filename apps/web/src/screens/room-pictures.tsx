@@ -20,15 +20,7 @@ type RoomJob = { id: string; name: string };
  * A room's pictures (M4, OD-57; Q16–Q18, Q25): Renderings (one is the cover), Inspiration, and
  * Progress (dated, optionally showing one of the jobs in this room).
  */
-export function RoomPictures({
-  roomId,
-  roomName,
-  canEdit,
-}: {
-  roomId: string;
-  roomName: string;
-  canEdit: boolean;
-}) {
+export function RoomPictures({ roomId, canEdit }: { roomId: string; canEdit: boolean }) {
   const trpc = useTRPC();
   const files = useQuery(trpc.files.list.queryOptions({ ownerType: 'room', ownerId: roomId }));
   const roomJobs = useQuery(trpc.jobs.forRoom.queryOptions({ roomId }));
@@ -50,7 +42,7 @@ export function RoomPictures({
     return canEdit ? (
       <FirstPictures roomId={roomId} onUploaded={refreshFiles} />
     ) : (
-      <p className="text-muted-foreground">No pictures of the {roomName} yet.</p>
+      <p className="text-muted-foreground">No pictures here yet.</p>
     );
   }
 
@@ -59,7 +51,7 @@ export function RoomPictures({
       <FileSection
         id="renderings"
         title="Renderings"
-        description={`What the ${roomName} will look like when it's done.`}
+        description="How it will look when it's done."
         files={of('rendering')}
         target={() => ({ ownerType: 'room', ownerId: roomId, kind: 'rendering' })}
         uploadLabel="Add renderings"

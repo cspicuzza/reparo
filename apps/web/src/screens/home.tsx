@@ -56,7 +56,7 @@ export function Home() {
       ) : summary.error ? (
         <>
           <h1 className="text-3xl">{hello}</h1>
-          <LoadError what="Home" error={summary.error} retry={[summary]} className="mt-4" />
+          <LoadError what="the summary" error={summary.error} retry={[summary]} className="mt-4" />
         </>
       ) : (
         <>

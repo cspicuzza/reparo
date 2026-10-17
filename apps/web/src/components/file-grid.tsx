@@ -7,9 +7,9 @@ import { cn } from '@/lib/utils';
 
 /**
  * Files as tiles (M4, OD-56). Pictures are buttons that open the viewer; PDFs are links that
- * open in a new tab, in the browser's own viewer (Q24). Pictures load as they scroll into view
- * (originals only, Q7). A file storage no longer has shows as missing rather than a broken
- * image.
+ * open in a new tab, in the browser's own viewer (Q24). Pictures load as they scroll into view,
+ * as their thumbnail when there is one (OD-141). A file storage no longer has shows as missing
+ * rather than a broken image.
  */
 export function FileGrid({
   files,
@@ -87,7 +87,7 @@ export function FileGrid({
                         className="size-8 text-muted-foreground"
                       />
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-4 group-hover:underline">
-                        Open PDF
+                        Open the PDF
                         <ExternalLink
                           aria-hidden
                           absoluteStrokeWidth

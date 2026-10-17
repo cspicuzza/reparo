@@ -9,9 +9,9 @@ export function loadProblem(error: unknown): string {
     case 'UNAUTHORIZED':
       return 'Your sign-in has run out. Sign in again, then try again.';
     case 'FORBIDDEN':
-      return 'This account can’t see it.';
+      return "This account can't see it.";
     case 'NOT_FOUND':
-      return 'It isn’t here any more.';
+      return "It isn't here any more.";
     case undefined:
       break;
     default:
@@ -20,7 +20,7 @@ export function loadProblem(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
   // fetch's network failures: Chrome "Failed to fetch", Firefox "NetworkError…", Safari "Load failed".
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(message)) {
-    return 'The connection dropped. Check you’re online, then try again.';
+    return "The connection dropped. Check you're online, then try again.";
   }
   return 'Something went wrong on the server.';
 }

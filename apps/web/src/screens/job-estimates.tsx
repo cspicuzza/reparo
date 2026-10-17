@@ -487,7 +487,7 @@ function EstimateForm({
             <label className="flex min-h-11 items-center gap-3">
               <input
                 type="checkbox"
-                className="size-5 accent-foreground"
+                className="size-5"
                 checked={field.value === 'requested'}
                 onChange={(ev) => field.onChange(ev.target.checked ? 'requested' : 'received')}
                 onBlur={field.onBlur}
@@ -501,7 +501,7 @@ function EstimateForm({
         <Field
           label="Amount"
           htmlFor={id('amount')}
-          hint={requested ? 'Leave blank until it comes in' : 'The total they quoted'}
+          hint={requested ? 'Leave blank until it comes in.' : 'The total they quoted.'}
           error={errors.amountCents?.message}
         >
           <MoneyInput id={id('amount')} className="max-w-48" {...register('amountCents')} />
@@ -516,7 +516,7 @@ function EstimateForm({
       <Field
         label="Notes"
         htmlFor={id('notes')}
-        hint="What's included, what isn't, payment terms"
+        hint="What's included, what isn't, payment terms."
         error={errors.notes?.message}
       >
         <Textarea id={id('notes')} rows={3} {...register('notes')} />

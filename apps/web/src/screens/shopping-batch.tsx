@@ -128,7 +128,7 @@ export function BatchBar({
         unpriced === 0
           ? paidText
           : unpriced === buyable.length
-            ? 'None had a price yet. Add what was paid in each one’s details.'
+            ? "None had a price yet. Add what was paid in each one's details."
             : `${paidText}. ${unpriced} had no price yet; add what was paid in their details.`,
     });
   const busy = update.isPending || remove.isPending;

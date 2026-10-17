@@ -51,7 +51,8 @@ export type BudgetSegments = {
 
 /**
  * The budget tape's parts (OD-109, Q115–Q116). Within budget the strip is the budget: spent,
- * then committed, then yellow for what's left. Over budget the strip runs to everything spent
+ * then committed, then the pale track for what's left, with a yellow mark where it starts
+ * (OD-138). Over budget the strip runs to everything spent
  * and committed, the budget ends at a marked point, and what lies past it is the overrun.
  */
 export function budgetSegments(

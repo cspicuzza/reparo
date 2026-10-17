@@ -11,8 +11,8 @@ import { useRefreshFiles } from '@/lib/refresh';
 
 /**
  * One group of files on a page (M4, OD-56): a heading, the files as tiles, the viewer, and for
- * editors the upload box. Rooms, jobs, shopping lines, payments, vendors and estimates all use
- * it; each passes its own files (from one `files.list` query per owner) and words.
+ * editors the upload box. Rooms, jobs, shopping lines and vendors use it; each passes its own
+ * files and words. (A payment's or estimate's few files are a row of links, `AttachedFiles`.)
  */
 export function FileSection({
   id,

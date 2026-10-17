@@ -43,7 +43,7 @@ export async function makeThumbnail(source: Blob, longest = THUMB_LONGEST): Prom
     canvas.width = width;
     canvas.height = height;
     const g = canvas.getContext('2d');
-    if (!g) throw new Error('This browser can’t draw pictures');
+    if (!g) throw new Error("This browser can't draw pictures");
     g.fillStyle = '#ffffff';
     g.fillRect(0, 0, width, height);
     g.imageSmoothingEnabled = true;

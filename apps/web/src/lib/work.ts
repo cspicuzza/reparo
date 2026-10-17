@@ -1,6 +1,7 @@
 import type { RouterOutputs } from '@reparo/api';
 import { formatIsoDate, isIsoDate } from '@reparo/shared';
 import type { PhaseStatusInput, WorkStatusInput } from '@reparo/shared';
+import { searchId } from './search-id';
 
 /** A job as the API returns it: phase, vendor, the rooms it covers, and progress. */
 export type Job = RouterOutputs['jobs']['list'][number];
@@ -38,16 +39,6 @@ export function progressText(p: { done: number; total: number }, roomCount: numb
   if (roomCount === 0) return '';
   if (p.total === 0) return 'All rooms cancelled';
   return `${p.done} of ${p.total} ${p.total === 1 ? 'room' : 'rooms'} done`;
-}
-
-/** First line of a spec, trimmed, for list rows. */
-export function specSummary(spec: string, max = 90): string {
-  const line =
-    spec
-      .split('\n')
-      .find((l) => l.trim() !== '')
-      ?.trim() ?? '';
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }
 
 /** "3 of 8 jobs done" for a phase, from the API's count; "No jobs yet" when it has none. */
@@ -96,10 +87,8 @@ export function groupByPhase<P extends { id: string }, J extends { phaseId: stri
 /** The Phases page's address: `?phase=<id>` opens that phase's panel (OD-145). */
 export type PhasesSearch = { phase?: string };
 
-const PHASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Keep `phase` only when it's an id; anything else in the URL is dropped. */
 export function parsePhasesSearch(raw: Record<string, unknown>): PhasesSearch {
-  const phase = raw['phase'];
-  return typeof phase === 'string' && PHASE_ID.test(phase) ? { phase } : {};
+  const phase = searchId(raw['phase']);
+  return phase ? { phase } : {};
 }

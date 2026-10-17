@@ -5,7 +5,6 @@ import {
   phaseDates,
   phaseProgressText,
   progressText,
-  specSummary,
   openJobsText,
   PHASE_STATUS_LABEL,
   phaseMoneyEffect,
@@ -20,11 +19,6 @@ describe('work helpers', () => {
       'completed',
       'cancelled',
     ]);
-  });
-  it('summarises the first non-empty line of a spec', () => {
-    expect(specSummary('\n\n  SW Alabaster, eggshell  \nTwo coats')).toBe('SW Alabaster, eggshell');
-    expect(specSummary('')).toBe('');
-    expect(specSummary('x'.repeat(100), 10)).toBe('xxxxxxxxx…');
   });
   it('describes progress in rooms', () => {
     expect(progressText({ done: 6, total: 9 }, 9)).toBe('6 of 9 rooms done');

@@ -57,7 +57,7 @@ export function FileUpload({
           setUploads((all) => all.filter((u) => u.key !== key));
         })
         .catch((e: unknown) =>
-          patch(key, { error: e instanceof Error ? e.message : 'The upload didn’t go through' }),
+          patch(key, { error: e instanceof Error ? e.message : "The upload didn't go through" }),
         );
     }
   };

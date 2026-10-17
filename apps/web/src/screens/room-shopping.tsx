@@ -57,7 +57,7 @@ export function RoomShopping({ roomId, roomName }: { roomId: string; roomName: s
       ) : null}
       <EditPanel
         open={adding}
-        title={`Something for the ${roomName}`}
+        title={`Something for ${roomName}`}
         onClose={() => {
           create.reset();
           setAdding(false);

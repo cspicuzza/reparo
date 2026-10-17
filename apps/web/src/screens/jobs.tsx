@@ -20,14 +20,14 @@ import { LoadError } from '@/components/load-error';
 import { labelClass } from '@/components/form';
 import { TEXT_LINK } from '@/lib/utils';
 
-/**
- * Every job, phase by phase (M2, OD-46). Replaces the Items page: a job is a named task in a
- * phase, with an optional vendor and the rooms it covers. "Add a job" lives here.
- */
 /** "12 jobs, 3 done" for the page's heading line (OD-145). */
 const jobsText = (count: number, done: number) =>
   `${count} ${count === 1 ? 'job' : 'jobs'}, ${done === 0 ? 'none done yet' : `${done} done`}`;
 
+/**
+ * Every job, phase by phase (M2, OD-46): a job is a named task in a phase, with an optional
+ * vendor and the rooms it covers. "Add a job" lives here.
+ */
 export function Jobs() {
   const trpc = useTRPC();
   const navigate = useNavigate();
