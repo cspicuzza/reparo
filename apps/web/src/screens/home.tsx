@@ -29,7 +29,7 @@ const HOME_ROOMS = 8;
  */
 export function Home() {
   const trpc = useTRPC();
-  const { member } = useMe();
+  const { member, canEdit } = useMe();
   const summary = useQuery(trpc.home.summary.queryOptions());
 
   const hello = greeting(new Date(), member?.displayName);
@@ -57,6 +57,8 @@ export function Home() {
         </>
       ) : (
         <>
+          {/* A first visit starts with what this person can do here (OD-143). */}
+          <WelcomeNote />
           <div className="flex flex-wrap items-start gap-6">
             <MoneyHeadline
               greeting={hello}
@@ -70,9 +72,9 @@ export function Home() {
               items={summary.data.needsYou}
               quotes={summary.data.expiringQuotes}
               overCents={Math.max(0, -summary.data.money.availableCents)}
+              canEdit={canEdit}
             />
           </div>
-          <WelcomeNote />
           <PhasePanel summary={summary.data} />
           <Rooms rooms={summary.data.rooms} />
         </>
@@ -147,6 +149,7 @@ function MoneyHeadline({
             spentCents={m.spentCents}
             committedCents={m.committedCents}
             availableCents={m.availableCents}
+            unpricedCount={m.unpricedCount}
           />
           {m.plannedPhases.length > 0 ? (
             <div className="mt-5 flex flex-col gap-1 border-t border-border pt-4 tabular-nums">
@@ -178,11 +181,17 @@ function NeedsYou({
   items,
   quotes,
   overCents,
+  canEdit,
 }: {
   items: Summary['needsYou'];
   quotes: Summary['expiringQuotes'];
   /** How far planned spending is over the budget; 0 when it isn't (OD-138). */
   overCents: number;
+  /**
+   * Someone who can't change anything gets the same news as "Worth knowing", with no count
+   * and no instructions they can't follow (OD-143).
+   */
+  canEdit: boolean;
 }) {
   const count = items.length + quotes.length + (overCents > 0 ? 1 : 0);
   // Nothing waiting: the greeting says so in one line instead (Q121).
@@ -194,9 +203,9 @@ function NeedsYou({
     >
       <div className="flex items-center gap-2.5">
         <h2 id="needs-you" className="text-2xl">
-          Needs you
+          {canEdit ? 'Needs you' : 'Worth knowing'}
         </h2>
-        {count > 0 ? (
+        {count > 0 && canEdit ? (
           <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-lg bg-tape px-2 font-bold text-tape-ink tabular-nums">
             {count}
           </span>
@@ -213,7 +222,8 @@ function NeedsYou({
             <div className="min-w-0 flex-1">
               <p className="font-semibold">The plans are over budget</p>
               <p className="text-sm text-muted-foreground tabular-nums">
-                By {formatMoney(overCents)}. Trim the shopping list or a job, or add money.
+                By {formatMoney(overCents)}.
+                {canEdit ? ' Trim the shopping list or a job, or add money.' : null}
               </p>
               <Link
                 to="/money"
@@ -240,7 +250,7 @@ function NeedsYou({
                   params={{ roomId: n.room.id }}
                   className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
                 >
-                  Check it
+                  {canEdit ? 'Check it' : 'See it'}
                 </Link>
               ) : (
                 <Link
@@ -248,7 +258,7 @@ function NeedsYou({
                   params={{ jobId: n.jobId }}
                   className={buttonVariants({ variant: 'outline', className: 'mt-3' })}
                 >
-                  Check it
+                  {canEdit ? 'Check it' : 'See it'}
                 </Link>
               )}
             </div>
@@ -330,7 +340,8 @@ function PhasePanel({ summary }: { summary: Summary }) {
               {phaseProgressText(phase.progress)}
             </span>
           </div>
-          <MovingJobs jobs={glance.moving} />
+          {/* The heading already says when nothing has started (OD-143). */}
+          {glance.started > 0 ? <MovingJobs jobs={glance.moving} /> : null}
         </>
       )}
     </section>

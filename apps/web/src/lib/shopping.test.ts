@@ -60,6 +60,9 @@ describe('shopping filters', () => {
 describe('shopping words (OD-75)', () => {
   it('says what a group holds for each status', () => {
     expect(groupText('to_buy', 4, 312000, money)).toBe('4 to buy, $3,120.00');
+    // Things with no price are said, not counted as $0.00 (OD-143).
+    expect(groupText('to_buy', 9, 596000, money, 1)).toBe('9 to buy, $5,960.00, 1 with no price');
+    expect(groupText('to_buy', 1, 0, money, 1)).toBe('1 to buy, no prices yet');
     expect(groupText('purchased', 2, 4500, money)).toBe('2 bought, $45.00 paid');
     expect(groupText('returned', 1, 5000, money)).toBe('1 returned, $50.00 not refunded');
   });

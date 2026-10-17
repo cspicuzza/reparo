@@ -124,7 +124,8 @@ function ViewerBody({
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
         <div className="min-w-0">
           <Dialog.Title className="truncate text-xl">
-            {picture.caption || picture.originalName}
+            {/* No caption: just "Picture"; the position says which (OD-143). */}
+            {picture.caption || (picture.isPicture ? 'Picture' : picture.originalName)}
           </Dialog.Title>
           <Dialog.Description className="text-sm text-muted-foreground">
             {position}

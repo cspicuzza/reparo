@@ -219,7 +219,7 @@ function EditBody({
         <MoneyField
           id={id('price')}
           label="Price"
-          hint="The whole line, all of them."
+          hint="All of them together."
           cents={line.priceCents}
           field="priceCents"
           line={line}

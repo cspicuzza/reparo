@@ -138,7 +138,10 @@ export function RoomDetail() {
         <h2 id="room-jobs" className="text-2xl">
           Jobs in this room
         </h2>
-        <p className="mt-1 text-muted-foreground">Set each job&apos;s status here.</p>
+        {/* Only for those who can (OD-143). */}
+        {canEdit ? (
+          <p className="mt-1 text-muted-foreground">Set each job&apos;s status here.</p>
+        ) : null}
         <div className="mt-4">
           <RoomWork roomId={r.id} roomName={r.name} />
         </div>

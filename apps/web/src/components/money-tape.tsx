@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { BudgetTapeStrip } from '@/components/tape';
 import { WhatsThis } from '@/components/whats-this';
 import { money, moneyStep, shortMoney } from '@/lib/money';
@@ -19,12 +20,15 @@ export function MoneyTape({
   spentCents,
   committedCents,
   availableCents,
+  unpricedCount = 0,
   compact = false,
 }: {
   poolCents: number;
   spentCents: number;
   committedCents: number;
   availableCents: number;
+  /** Things still to buy with no price yet, which Planned can't include (OD-143). */
+  unpricedCount?: number;
   compact?: boolean;
 }) {
   const seg = budgetSegments(spentCents, committedCents, poolCents);
@@ -112,6 +116,20 @@ export function MoneyTape({
           </span>
         )}
       </div>
+      {unpricedCount > 0 ? (
+        // Said, not guessed at: these aren't in Planned until they have a price (OD-143, Q212).
+        <p className="mt-2 text-sm text-muted-foreground">
+          Plus{' '}
+          <Link
+            to="/shopping"
+            search={{ unpriced: true }}
+            className="relative text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
+          >
+            {unpricedCount} {unpricedCount === 1 ? 'thing' : 'things'} with no price yet
+          </Link>
+          , not counted here.
+        </p>
+      ) : null}
     </div>
   );
 }

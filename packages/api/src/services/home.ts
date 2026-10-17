@@ -49,6 +49,7 @@ export async function homeSummary(db: Db) {
       spentCents: money.spentCents,
       committedCents: money.committedCents,
       availableCents: money.availableCents,
+      unpricedCount: money.unpricedCount,
       countingPhases: money.byPhase.filter((p) => p.counting).map((p) => p.name),
       plannedPhases: money.byPhase
         .filter((p) => !p.counting)

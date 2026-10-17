@@ -116,7 +116,9 @@ export function Jobs() {
                 <dd className="font-semibold">{money(phase.money.spentCents)}</dd>
               </div>
               <div className="flex items-baseline gap-2">
-                <dt className="text-sm text-muted-foreground">Planned</dt>
+                {/* What the phase still needs, jobs and shopping together, so it isn't read as
+                    the jobs listed under it (OD-143). */}
+                <dt className="text-sm text-muted-foreground">Planned, jobs and shopping</dt>
                 <dd className="font-semibold">{money(phase.money.toComeCents)}</dd>
               </div>
             </dl>

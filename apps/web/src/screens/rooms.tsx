@@ -12,6 +12,7 @@ import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { RoomOutline } from '@/components/dimension';
 import { money } from '@/lib/money';
+import { groupText } from '@/lib/shopping';
 import { TapeStrip } from '@/components/tape';
 import { RoomForm } from './room-form';
 import { Button } from '@/components/ui/button';
@@ -182,9 +183,13 @@ export function Rooms() {
                     <span className="text-sm text-muted-foreground tabular-nums">{size}</span>
                     <span className="text-sm tabular-nums">
                       {buying
-                        ? buying.totalCents > 0
-                          ? `${buying.count} to buy, ${money(buying.totalCents)}`
-                          : `${buying.count} to buy, no prices yet`
+                        ? groupText(
+                            'to_buy',
+                            buying.count,
+                            buying.totalCents,
+                            money,
+                            buying.unpriced,
+                          )
                         : 'Nothing left to buy'}
                     </span>
                     {room.progress.total > 0 ? (

@@ -19,6 +19,8 @@ export type ShoppingSearch = {
   q?: string;
   /** Group the list by store instead of room (OD-137). Not a filter. */
   group?: 'store';
+  /** Only things still to buy with no price yet (OD-143). */
+  unpriced?: true;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -42,6 +44,9 @@ export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearc
   const q = raw['q'];
   if (typeof q === 'string' && q.trim() !== '' && q.length <= 120) out.q = q.trim();
   if (raw['group'] === 'store') out.group = 'store';
+  if (raw['unpriced'] === true || raw['unpriced'] === 1 || raw['unpriced'] === '1') {
+    out.unpriced = true;
+  }
   return out;
 }
 
@@ -65,20 +70,30 @@ export function shoppingFilter(s: ShoppingSearch) {
     ...(s.job ? { jobId: s.job } : {}),
     ...(s.store ? { store: s.store } : {}),
     ...(s.q ? { q: s.q } : {}),
+    ...(s.unpriced ? { unpriced: true as const } : {}),
   };
 }
 
 /** Where a line goes: its room, or the whole house. */
 export const lineWhere = (l: { room: { name: string } | null }) => l.room?.name ?? 'Whole house';
 
-/** What a section or room group holds, in words: "4 to buy, $3,120.00" (OD-75). */
+/**
+ * What a section or room group holds, in words: "4 to buy, $3,120.00" (OD-75). Things with no
+ * price yet are said, never added in as $0.00: "9 to buy, $5,960.00, 1 with no price", or "1 to
+ * buy, no prices yet" when none is priced (OD-143, Q212).
+ */
 export function groupText(
   status: ShoppingStatusInput,
   count: number,
   cents: number,
   money: (c: number) => string,
+  unpriced = 0,
 ): string {
-  if (status === 'to_buy') return `${count} to buy, ${money(cents)}`;
+  if (status === 'to_buy') {
+    if (unpriced >= count && count > 0) return `${count} to buy, no prices yet`;
+    const priced = `${count} to buy, ${money(cents)}`;
+    return unpriced > 0 ? `${priced}, ${unpriced} with no price` : priced;
+  }
   if (status === 'purchased') return `${count} bought, ${money(cents)} paid`;
   return `${count} returned, ${money(cents)} not refunded`;
 }

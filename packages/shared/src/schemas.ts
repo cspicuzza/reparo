@@ -509,6 +509,8 @@ export const shoppingLineListSchema = z
     store: z.string().trim().min(1).max(120),
     /** Words to find in a line's name, store, model number or notes, in any case (OD-98). */
     q: z.string().trim().min(1).max(120),
+    /** Only things still to buy that have no price yet (OD-143). */
+    unpriced: z.literal(true),
   })
   .partial();
 /**

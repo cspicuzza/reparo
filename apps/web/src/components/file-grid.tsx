@@ -38,7 +38,10 @@ export function FileGrid({
     >
       {files.map((f) => {
         const chip = badge?.(f);
-        const caption = f.caption || f.originalName;
+        // A picture with no caption is named by its place, not its file name ("I027.png")
+        // (OD-143); a document keeps its file name, which is how people know it.
+        const caption =
+          f.caption || (f.isPicture ? `picture ${files.indexOf(f) + 1}` : f.originalName);
         return (
           <li key={f.id} className="min-w-0">
             {f.isPicture ? (
@@ -112,7 +115,9 @@ export function FileGrid({
 function Caption({ file }: { file: FileView }) {
   return (
     <span className="mt-1.5 block text-sm">
-      <span className="block truncate font-semibold">{file.caption || file.originalName}</span>
+      {file.caption || !file.isPicture ? (
+        <span className="block truncate font-semibold">{file.caption || file.originalName}</span>
+      ) : null}
       <span className="block truncate text-muted-foreground">
         {file.takenOn && isIsoDate(file.takenOn)
           ? `${formatIsoDate(file.takenOn)}${file.jobName ? `, ${file.jobName}` : ''}`

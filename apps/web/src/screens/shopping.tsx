@@ -451,6 +451,7 @@ function ShoppingSection({
           name: st.name,
           count: st.count,
           totalCents: st.totalCents,
+          unpriced: st.unpriced,
           lines: lines.filter((l) => storeKey(l) === st.key),
         }))
       : section.rooms.map((r) => ({
@@ -458,6 +459,7 @@ function ShoppingSection({
           name: r.name,
           count: r.count,
           totalCents: r.totalCents,
+          unpriced: r.unpriced,
           lines: lines.filter((l) => (l.room?.id ?? null) === r.roomId),
         }));
   const [shown, setShown] = useGroupsShown(`${section.status}:${group}`);
@@ -476,7 +478,7 @@ function ShoppingSection({
           </h2>
           {/* How many and what they come to, said here and only here (OD-137). */}
           <span className="text-muted-foreground tabular-nums">
-            {groupText(section.status, section.count, section.totalCents, money)}
+            {groupText(section.status, section.count, section.totalCents, money, section.unpriced)}
           </span>
         </div>
         {foldable ? (
@@ -541,7 +543,7 @@ function ShoppingSection({
                   >
                     <span className="min-w-0 break-words">{g.name}</span>
                     <span className="flex items-center gap-3 text-sm font-normal text-muted-foreground tabular-nums [font-stretch:normal]">
-                      {groupText(section.status, g.count, g.totalCents, money)}
+                      {groupText(section.status, g.count, g.totalCents, money, g.unpriced)}
                       <span aria-hidden className="text-foreground underline underline-offset-4">
                         {groupShown ? 'Hide' : 'Show'}
                       </span>
@@ -695,10 +697,12 @@ function Filters({
     phase: (v) => phases.data?.find((p) => p.id === v)?.name,
     store: (v) => v,
     job: (v) => jobs.data?.find((j) => j.id === v)?.name,
+    unpriced: () => 'yes',
   };
   const chipLabel: Record<FilterKey, string> = {
     ...FILTER_LABEL,
     job: 'For',
+    unpriced: 'No price yet',
   };
   // The store has its own chips; the rest show as removable chips.
   const named = stores.filter((st) => st.key !== '');
@@ -741,7 +745,10 @@ function Filters({
         <div className="flex flex-wrap items-center gap-2 empty:hidden">
           {active.map((key) => {
             const value = search[key] ?? '';
-            const label = `${chipLabel[key]}: ${nameOf[key](value) ?? '…'}`;
+            const label =
+              key === 'unpriced'
+                ? chipLabel[key]
+                : `${chipLabel[key]}: ${nameOf[key](String(value)) ?? '…'}`;
             return (
               <button
                 key={key}
@@ -770,6 +777,7 @@ function Filters({
                     delete next.category;
                     delete next.phase;
                     delete next.job;
+                    delete next.unpriced;
                     return next;
                   },
                   replace: true,

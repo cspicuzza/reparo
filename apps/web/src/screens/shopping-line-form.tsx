@@ -161,7 +161,7 @@ function LineFields({
         <Field
           label="Price"
           htmlFor={id('price')}
-          hint="The whole line, all of them."
+          hint="All of them together."
           error={errors.priceCents?.message}
         >
           <MoneyInput id={id('price')} className="max-w-48" {...register('priceCents')} />

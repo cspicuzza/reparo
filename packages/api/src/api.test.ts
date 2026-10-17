@@ -2153,6 +2153,52 @@ describe('@reparo/api', () => {
       ]);
     }));
 
+  it('no price yet: counted per section, room and store, filtered, and in the money', () =>
+    withSeeded(async (_tx, h) => {
+      const { phase1, cat } = await moneyFixtures(h);
+      const nook = row(await mutate(h, 'editor', 'rooms.create', { name: 'Unpriced Nook' }));
+      const add = async (name: string, price: string, store = '') =>
+        row(
+          await mutate(h, 'editor', 'shoppingLines.create', {
+            phaseId: phase1.id,
+            categoryId: cat('Decor'),
+            roomId: nook.id,
+            name,
+            priceCents: price,
+            store,
+          }),
+        );
+      const before = (await query(h, 'viewer', 'money.summary')).data as { unpricedCount: number };
+      await add('Hook', '0', 'Nook Mart');
+      await add('Knob', '0');
+      await add('Lamp', '40', 'Nook Mart');
+
+      type Totals = {
+        status: string;
+        unpriced: number;
+        rooms: { roomId: string | null; unpriced: number }[];
+        stores: { name: string; unpriced: number }[];
+      }[];
+      const totals = (await query(h, 'viewer', 'shoppingLines.totals', { roomId: nook.id }))
+        .data as Totals;
+      const toBuy = totals[0];
+      expect(toBuy?.unpriced).toBe(2);
+      expect(toBuy?.rooms[0]?.unpriced).toBe(2);
+      expect(toBuy?.stores.map((x) => [x.name, x.unpriced])).toEqual([
+        ['Nook Mart', 1],
+        ['No store', 1],
+      ]);
+
+      const unpriced = rows(
+        await query(h, 'viewer', 'shoppingLines.list', { roomId: nook.id, unpriced: true }),
+      );
+      expect(unpriced.map((l) => l.name).sort()).toEqual(['Hook', 'Knob']);
+
+      // Phase 1 counts toward the budget, so the money says how many aren't priced.
+      const after = (await query(h, 'viewer', 'money.summary')).data as { unpricedCount: number };
+      expect(after.unpricedCount - before.unpricedCount).toBe(2);
+    }));
+
   it('search: finds text in name, store, model number or notes, any case; totals follow', () =>
     withSeeded(async (_tx, h) => {
       const { phase1, cat } = await moneyFixtures(h);

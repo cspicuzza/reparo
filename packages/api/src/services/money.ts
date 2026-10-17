@@ -41,6 +41,13 @@ export async function getMoneySummary(db: Db) {
     lines,
   });
 
+  // Things still to buy with no price yet, in the phases that count: Planned can't include them,
+  // so the pages say how many there are (OD-143, Q212). The money rule itself is unchanged.
+  const counting = new Set(allPhases.filter((p) => p.status !== 'planned').map((p) => p.id));
+  const unpricedCount = lines.filter(
+    (l) => l.status === 'to_buy' && l.priceCents === 0 && counting.has(l.phaseId),
+  ).length;
+
   const none = { spentCents: 0, committedCents: 0 };
   const categories = await listCategories(db);
   const rooms = await listRooms(db);
@@ -54,6 +61,7 @@ export async function getMoneySummary(db: Db) {
     spentCents: s.spentCents,
     committedCents: s.committedCents,
     availableCents: s.availableCents,
+    unpricedCount,
     byPhase: s.byPhase,
     jobs: s.jobs,
     shopping: s.shopping,

@@ -48,6 +48,9 @@ export async function listShoppingLines(db: Db, filter: ShoppingLineList & { id?
   if (filter.store !== undefined) {
     conds.push(sql`lower(trim(${shoppingLines.store})) = ${filter.store.toLowerCase()}`);
   }
+  if (filter.unpriced === true) {
+    conds.push(eq(shoppingLines.status, 'to_buy'), eq(shoppingLines.priceCents, 0));
+  }
   if (filter.q !== undefined) {
     // Search (OD-98): the text anywhere in the name, store, model number or notes, any case.
     // `%`, `_` and `\` are escaped so they match themselves (Postgres LIKE's default escape is
@@ -266,6 +269,7 @@ export async function shoppingTotals(db: Db, filter: ShoppingLineList = {}) {
         name: ls[0]?.room?.name ?? 'Whole house',
         count: ls.length,
         totalCents: sumCents(ls.map(lineSectionCents)),
+        unpriced: unpricedIn(ls),
       }))
       .sort((a, b) => {
         if (a.roomId === null) return 1;
@@ -276,10 +280,17 @@ export async function shoppingTotals(db: Db, filter: ShoppingLineList = {}) {
       status,
       count: inSection.length,
       totalCents: sumCents(inSection.map(lineSectionCents)),
+      /** Things to buy with no price yet, which the total can't include (OD-143). */
+      unpriced: unpricedIn(inSection),
       rooms: roomsInSection,
       stores: storeGroups(inSection),
     };
   });
+}
+
+/** How many of these are still to buy with no price yet (OD-143). */
+function unpricedIn(ls: { status: Status; priceCents: Cents }[]): number {
+  return ls.filter((l) => l.status === 'to_buy' && l.priceCents === 0).length;
 }
 
 /**
@@ -309,6 +320,7 @@ function storeGroups<L extends Parameters<typeof lineSectionCents>[0] & { store:
             )[0]?.[0] ?? key),
       count: g.lines.length,
       totalCents: sumCents(g.lines.map(lineSectionCents)),
+      unpriced: unpricedIn(g.lines),
     }))
     .sort((a, b) => {
       if (a.key === '') return 1;

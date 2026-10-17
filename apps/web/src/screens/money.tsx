@@ -129,6 +129,7 @@ function Headline({ s }: { s: Summary }) {
           spentCents={s.spentCents}
           committedCents={s.committedCents}
           availableCents={s.availableCents}
+          unpricedCount={s.unpricedCount}
         />
       </div>
       <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4 tabular-nums sm:grid-cols-4">
