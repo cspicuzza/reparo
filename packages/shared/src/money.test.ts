@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertCents, cents, formatMoney, sumCents } from './money';
+import { assertCents, cents, formatMoney, formatMoneyShort, sumCents } from './money';
 
 describe('cents()', () => {
   it.each([
@@ -73,6 +73,33 @@ describe('formatMoney()', () => {
 
   it('rejects non-integer input', () => {
     expect(() => formatMoney(1.5)).toThrow(TypeError);
+  });
+});
+
+describe('formatMoneyShort()', () => {
+  it.each([
+    [30000000, '$300k'],
+    [2736125, '$27.4k'],
+    [95000, '$950'],
+    [0, '$0'],
+    [150, '$2'], // $1.50 rounds half away from zero
+    [149, '$1'],
+    [99949, '$999'],
+    [99950, '$1k'], // $999.50 rounds up into thousands
+    [102500, '$1k'], // $1,025: a trailing ".0" is dropped
+    [104999, '$1k'],
+    [105000, '$1.1k'], // $1,050 rounds half away from zero
+    [999950, '$10k'], // $9,999.50
+    [-2736125, '-$27.4k'], // the minus before the "$", like formatMoney
+    [-150, '-$2'],
+    [-50, '-$1'], // -$0.50 rounds away from zero
+    [-49, '$0'], // a negative that rounds to nothing isn't "-$0"
+  ])('%i → %s', (c, label) => {
+    expect(formatMoneyShort(c)).toBe(label);
+  });
+
+  it('rejects non-integer input', () => {
+    expect(() => formatMoneyShort(1.5)).toThrow(TypeError);
   });
 });
 

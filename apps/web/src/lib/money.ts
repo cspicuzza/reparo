@@ -1,4 +1,4 @@
-import { formatMoney } from '@reparo/shared';
+import { cents, formatMoney, formatMoneyShort } from '@reparo/shared';
 import type { EstimateStatusInput, ShoppingStatusInput } from '@reparo/shared';
 
 /** Money as shown everywhere: "$1,234.56" (amounts come from the API in cents). */
@@ -63,8 +63,8 @@ export function lineAmountText(l: LineAmounts): string {
   return `Paid ${money(l.paidCents ?? 0)}, ${money(l.refundCents ?? 0)} back`;
 }
 
-const STEPS = [100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000].map(
-  (dollars) => dollars * 100,
+const STEPS = [100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000, 50_000, 100_000].map((dollars) =>
+  cents(dollars),
 );
 
 /**
@@ -78,14 +78,7 @@ export function moneyStep(totalCents: number): number {
 }
 
 /** "$300k", "$27.4k", "$950": short labels for the money tape's scale. */
-export function shortMoney(cents: number): string {
-  const dollars = cents / 100;
-  if (Math.abs(dollars) >= 1000) {
-    const k = dollars / 1000;
-    return `$${Number.isInteger(k) ? k : k.toFixed(1)}k`;
-  }
-  return `$${Math.round(dollars)}`;
-}
+export const shortMoney = (c: number) => formatMoneyShort(c);
 
 /** "Phase 1", "Phase 0 and Phase 1", "A, B and C". */
 export function listText(names: string[]): string {

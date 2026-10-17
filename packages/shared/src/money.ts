@@ -66,6 +66,34 @@ export function formatMoney(c: Cents, opts: { sign?: 'auto' | 'always' } = {}): 
   return opts.sign === 'always' ? `+${body}` : body;
 }
 
+/** Integer division of safe integers, toward zero, with no float rounding. */
+const div = (n: number, d: number) => (n - (n % d)) / d;
+
+/**
+ * Short labels for a money scale: 30000000 → "$300k", 2736125 → "$27.4k", 95000 → "$950"
+ * (OD-165). From $1,000 up: thousands, to one decimal, a trailing ".0" dropped ("$1k"); below:
+ * whole dollars. Rounds half away from zero; a negative keeps formatMoney's "-$" and one that
+ * rounds to nothing shows "$0".
+ */
+export function formatMoneyShort(c: Cents): string {
+  assertCents(c);
+  const abs = Math.abs(c);
+  let body: string;
+  let zero: boolean;
+  const dollars = div(abs + 50, 100);
+  if (dollars >= 1000) {
+    const tenths = div(abs + 5_000, 10_000); // hundreds of dollars = tenths of a thousand
+    const whole = div(tenths, 10);
+    const decimal = tenths % 10;
+    body = `$${whole}${decimal === 0 ? '' : `.${decimal}`}k`;
+    zero = false;
+  } else {
+    body = `$${dollars}`;
+    zero = dollars === 0;
+  }
+  return c < 0 && !zero ? `-${body}` : body;
+}
+
 /** Sum with overflow check. Nullish entries are skipped (an actual that isn't known yet). */
 export function sumCents(values: Iterable<Cents | null | undefined>): Cents {
   let total = 0;
