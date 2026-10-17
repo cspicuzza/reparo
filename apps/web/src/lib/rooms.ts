@@ -38,7 +38,7 @@ export function roomBlockedText(
   if (attached.lines === 0 && attached.jobs === 0) return null;
   const how: string[] = [];
   if (attached.lines > 0) {
-    how.push('give each line another room (Select on Shopping moves several at once)');
+    how.push('move each thing to another room (Select on Shopping moves several at once)');
   }
   if (attached.jobs > 0) how.push(`take ${name} off its jobs on the Jobs page`);
   return `${name} still has ${attachedText(attached)}. To remove it, first ${how.join(', and ')}.`;

@@ -13,7 +13,7 @@ import { TapeStrip } from '@/components/tape';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { celebrateMended } from '@/lib/mended';
 import { useMe } from '@/lib/me';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { trpcClient, trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { money, moneyStep } from '@/lib/money';
 import { telHref } from '@/lib/vendors';
@@ -264,14 +264,9 @@ function JobBody({
         toasts.add({
           title: `Removed ${job.name}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.jobs.restore
-                .mutate({ id: job.id })
-                .then(invalidate)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.jobs.restore.mutate({ id: job.id }).then(invalidate),
+          ),
         });
       },
     }),
@@ -391,7 +386,9 @@ function JobBody({
           {job.spec ? null : (
             // An empty section is one line with its Add button (OD-120, Q148).
             <>
-              <span className="text-muted-foreground">Not added yet</span>
+              <span className="text-muted-foreground">
+                {canEdit ? 'Not added yet' : 'None yet'}
+              </span>
               {canEdit ? (
                 <Button type="button" variant="outline" onClick={onEditJob}>
                   <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />

@@ -9,12 +9,15 @@ import { useTRPC } from './trpc';
 function useRefresh(pick: (trpc: ReturnType<typeof useTRPC>) => QueryFilters[]) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  return () => Promise.all(pick(trpc).map((f) => queryClient.invalidateQueries(f)));
+  return async () => {
+    await Promise.all(pick(trpc).map((f) => queryClient.invalidateQueries(f)));
+  };
 }
 
 /**
  * A job, its rooms, status, vendor or spec: job lists and pages, room progress, phase progress,
- * vendors' job counts, and the money (a job's price counts toward Planned).
+ * vendors' job counts, the money (a job's price counts toward Planned), and the shopping lines
+ * and estimates that show the job's name (OD-145).
  */
 export function useRefreshJobs() {
   return useRefresh((t) => [
@@ -25,7 +28,43 @@ export function useRefreshJobs() {
     t.vendors.pathFilter(),
     t.money.pathFilter(),
     t.home.pathFilter(),
+    t.shoppingLines.pathFilter(),
+    t.estimates.pathFilter(),
   ]);
+}
+
+/**
+ * A room added, renamed, measured, reordered or removed (OD-145): the rooms, Home's list, the
+ * shopping lines and jobs that name it, and the money split by room.
+ */
+export function useRefreshRooms() {
+  return useRefresh((t) => [
+    t.rooms.pathFilter(),
+    t.jobRooms.pathFilter(),
+    t.jobs.pathFilter(),
+    t.shoppingLines.pathFilter(),
+    t.money.pathFilter(),
+    t.home.pathFilter(),
+  ]);
+}
+
+/**
+ * A vendor added, edited or archived (OD-145): the vendors, and the jobs, estimates and payments
+ * that show its name.
+ */
+export function useRefreshVendors() {
+  return useRefresh((t) => [
+    t.vendors.pathFilter(),
+    t.jobs.pathFilter(),
+    t.estimates.pathFilter(),
+    t.payments.pathFilter(),
+    t.home.pathFilter(),
+  ]);
+}
+
+/** Pictures and files (OD-145): every file list, the room covers among them. */
+export function useRefreshFiles() {
+  return useRefresh((t) => [t.files.pathFilter()]);
 }
 
 /** A phase: its name and status move jobs, shopping lines, rooms' progress and the money. */

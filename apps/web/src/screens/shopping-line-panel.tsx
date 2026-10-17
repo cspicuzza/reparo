@@ -25,7 +25,7 @@ import { LoadError } from '@/components/load-error';
 import { centsToInput, lineAmountText, money, SHOPPING_STATUS_LABEL } from '@/lib/money';
 import { problemWith } from '@/lib/problem';
 import { lineWhere, type ShoppingLine } from '@/lib/shopping';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { useRefreshShopping } from '@/lib/refresh';
@@ -115,9 +115,7 @@ function LineSummary({ line, files }: { line: ShoppingLine; files: FileView[] })
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-2xl font-semibold tabular-nums">
-          {line.status === 'to_buy' && line.priceCents === 0
-            ? 'No price yet'
-            : lineAmountText(line)}
+          {lineAmountText(line)}
           {line.quantity > 1 ? (
             <span className="text-base font-normal text-muted-foreground">
               {' '}
@@ -201,7 +199,8 @@ function MoneyField({
       id={id}
       label={label}
       {...(hint ? { hint } : {})}
-      initial={centsToInput(cents)}
+      // No amount yet is an empty field to fill in, not "0.00" (OD-145).
+      initial={cents > 0 ? centsToInput(cents) : ''}
       inputMode="decimal"
       inputClassName={cn(SHORT, 'pl-7')}
       wrap={(field) => <DollarBox>{field}</DollarBox>}
@@ -214,12 +213,9 @@ function MoneyField({
         const now = saved[field] ?? 0;
         toasts.add({
           title: `${label} changed`,
-          description: `${line.name}: from ${money(cents)} to ${money(now)}`,
+          description: `${line.name}: from ${cents > 0 ? money(cents) : 'nothing'} to ${now > 0 ? money(now) : 'nothing'}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () => void save({ [field]: centsToInput(cents) }).catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () => save({ [field]: centsToInput(cents) })),
         });
       }}
     />
@@ -256,14 +252,9 @@ function EditBody({
         toasts.add({
           title: `Removed ${line.name}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.shoppingLines.restore
-                .mutate({ id: line.id })
-                .then(invalidate)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.shoppingLines.restore.mutate({ id: line.id }).then(invalidate),
+          ),
         });
       },
     }),
@@ -541,23 +532,24 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
         title: `Marked as ${SHOPPING_STATUS_LABEL[next].toLowerCase()}`,
         description:
           next === 'purchased'
-            ? `${before.name}, ${money(saved.paidCents ?? 0)} paid`
+            ? (saved.paidCents ?? 0) > 0
+              ? `${before.name}, ${money(saved.paidCents ?? 0)} paid`
+              : `${before.name}. Add what was paid below.`
             : next === 'returned'
               ? `${before.name}, ${money(saved.refundCents ?? 0)} back`
               : before.name,
         timeout: 10_000,
-        actionProps: {
-          children: 'Undo',
-          // Put back the status and the amounts it had.
-          onClick: () =>
-            void save({
-              status: before.status,
-              ...(before.paidCents !== null ? { paidCents: centsToInput(before.paidCents) } : {}),
-              ...(before.refundCents !== null
-                ? { refundCents: centsToInput(before.refundCents) }
-                : {}),
-            }).catch(() => undefined),
-        },
+        // Put back the status and the amounts it had.
+
+        actionProps: undoAction(toasts, () =>
+          save({
+            status: before.status,
+            ...(before.paidCents !== null ? { paidCents: centsToInput(before.paidCents) } : {}),
+            ...(before.refundCents !== null
+              ? { refundCents: centsToInput(before.refundCents) }
+              : {}),
+          }),
+        ),
       });
     },
   });

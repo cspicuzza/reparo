@@ -430,6 +430,8 @@ function Payments({
                 <span className="mt-1 block">
                   <AttachedFiles
                     files={receiptsOf(p.id)}
+                    loading={receipts.isLoading}
+                    onRetry={receipts.isError ? () => void receipts.refetch() : undefined}
                     target={{ ownerType: 'payment', ownerId: p.id, kind: 'receipt' }}
                     addLabel="Attach a receipt"
                     canEdit={canEdit}

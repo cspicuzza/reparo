@@ -109,7 +109,12 @@ export function FileUpload({
             e.currentTarget.value = '';
           }}
         />
-        <Button type="button" variant={variant} onClick={() => input.current?.click()}>
+        <Button
+          id={`${inputId}-button`}
+          type="button"
+          variant={variant}
+          onClick={() => input.current?.click()}
+        >
           <Upload aria-hidden className="size-4" />
           {label}
         </Button>
@@ -133,10 +138,15 @@ export function FileUpload({
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setUploads((all) => all.filter((x) => x.key !== u.key))}
+                    onClick={() => {
+                      setUploads((all) => all.filter((x) => x.key !== u.key));
+                      // The message goes, so focus goes back to the upload button (OD-145).
+                      document.getElementById(`${inputId}-button`)?.focus();
+                    }}
                   >
                     <X aria-hidden className="size-4" />
                     Dismiss
+                    <span className="sr-only"> the message about {u.name}</span>
                   </Button>
                 </div>
               ) : (

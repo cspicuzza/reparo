@@ -1,10 +1,12 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ExternalLink, FileText, Image } from 'lucide-react';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { FileUpload } from '@/components/file-upload';
 import { FormError } from '@/components/form';
+import { Button } from '@/components/ui/button';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView, UploadTarget } from '@/lib/upload';
+import { useRefreshFiles } from '@/lib/refresh';
 
 /**
  * Files attached to one row, such as a payment's receipt or a shopping line's receipts
@@ -16,6 +18,8 @@ export function AttachedFiles({
   addLabel,
   canEdit,
   what,
+  loading = false,
+  onRetry,
 }: {
   files: FileView[];
   target: UploadTarget;
@@ -24,11 +28,31 @@ export function AttachedFiles({
   canEdit: boolean;
   /** Read out when removing: "receipt". */
   what: string;
+  /** The files are still on their way (OD-145): says so, rather than offering only Attach. */
+  loading?: boolean;
+  /** They couldn't load: says so, with Try again (OD-145). */
+  onRetry?: (() => void) | undefined;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() });
+  const refresh = useRefreshFiles();
   const remove = useMutation(trpc.files.remove.mutationOptions({ onSuccess: refresh }));
+  if (loading) {
+    return (
+      <p role="status" className="flex min-h-11 items-center text-sm text-muted-foreground">
+        Loading files…
+      </p>
+    );
+  }
+  if (onRetry) {
+    return (
+      <p role="alert" className="flex min-h-11 flex-wrap items-center gap-x-2 text-sm">
+        Couldn&apos;t load the files.
+        <Button type="button" variant="link" className="px-0" onClick={onRetry}>
+          Try again
+        </Button>
+      </p>
+    );
+  }
   if (files.length === 0 && !canEdit) return null;
   return (
     <div className="flex flex-wrap items-center gap-x-2">

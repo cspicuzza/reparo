@@ -32,11 +32,17 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
   if (jobs.data.length === 0) {
     return (
       <p className="text-muted-foreground">
-        No jobs cover this room yet. Add one on the{' '}
-        <Link to="/jobs" className="text-foreground underline underline-offset-4">
-          Jobs page
-        </Link>{' '}
-        and tick {roomName}.
+        No jobs cover this room yet.
+        {canEdit ? (
+          <>
+            {' '}
+            Add one on the{' '}
+            <Link to="/jobs" className="text-foreground underline underline-offset-4">
+              Jobs page
+            </Link>{' '}
+            and tick {roomName}.
+          </>
+        ) : null}
       </p>
     );
   }

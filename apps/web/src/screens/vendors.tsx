@@ -8,7 +8,7 @@ import {
   type VendorCreate,
   type VendorCreateInput,
 } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { Mail, PanelRightOpen, Phone, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -24,7 +24,7 @@ import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { problemWith } from '@/lib/problem';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { QuerySource } from '@/lib/load-problem';
 import type { FileView } from '@/lib/upload';
@@ -34,7 +34,7 @@ import { ESTIMATE_STATUS_LABEL, money } from '@/lib/money';
 import { LinesPlaceholder, ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
-import { useRefreshJobs } from '@/lib/refresh';
+import { useRefreshVendors } from '@/lib/refresh';
 
 type Vendor = RouterOutputs['vendors']['list'][number];
 type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
@@ -45,7 +45,6 @@ type VendorUpdateInput = Parameters<typeof trpcClient.vendors.update.mutate>[0];
  */
 export function Vendors() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { canEdit, isAdmin } = useMe();
   const vendors = useQuery(trpc.vendors.list.queryOptions());
   const archived = useQuery({
@@ -64,7 +63,7 @@ export function Vendors() {
   // The open vendor lives in the address, so it can be linked to (OD-112, Q127).
   const search = useSearch({ from: '/_app/vendors/' });
   const navigate = useNavigate({ from: '/vendors/' });
-  const invalidate = () => queryClient.invalidateQueries(trpc.vendors.pathFilter());
+  const invalidate = useRefreshVendors();
   const create = useMutation(
     trpc.vendors.create.mutationOptions({
       onSuccess: async () => {
@@ -154,6 +153,10 @@ export function Vendors() {
         </ul>
       ) : null}
 
+      {isAdmin && archived.error ? (
+        // The archived list couldn't load; the vendors above did (OD-145).
+        <LoadError what="the archived vendors" error={archived.error} retry={[archived]} />
+      ) : null}
       {isAdmin && gone.length > 0 ? (
         <section aria-labelledby="archived-vendors">
           <h2 id="archived-vendors" className="text-2xl">
@@ -288,7 +291,7 @@ function VendorRow({
 
 /** Save part of a vendor, then refresh vendors and the jobs that show them. */
 function useSaveVendor(id: string) {
-  const refresh = useRefreshJobs();
+  const refresh = useRefreshVendors();
   return async (patch: Omit<VendorUpdateInput, 'id'>) => {
     await trpcClient.vendors.update.mutate({ id, ...patch });
     await refresh();
@@ -331,7 +334,7 @@ function VendorBody({
   const trpc = useTRPC();
   const save = useSaveVendor(vendor.id);
   const toasts = useToasts();
-  const refresh = useRefreshJobs();
+  const refresh = useRefreshVendors();
   // Archiving offers Undo for 10 seconds, through the same restore as the archived list
   // (OD-113, Q129).
   const archive = useMutation(
@@ -342,14 +345,9 @@ function VendorBody({
         toasts.add({
           title: `Archived ${vendor.name}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.vendors.restore
-                .mutate({ id: vendor.id })
-                .then(refresh)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.vendors.restore.mutate({ id: vendor.id }).then(refresh),
+          ),
         });
       },
     }),

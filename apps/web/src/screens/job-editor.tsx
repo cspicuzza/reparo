@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { FormPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { useRefreshJobs } from '@/lib/refresh';
+import { NoPhases } from '@/components/no-phases';
 
 type Props = {
   idPrefix: string;
@@ -49,7 +50,7 @@ export function JobEditor({ idPrefix, onSaved, onCancel }: Props) {
     );
   }
   if (phases.data.length === 0) {
-    return <p role="alert">Add a phase first. Every job belongs to one.</p>;
+    return <NoPhases what="Every job belongs to one." />;
   }
 
   const active = phases.data.find((p) => p.status === 'active') ?? phases.data[0];

@@ -24,8 +24,9 @@ import { Panel } from '@/components/panel';
 import { Button } from '@/components/ui/button';
 import { VendorPicker } from '@/components/vendor-picker';
 import { LoadError } from '@/components/load-error';
+import { FormPlaceholder } from '@/components/placeholder';
 import { centsToInput, money } from '@/lib/money';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { vendorOptions } from '@/lib/vendors';
@@ -166,6 +167,8 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
               key={e.id}
               estimate={e}
               quotes={quotesOf(e.id)}
+              quotesLoading={quotes.isLoading}
+              onRetryQuotes={quotes.isError ? () => void quotes.refetch() : undefined}
               paidCents={job.money.paidCents}
               canEdit={canEdit}
               onEdit={() => setEditing(e.id)}
@@ -221,6 +224,8 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
 function EstimateCard({
   estimate: e,
   quotes,
+  quotesLoading,
+  onRetryQuotes,
   paidCents,
   canEdit,
   onEdit,
@@ -228,6 +233,8 @@ function EstimateCard({
 }: {
   estimate: Estimate;
   quotes: FileView[];
+  quotesLoading: boolean;
+  onRetryQuotes: (() => void) | undefined;
   paidCents: number;
   canEdit: boolean;
   onEdit: () => void;
@@ -243,18 +250,15 @@ function EstimateCard({
         toasts.add({
           title: `Chose ${e.vendor.name}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.estimates.undoChoose
-                .mutate({
-                  id: e.id,
-                  previousChosenId: result.previousChosenId,
-                  previousVendorId: result.previousVendorId,
-                })
-                .then(onChanged)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.estimates.undoChoose
+              .mutate({
+                id: e.id,
+                previousChosenId: result.previousChosenId,
+                previousVendorId: result.previousVendorId,
+              })
+              .then(onChanged),
+          ),
         });
       },
     }),
@@ -268,14 +272,9 @@ function EstimateCard({
         toasts.add({
           title: `Marked ${e.vendor.name} declined`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.estimates.update
-                .mutate({ id: e.id, status: was })
-                .then(onChanged)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.estimates.update.mutate({ id: e.id, status: was }).then(onChanged),
+          ),
         });
       },
     }),
@@ -337,6 +336,8 @@ function EstimateCard({
 
       <AttachedFiles
         files={quotes}
+        loading={quotesLoading}
+        onRetry={onRetryQuotes}
         target={{ ownerType: 'estimate', ownerId: e.id, kind: 'quote' }}
         addLabel="Attach the quote"
         canEdit={canEdit}
@@ -395,7 +396,7 @@ function EstimateCard({
           <ConfirmRemove
             what={
               e.status === 'chosen' && e.amountCents !== null
-                ? `the ${e.vendor.name} estimate and its ${money(e.amountCents)} quote line`
+                ? `the ${e.vendor.name} estimate and the ${money(e.amountCents)} it adds to the price`
                 : `the ${e.vendor.name} estimate`
             }
             disabled={remove.isPending}
@@ -457,6 +458,11 @@ function EstimateForm({
   );
 
   const formRef = useFocusFirstField<HTMLFormElement>();
+  // The vendor picker needs the vendors first (OD-145), like the job form.
+  if (vendors.isPending) return <FormPlaceholder label="Loading the form" fields={5} />;
+  if (vendors.error) {
+    return <LoadError what="the vendors" error={vendors.error} retry={[vendors]} />;
+  }
   return (
     <form ref={formRef} onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="grid gap-4">
       <Field label="Vendor" htmlFor={id('vendor')} error={errors.vendorId?.message}>

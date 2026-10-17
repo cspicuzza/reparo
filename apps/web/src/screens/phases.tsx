@@ -26,7 +26,7 @@ import {
   type Phase,
 } from '@/lib/work';
 import { Link } from '@tanstack/react-router';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { money, plannedPhaseText } from '@/lib/money';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -358,14 +358,9 @@ function useAnnounceStatus() {
       title: `${phase.name} is now ${PHASE_STATUS_LABEL[now].toLowerCase()}`,
       description: open ? `${open}. ${phaseMoneyEffect(now)}.` : `${phaseMoneyEffect(now)}.`,
       timeout: 10_000,
-      actionProps: {
-        children: 'Undo',
-        onClick: () =>
-          void trpcClient.phases.update
-            .mutate({ id: phase.id, status: was })
-            .then(refresh)
-            .catch(() => undefined),
-      },
+      actionProps: undoAction(toasts, () =>
+        trpcClient.phases.update.mutate({ id: phase.id, status: was }).then(refresh),
+      ),
     });
   };
 }
@@ -432,7 +427,7 @@ function PhaseJobs({ phase }: { phase: Phase }) {
       <h3 id={`phase-${phase.id}-jobs`} className="text-base font-semibold">
         Its jobs
       </h3>
-      {jobs.isPending ? <p className="text-muted-foreground">Loading its jobs…</p> : null}
+      {jobs.isPending ? <ListPlaceholder label="Loading its jobs" rows={2} /> : null}
       {jobs.error ? <LoadError what="its jobs" error={jobs.error} retry={[jobs]} /> : null}
       {jobs.data && jobs.data.length === 0 ? (
         <p className="text-muted-foreground">No jobs yet.</p>

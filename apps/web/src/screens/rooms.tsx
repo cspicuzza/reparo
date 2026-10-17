@@ -1,5 +1,5 @@
 import { useReturnFocus } from '@/lib/editor-focus';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useMe } from '@/lib/me';
@@ -20,6 +20,7 @@ import { ListPlaceholder } from '@/components/placeholder';
 import { FormError } from '@/components/form';
 import { LoadError } from '@/components/load-error';
 import { MoveButtons } from '@/components/move-buttons';
+import { useRefreshRooms } from '@/lib/refresh';
 
 /**
  * The rooms (M1; as plans, OD-140): a card per room with its cover or its outline, size, what's
@@ -27,7 +28,6 @@ import { MoveButtons } from '@/components/move-buttons';
  */
 export function Rooms() {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const { canEdit } = useMe();
   const rooms = useQuery(trpc.rooms.list.queryOptions());
   const covers = useQuery(trpc.files.roomCovers.queryOptions());
@@ -38,12 +38,13 @@ export function Rooms() {
   const toBuy = new Map(
     (shopping.data?.find((sec) => sec.status === 'to_buy')?.rooms ?? []).map((r) => [r.roomId, r]),
   );
+  const refresh = useRefreshRooms();
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-room' : null);
   const create = useMutation(
     trpc.rooms.create.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries(trpc.rooms.pathFilter());
+        await refresh();
         setAdding(false);
       },
     }),
@@ -51,11 +52,7 @@ export function Rooms() {
   const [arranging, setArranging] = useState(false);
   const move = useMutation(
     trpc.rooms.move.mutationOptions({
-      onSuccess: () =>
-        Promise.all([
-          queryClient.invalidateQueries(trpc.rooms.pathFilter()),
-          queryClient.invalidateQueries(trpc.home.pathFilter()),
-        ]),
+      onSuccess: refresh,
     }),
   );
 

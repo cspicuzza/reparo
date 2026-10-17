@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { useRefreshMoney } from '@/lib/refresh';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import type { ShoppingSearch } from '@/lib/shopping';
 import { Link } from '@tanstack/react-router';
 import { trpcClient } from '@/lib/trpc';
@@ -330,14 +330,11 @@ function Pool({ budget }: { budget: Budget }) {
                       timeout: 10_000,
                       ...(made.createdId
                         ? {
-                            actionProps: {
-                              children: 'Undo',
-                              onClick: () =>
-                                void trpcClient.budgetAdjustments.remove
-                                  .mutate({ id: made.createdId ?? '' })
-                                  .then(invalidate)
-                                  .catch(() => undefined),
-                            },
+                            actionProps: undoAction(toasts, () =>
+                              trpcClient.budgetAdjustments.remove
+                                .mutate({ id: made.createdId ?? '' })
+                                .then(invalidate),
+                            ),
                           }
                         : {}),
                     });
@@ -371,19 +368,16 @@ function Pool({ budget }: { budget: Budget }) {
                       toasts.add({
                         title: `Saved ${v.note || 'the adjustment'}`,
                         timeout: 10_000,
-                        actionProps: {
-                          children: 'Undo',
-                          onClick: () =>
-                            void trpcClient.budgetAdjustments.update
-                              .mutate({
-                                id: before.id,
-                                amountCents: before.amountCents,
-                                on: before.on,
-                                note: before.note,
-                              })
-                              .then(invalidate)
-                              .catch(() => undefined),
-                        },
+                        actionProps: undoAction(toasts, () =>
+                          trpcClient.budgetAdjustments.update
+                            .mutate({
+                              id: before.id,
+                              amountCents: before.amountCents,
+                              on: before.on,
+                              note: before.note,
+                            })
+                            .then(invalidate),
+                        ),
                       });
                     })
                     .catch(() => undefined);

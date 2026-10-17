@@ -298,6 +298,7 @@ function NeedsYou({
  * at the top, like Rooms below.
  */
 function PhasePanel({ summary }: { summary: Summary }) {
+  const { canEdit } = useMe();
   const { phase, phaseJobs } = summary;
   const glance = phaseGlance(phaseJobs);
   return (
@@ -322,12 +323,19 @@ function PhasePanel({ summary }: { summary: Summary }) {
         </div>
       </div>
       {phase == null ? null : phaseJobs.length === 0 ? (
+        // How to add some, only for those who can (OD-145).
         <p className="mt-3 text-muted-foreground">
-          No jobs in {phase.name} yet. Add them on the{' '}
-          <Link to="/jobs" className="text-foreground underline underline-offset-4">
-            Jobs page
-          </Link>
-          .
+          No jobs in {phase.name} yet.
+          {canEdit ? (
+            <>
+              {' '}
+              Add them on the{' '}
+              <Link to="/jobs" className="text-foreground underline underline-offset-4">
+                Jobs page
+              </Link>
+              .
+            </>
+          ) : null}
         </p>
       ) : (
         <>
@@ -407,6 +415,7 @@ function MovingJobs({ jobs }: { jobs: Summary['phaseJobs'] }) {
  */
 function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
   const trpc = useTRPC();
+  const { canEdit } = useMe();
   // Same covers as the Rooms list (M4, OD-64).
   const covers = useQuery(trpc.files.roomCovers.queryOptions());
   const coverOf = new Map((covers.data ?? []).map((c) => [c.roomId, c.url]));
@@ -423,11 +432,16 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
       </div>
       {rooms.length === 0 ? (
         <p className="mt-3 text-muted-foreground">
-          No rooms yet.{' '}
-          <Link to="/rooms" className="text-foreground underline underline-offset-4">
-            Add the first one
-          </Link>
-          .
+          No rooms yet.
+          {canEdit ? (
+            <>
+              {' '}
+              <Link to="/rooms" className="text-foreground underline underline-offset-4">
+                Add the first one
+              </Link>
+              .
+            </>
+          ) : null}
         </p>
       ) : (
         <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">

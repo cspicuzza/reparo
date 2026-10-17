@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { FileGrid } from '@/components/file-grid';
 import { FileUpload } from '@/components/file-upload';
@@ -7,8 +6,8 @@ import { PictureViewer } from '@/components/picture-viewer';
 import { Loading } from '@/components/placeholder';
 import { PlanGrid } from '@/components/plan-grid';
 import type { QuerySource } from '@/lib/load-problem';
-import { useTRPC } from '@/lib/trpc';
 import type { FileView, UploadTarget } from '@/lib/upload';
+import { useRefreshFiles } from '@/lib/refresh';
 
 /**
  * One group of files on a page (M4, OD-56): a heading, the files as tiles, the viewer, and for
@@ -68,16 +67,12 @@ export function FileSection({
   /** The buttons on that line, when one upload box isn't enough (drawings by kind). */
   emptyUploads?: { label: string; target: () => UploadTarget }[];
 }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refreshFiles = useRefreshFiles();
   const [open, setOpen] = useState<number | null>(null);
   const Heading = headingLevel;
   const uploading = canEdit && target !== undefined && uploadLabel !== undefined;
   const refresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
-      onChanged?.(),
-    ]);
+    await Promise.all([refreshFiles(), onChanged?.()]);
   };
 
   if (emptyLine && files.length === 0 && !source?.isPending && !source?.error) {

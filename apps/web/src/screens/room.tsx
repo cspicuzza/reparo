@@ -1,5 +1,5 @@
 import { useReturnFocus } from '@/lib/editor-focus';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ChevronLeft, Pencil } from 'lucide-react';
 import { useState } from 'react';
@@ -12,7 +12,7 @@ import type { RouterOutputs } from '@reparo/api';
 type Room = RouterOutputs['rooms']['get'];
 type RoomUpdateInput = Parameters<typeof trpcClient.rooms.update.mutate>[0];
 import { describeRoom, roomBlockedText, roomProgressText } from '@/lib/rooms';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { FloorPlan, MeasuredValue } from '@/components/dimension';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { EditPanel } from '@/components/edit-panel';
@@ -27,11 +27,11 @@ import { PagePlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { BoughtTape } from '@/components/bought-tape';
+import { useRefreshRooms } from '@/lib/refresh';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { canEdit } = useMe();
   const room = useQuery(trpc.rooms.get.queryOptions({ id: roomId }));
@@ -39,7 +39,7 @@ export function RoomDetail() {
   useReturnFocus(editing ? 'edit-room' : null);
   const toasts = useToasts();
 
-  const invalidate = () => queryClient.invalidateQueries(trpc.rooms.pathFilter());
+  const invalidate = useRefreshRooms();
   // Removing offers Undo for 10 seconds (OD-113, Q142).
   const remove = useMutation(
     trpc.rooms.remove.mutationOptions({
@@ -50,14 +50,9 @@ export function RoomDetail() {
         toasts.add({
           title: `Removed ${name}`,
           timeout: 10_000,
-          actionProps: {
-            children: 'Undo',
-            onClick: () =>
-              void trpcClient.rooms.restore
-                .mutate({ id })
-                .then(invalidate)
-                .catch(() => undefined),
-          },
+          actionProps: undoAction(toasts, () =>
+            trpcClient.rooms.restore.mutate({ id }).then(invalidate),
+          ),
         });
       },
     }),
@@ -290,13 +285,9 @@ function FloorArea({ sqft, dims }: { sqft: number | null; dims: string | null })
  * that saves when you leave it, checked by the same schema as the API. Floor area follows.
  */
 function RoomSizeFields({ room: r }: { room: Room }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refresh = useRefreshRooms();
   const { dims, sqft } = describeRoom(r);
-  const save = (input: RoomUpdateInput) =>
-    trpcClient.rooms.update
-      .mutate(input)
-      .then(() => queryClient.invalidateQueries(trpc.rooms.pathFilter()));
+  const save = (input: RoomUpdateInput) => trpcClient.rooms.update.mutate(input).then(refresh);
   const field = (key: 'lengthIn' | 'widthIn' | 'ceilingHeightIn', label: string) => {
     const value = r[key];
     return (

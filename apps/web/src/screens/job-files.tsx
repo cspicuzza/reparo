@@ -89,7 +89,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           title="Progress photos"
           description="Photos from the room pages that show this job."
           files={progress}
-          emptyText="None yet. Add them on a room's page."
+          emptyText={canEdit ? "None yet. Add them on a room's page." : 'None yet'}
           canEdit={canEdit}
           source={photos}
           emptyLine

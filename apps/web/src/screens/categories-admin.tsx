@@ -32,7 +32,7 @@ export function CategoriesAdmin() {
 
   return (
     <Panel aria-labelledby="categories">
-      <h2 id="categories" className="text-2xl">
+      <h2 id="categories" tabIndex={-1} className="text-2xl outline-none">
         Categories
       </h2>
       <p className="mt-1 text-muted-foreground">
@@ -138,6 +138,8 @@ function CategoryRow({
     trpc.categories.merge.mutationOptions({
       onSuccess: async () => {
         await onChanged();
+        // This row is gone now, so focus goes to the list's heading, not the top (OD-145).
+        document.getElementById('categories')?.focus();
         toasts.add({
           title: `Merged ${category.name} into ${intoName}`,
           description: `Moved ${lines} and removed ${category.name}.`,

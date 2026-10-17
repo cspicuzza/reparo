@@ -1,5 +1,5 @@
 import { fileUpdateSchema, formatIsoDate, isIsoDate, today } from '@reparo/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { FileSection } from '@/components/file-section';
 import { FileUpload } from '@/components/file-upload';
@@ -12,6 +12,7 @@ import { SaveProblem, SaveStatus } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
 import { GridPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { useRefreshFiles } from '@/lib/refresh';
 
 type RoomJob = { id: string; name: string };
 
@@ -29,22 +30,13 @@ export function RoomPictures({
   canEdit: boolean;
 }) {
   const trpc = useTRPC();
-  const queryClient = useQueryClient();
   const files = useQuery(trpc.files.list.queryOptions({ ownerType: 'room', ownerId: roomId }));
   const roomJobs = useQuery(trpc.jobs.forRoom.queryOptions({ roomId }));
   const [progressJob, setProgressJob] = useState('');
   const jobPickId = useId();
-  const refreshCovers = () =>
-    queryClient.invalidateQueries({ queryKey: trpc.files.roomCovers.queryKey() });
-  const setCover = useMutation(
-    trpc.rooms.setCover.mutationOptions({
-      onSuccess: () =>
-        Promise.all([
-          queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
-          refreshCovers(),
-        ]),
-    }),
-  );
+  // Every file list, the room covers among them (OD-145).
+  const refreshFiles = useRefreshFiles();
+  const setCover = useMutation(trpc.rooms.setCover.mutationOptions({ onSuccess: refreshFiles }));
 
   if (files.isPending) return <GridPlaceholder label="Loading pictures" />;
   if (files.error) return <LoadError what="the pictures" error={files.error} retry={[files]} />;
@@ -56,15 +48,7 @@ export function RoomPictures({
   // With no pictures at all, one row instead of three empty sections (OD-117, Q140).
   if (all.length === 0) {
     return canEdit ? (
-      <FirstPictures
-        roomId={roomId}
-        onUploaded={() =>
-          Promise.all([
-            queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }),
-            refreshCovers(),
-          ])
-        }
-      />
+      <FirstPictures roomId={roomId} onUploaded={refreshFiles} />
     ) : (
       <p className="text-muted-foreground">No pictures of the {roomName} yet.</p>
     );
@@ -81,7 +65,6 @@ export function RoomPictures({
         uploadLabel="Add renderings"
         emptyText="No renderings yet"
         canEdit={canEdit}
-        onChanged={refreshCovers}
         badge={(f) =>
           f.isCover ? (
             <span className="rounded-lg bg-card px-2 py-0.5 text-sm font-semibold text-foreground shadow-knob">
@@ -186,12 +169,9 @@ function ProgressDetails({
   jobs: RoomJob[];
   canEdit: boolean;
 }) {
-  const trpc = useTRPC();
-  const queryClient = useQueryClient();
+  const refreshFiles = useRefreshFiles();
   const saveFile = (input: { takenOn?: string; jobId?: string | null }) =>
-    trpcClient.files.update
-      .mutate({ id: file.id, ...input })
-      .then(() => queryClient.invalidateQueries({ queryKey: trpc.files.pathKey() }));
+    trpcClient.files.update.mutate({ id: file.id, ...input }).then(refreshFiles);
   const job = useMutation({ mutationFn: (jobId: string) => saveFile({ jobId: jobId || null }) });
   if (!canEdit) {
     return (

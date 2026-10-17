@@ -130,6 +130,33 @@ export function Shell() {
       </a>
       <PreviewBar />
       <OfflineBar />
+      {/* Who's signed in couldn't be checked (OD-145): editing stays off until it is, and the
+          account menu isn't there, so the bar offers Try again and Sign out itself. */}
+      {me.error && !me.data ? (
+        <div role="alert" className="ink border-b border-border bg-popover text-popover-foreground">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2 sm:px-6">
+            <p className="min-w-0 flex-1">
+              <span className="font-semibold">Couldn&apos;t check who&apos;s signed in.</span>{' '}
+              <span className="text-muted-foreground">
+                You can look around, but changes are off until it works.
+              </span>
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={me.isFetching}
+                onClick={() => void me.refetch()}
+              >
+                {me.isFetching ? 'Trying…' : 'Try again'}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => void onSignOut()}>
+                Sign out
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <header className="border-b border-border bg-bar">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <Link

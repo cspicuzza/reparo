@@ -6,7 +6,7 @@ import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { listText, money } from '@/lib/money';
 import type { ShoppingLine } from '@/lib/shopping';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { useRefreshShopping } from '@/lib/refresh';
 
@@ -75,14 +75,9 @@ export function BatchBar({
         title: done,
         ...(detail ? { description: detail } : {}),
         timeout: 10_000,
-        actionProps: {
-          children: 'Undo',
-          onClick: () =>
-            void trpcClient.shoppingLines.updateMany
-              .mutate({ changes: undo })
-              .then(invalidate)
-              .catch(() => undefined),
-        },
+        actionProps: undoAction(toasts, () =>
+          trpcClient.shoppingLines.updateMany.mutate({ changes: undo }).then(invalidate),
+        ),
       });
     },
   });
@@ -97,14 +92,9 @@ export function BatchBar({
       toasts.add({
         title: `Removed ${items(ids.length)}`,
         timeout: 10_000,
-        actionProps: {
-          children: 'Undo',
-          onClick: () =>
-            void trpcClient.shoppingLines.restoreMany
-              .mutate({ ids })
-              .then(invalidate)
-              .catch(() => undefined),
-        },
+        actionProps: undoAction(toasts, () =>
+          trpcClient.shoppingLines.restoreMany.mutate({ ids }).then(invalidate),
+        ),
       });
     },
   });
@@ -118,12 +108,21 @@ export function BatchBar({
   // Checking out: only what's still to buy, each at its price, which can be corrected in the
   // line's Details afterwards (OD-137).
   const buyable = lines.filter((l) => l.status === 'to_buy');
+  // Things with no price are bought too, and the message says what's left to fill in rather
+  // than counting them as $0.00 (OD-145).
+  const unpriced = buyable.filter((l) => l.priceCents === 0).length;
+  const paidText = `${money(sumCents(buyable.map((l) => l.priceCents)))} paid, at their prices`;
   const purchase = () =>
     update.mutate({
       changes: buyable.map((l) => ({ id: l.id, status: 'purchased', paidCents: l.priceCents })),
       undo: buyable.map((l) => ({ id: l.id, status: 'to_buy' })),
       done: `Marked ${items(buyable.length)} as purchased`,
-      detail: `${money(sumCents(buyable.map((l) => l.priceCents)))} paid, at their prices`,
+      detail:
+        unpriced === 0
+          ? paidText
+          : unpriced === buyable.length
+            ? 'None had a price yet. Add what was paid in each one’s details.'
+            : `${paidText}. ${unpriced} had no price yet; add what was paid in their details.`,
     });
   const busy = update.isPending || remove.isPending;
   const error = update.error ?? remove.error;
@@ -148,7 +147,11 @@ export function BatchBar({
               className="font-semibold tabular-nums sm:order-1 sm:whitespace-nowrap"
             >
               {/* How many and what they cost together (OD-104, Q103). */}
-              {items(lines.length)}, {money(sumCents(lines.map((l) => l.priceCents)))} selected
+              {items(lines.length)}
+              {lines.some((l) => l.priceCents > 0)
+                ? `, ${money(sumCents(lines.map((l) => l.priceCents)))}`
+                : ''}{' '}
+              selected
               {hidden > 0 ? (
                 <span className="font-normal text-muted-foreground"> ({hidden} not shown)</span>
               ) : null}
@@ -179,7 +182,8 @@ export function BatchBar({
             ) : null}
             <BatchSelect
               label="Move to room…"
-              disabled={busy}
+              disabled={busy || !rooms.data}
+              note={rooms.error ? "Couldn't load the rooms" : undefined}
               options={[
                 { value: 'house', label: 'Whole house' },
                 ...(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name })),
@@ -190,7 +194,8 @@ export function BatchBar({
             />
             <BatchSelect
               label="Set category…"
-              disabled={busy}
+              disabled={busy || !categories.data}
+              note={categories.error ? "Couldn't load the categories" : undefined}
               options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
               onPick={(v, label) =>
                 set('categoryId', v, `Put ${items(lines.length)} under ${label}`)
@@ -198,8 +203,14 @@ export function BatchBar({
             />
             <BatchSelect
               label="Set job…"
-              disabled={busy || onePhase === undefined}
-              note={onePhase === undefined ? 'Pick items from one phase to set a job' : undefined}
+              disabled={busy || onePhase === undefined || !jobs.data}
+              note={
+                onePhase === undefined
+                  ? 'Pick items from one phase to set a job'
+                  : jobs.error
+                    ? "Couldn't load the jobs"
+                    : undefined
+              }
               options={[
                 { value: 'none', label: 'No job' },
                 ...phaseJobs.map((j) => ({ value: j.id, label: j.name })),

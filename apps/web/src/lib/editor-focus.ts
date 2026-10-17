@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 /** The first field a person would type into, inside `root`. */
 const FIELD =
@@ -6,14 +6,16 @@ const FIELD =
 
 /**
  * Focus the first field when an editor opens (web.md → Editing; OD-73). Attach the returned ref
- * to the form. Runs once, on mount: editors mount when someone opens them.
+ * to the form. Runs once, when the form first appears: editors mount when someone opens them,
+ * and one that waits for its data shows the form a moment later (OD-145).
  */
 export function useFocusFirstField<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  useEffect(() => {
-    ref.current?.querySelector<HTMLElement>(FIELD)?.focus();
+  const done = useRef(false);
+  return useCallback((el: T | null) => {
+    if (!el || done.current) return;
+    done.current = true;
+    el.querySelector<HTMLElement>(FIELD)?.focus();
   }, []);
-  return ref;
 }
 
 /**

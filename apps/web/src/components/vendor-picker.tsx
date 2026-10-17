@@ -56,6 +56,8 @@ export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
   const addRow: AddRow = { id: `add:${typed}`, name: typed, trade: '', archived: false, add: true };
   const rows: Row[] = offerAdd ? [...vendors, addRow] : vendors;
 
+  // Back to the vendor field once what had focus goes away (OD-145).
+  const focusField = () => requestAnimationFrame(() => document.getElementById(id)?.focus());
   return (
     <div>
       <Combobox<Row>
@@ -100,7 +102,8 @@ export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
         </ComboboxContent>
       </Combobox>
 
-      {/* Clear vendor, with Undo for 10 seconds (OD-124, Q160). */}
+      {/* Clear vendor, with Undo for 10 seconds (OD-124, Q160). The button goes once it's used,
+          so focus moves to the vendor field rather than falling to the top (OD-145). */}
       {selected && adding === null ? (
         <Button
           type="button"
@@ -110,6 +113,7 @@ export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
             const was = selected;
             onChange(null);
             setQuery('');
+            focusField();
             toasts.add({
               title: `Cleared ${was.name}`,
               description: 'Nobody is doing this job now.',
@@ -130,8 +134,12 @@ export function VendorPicker({ id, value, onChange, vendors, ...aria }: Props) {
             setAdding(null);
             setQuery(vendor.name);
             onChange(vendor.id);
+            focusField();
           }}
-          onCancel={() => setAdding(null)}
+          onCancel={() => {
+            setAdding(null);
+            focusField();
+          }}
         />
       ) : null}
     </div>

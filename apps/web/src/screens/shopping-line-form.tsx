@@ -18,6 +18,7 @@ import { useTRPC } from '@/lib/trpc';
 import { PHASE_STATUS_LABEL } from '@/lib/work';
 import { FormPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { NoPhases } from '@/components/no-phases';
 
 /** Empty <select> values mean "none" (whole house, no job). */
 const orNull = (v: unknown) => (v === '' ? null : v);
@@ -67,8 +68,7 @@ export function ShoppingLineForm({
       />
     );
   }
-  if (phases.data.length === 0)
-    return <p role="alert">Add a phase first. Everything on the list belongs to one.</p>;
+  if (phases.data.length === 0) return <NoPhases what="Everything on the list belongs to one." />;
 
   const active = phases.data.find((p) => p.status === 'active') ?? phases.data[0];
   const other = categories.data.find((c) => c.name === 'Other') ?? categories.data[0];

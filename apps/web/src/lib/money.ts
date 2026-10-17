@@ -41,14 +41,24 @@ export const ESTIMATE_STATUS_LABEL: Record<EstimateStatusInput, string> = {
   declined: 'Declined',
 };
 
-/** What a shopping line's amount means right now: its price, what was paid, or what came back. */
-export function lineAmountText(l: {
+type LineAmounts = {
   status: ShoppingStatusInput;
   priceCents: number;
   paidCents: number | null;
   refundCents: number | null;
-}): string {
-  if (l.status === 'to_buy') return money(l.priceCents);
+};
+
+/**
+ * Whether a shopping line has its amount yet: a price while it's still to buy, what was paid
+ * once it's bought. Without one it says so, never "$0.00" (OD-106, OD-145).
+ */
+export const lineHasAmount = (l: LineAmounts) =>
+  l.status === 'to_buy' ? l.priceCents > 0 : (l.paidCents ?? 0) > 0;
+
+/** What a shopping line's amount means right now: its price, what was paid, or what came back. */
+export function lineAmountText(l: LineAmounts): string {
+  if (l.status === 'to_buy') return l.priceCents > 0 ? money(l.priceCents) : 'No price yet';
+  if (!lineHasAmount(l)) return l.status === 'purchased' ? 'Bought, amount not added' : 'Returned';
   if (l.status === 'purchased') return `Paid ${money(l.paidCents ?? 0)}`;
   return `Paid ${money(l.paidCents ?? 0)}, ${money(l.refundCents ?? 0)} back`;
 }

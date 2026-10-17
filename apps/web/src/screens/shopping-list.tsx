@@ -10,9 +10,9 @@ import { UnsavedGuard } from '@/components/unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
 import { useIsPhone } from '@/lib/media';
-import { centsToInput, lineAmountText, money } from '@/lib/money';
+import { centsToInput, lineAmountText, lineHasAmount, money } from '@/lib/money';
 import { lineDetails, lineWhere, type ShoppingLine } from '@/lib/shopping';
-import { useToasts } from '@/lib/toasts';
+import { undoAction, useToasts } from '@/lib/toasts';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
 import { useRefreshShopping } from '@/lib/refresh';
@@ -321,10 +321,12 @@ function RowCheckbox({ line, selection }: { line: ShoppingLine; selection: RowSe
  * "Paid $X, $Y back", which breaks between its two parts rather than inside one (OD-136).
  */
 function LineAmount({ line, className }: { line: ShoppingLine; className?: string }) {
-  if (line.status === 'to_buy' && line.priceCents === 0) {
-    // No price yet reads as that, not as something free (OD-106, Q105).
+  if (!lineHasAmount(line)) {
+    // No price yet reads as that, not as something free (OD-106, Q105; OD-145).
     return (
-      <span className={cn('whitespace-nowrap text-muted-foreground', className)}>No price yet</span>
+      <span className={cn('whitespace-nowrap text-muted-foreground', className)}>
+        {lineAmountText(line)}
+      </span>
     );
   }
   return (
@@ -485,7 +487,11 @@ function PurchaseForm({
     <AmountForm
       idPrefix={`buy-${line.id}`}
       label="What was paid"
-      hint={`The price was ${money(line.priceCents)}. Tax and delivery count too.`}
+      hint={
+        line.priceCents > 0
+          ? `The price was ${money(line.priceCents)}. Tax and delivery count too.`
+          : 'It had no price yet. Tax and delivery count too.'
+      }
       initial={line.priceCents}
       submitLabel="Mark as purchased"
       serverError={update.error?.message}
@@ -498,14 +504,13 @@ function PurchaseForm({
             await onLeaving(invalidate);
             toasts.add({
               title: 'Marked as purchased',
-              description: `${line.name}, ${money(paidCents)} paid`,
+              description: paidCents > 0 ? `${line.name}, ${money(paidCents)} paid` : line.name,
               // Twice Base UI's 5s default, so there's time to reach Undo (it also pauses
               // while hovered or focused).
               timeout: 10_000,
-              actionProps: {
-                children: 'Undo',
-                onClick: () => undo.mutate({ id: line.id, status: 'to_buy' }),
-              },
+              actionProps: undoAction(toasts, () =>
+                undo.mutateAsync({ id: line.id, status: 'to_buy' }),
+              ),
             });
           })
           .catch(() => undefined);
@@ -536,7 +541,8 @@ export function AmountForm({
 }) {
   const { register, handleSubmit, formState } = useForm<AmountFormInput, unknown, AmountForm>({
     resolver: zodResolver(amountFormSchema),
-    defaultValues: { amount: centsToInput(initial) },
+    // Nothing to prefill reads as an empty field to fill in, not "0.00" (OD-145).
+    defaultValues: { amount: initial > 0 ? centsToInput(initial) : '' },
   });
   const formRef = useFocusFirstField<HTMLFormElement>();
   return (

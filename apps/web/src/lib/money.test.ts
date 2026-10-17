@@ -31,6 +31,11 @@ describe('money display helpers', () => {
     expect(
       lineAmountText({ ...base, status: 'returned', paidCents: 85000, refundCents: 80000 }),
     ).toBe('Paid $850.00, $800.00 back');
+    // No amount yet says so, never "$0.00" (OD-145).
+    expect(lineAmountText({ ...base, status: 'to_buy', priceCents: 0 })).toBe('No price yet');
+    expect(lineAmountText({ ...base, status: 'purchased', paidCents: 0 })).toBe(
+      'Bought, amount not added',
+    );
   });
 
   it('picks a round tick spacing with at most 30 ticks', () => {
