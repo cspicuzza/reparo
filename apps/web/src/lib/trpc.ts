@@ -3,7 +3,9 @@ import { QueryClient, replaceEqualDeep } from '@tanstack/react-query';
 import { createTRPCClient, httpBatchLink, TRPCClientError } from '@trpc/client';
 import { createTRPCContext, createTRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import { createLinkKeeper } from './stable-links';
+import { VIEW_AS_HEADER } from '@reparo/shared';
 import { accessToken } from './supabase';
+import { readViewAs } from './view-as';
 
 // https://trpc.io/docs/client/tanstack-react-query/setup
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
@@ -39,10 +41,15 @@ export const trpcClient = createTRPCClient<AppRouter>({
  */
 export const trpcOptions = createTRPCOptionsProxy<AppRouter>({ client: trpcClient, queryClient });
 
-/** Bearer header from the current Supabase session; empty when signed out. */
+/** Bearer header from the current Supabase session (empty when signed out), plus any preview. */
 export async function authHeaders(): Promise<Record<string, string>> {
   const token = await accessToken();
-  return token ? { authorization: `Bearer ${token}` } : {};
+  if (!token) return {};
+  // While an admin previews another role, say so; the API lowers their access to match (OD-133).
+  const viewAs = readViewAs();
+  return viewAs
+    ? { authorization: `Bearer ${token}`, [VIEW_AS_HEADER]: viewAs }
+    : { authorization: `Bearer ${token}` };
 }
 
 /** tRPC error code (`UNAUTHORIZED`, `FORBIDDEN`, …) from any thrown value, without `any`. */

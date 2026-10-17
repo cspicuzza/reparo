@@ -7,6 +7,7 @@ vi.mock('./supabase', () => ({
 import { accessToken } from './supabase';
 import { TRPCClientError } from '@trpc/client';
 import { authHeaders, trpcErrorCode } from './trpc';
+import { readViewAs, saveViewAs } from './view-as';
 
 describe('authHeaders', () => {
   it('adds a Bearer header when signed in and nothing when signed out', async () => {
@@ -14,6 +15,29 @@ describe('authHeaders', () => {
     expect(await authHeaders()).toEqual({ authorization: 'Bearer tok' });
     vi.mocked(accessToken).mockResolvedValueOnce(null);
     expect(await authHeaders()).toEqual({});
+  });
+  it('says which role an admin is previewing, until they go back (OD-133)', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('sessionStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+    saveViewAs('viewer');
+    expect(readViewAs()).toBe('viewer');
+    vi.mocked(accessToken).mockResolvedValueOnce('tok');
+    expect(await authHeaders()).toEqual({
+      authorization: 'Bearer tok',
+      'x-reparo-view-as': 'viewer',
+    });
+    saveViewAs(null);
+    expect(readViewAs()).toBeNull();
+    vi.mocked(accessToken).mockResolvedValueOnce('tok');
+    expect(await authHeaders()).toEqual({ authorization: 'Bearer tok' });
+    // Anything but editor or viewer is ignored.
+    store.set('reparo:view-as', 'admin');
+    expect(readViewAs()).toBeNull();
+    vi.unstubAllGlobals();
   });
 });
 

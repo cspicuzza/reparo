@@ -8,5 +8,7 @@ export const healthRouter = router({
       displayName: ctx.member.displayName,
       role: ctx.member.role,
     },
+    /** The stored role, so the app can always offer "Back to admin" while previewing (OD-133). */
+    realRole: ctx.realRole ?? ctx.member.role,
   })),
 });

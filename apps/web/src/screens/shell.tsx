@@ -27,6 +27,8 @@ import { signOut } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { trpcErrorCode, useTRPC } from '@/lib/trpc';
 import { ThemeSwitch, ThemeSwitchMenu } from '@/components/theme-switch';
+import { PreviewBar, ViewAsMenu, ViewAsSwitch } from '@/components/view-as';
+import { useMe } from '@/lib/me';
 
 type Path = '/' | '/rooms' | '/jobs' | '/shopping' | '/money' | '/phases' | '/vendors' | '/manage';
 type Section = { name: string; to: Path; icon: ComponentType<{ 'aria-hidden'?: boolean }> };
@@ -101,6 +103,7 @@ export function Shell() {
   const trpc = useTRPC();
   const navigate = useNavigate();
   const me = useQuery(trpc.health.ping.queryOptions());
+  const { role, isAdmin } = useMe();
   const pathname = useRouterState({ select: (st) => st.location.pathname });
   const onManage = isIn(pathname, '/manage');
   const mainRef = useFocusHeadingOnNavigate();
@@ -116,6 +119,7 @@ export function Shell() {
 
   return (
     <div className="min-h-dvh">
+      <PreviewBar />
       <header className="border-b border-border bg-bar">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2 sm:px-6">
           <Link
@@ -170,13 +174,14 @@ export function Shell() {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>
                     Signed in as {me.data.member.displayName}
-                    <span className="block">{ROLE_LABEL[me.data.member.role]}</span>
+                    <span className="block">{ROLE_LABEL[role ?? me.data.member.role]}</span>
                   </DropdownMenuLabel>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <ThemeSwitchMenu />
+                <ViewAsMenu />
                 <DropdownMenuSeparator />
-                {me.data.member.role === 'admin' ? (
+                {isAdmin ? (
                   <DropdownMenuItem
                     onClick={() => void navigate({ to: '/manage' })}
                     aria-current={onManage ? 'page' : undefined}
@@ -244,6 +249,7 @@ function MenuPanel({
   onSignOut: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
+  const { role, isAdmin } = useMe();
   const pathname = useRouterState({ select: (st) => st.location.pathname });
   // Manage lists lives in this panel too, so the tab is current there (Q128).
   const here = MENU_PANEL.some((sec) => isIn(pathname, sec.to)) || isIn(pathname, '/manage');
@@ -282,9 +288,10 @@ function MenuPanel({
           <div className="mt-auto border-t border-border px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <p className="text-sm text-muted-foreground">Signed in as</p>
             <p className="font-semibold">{member.displayName}</p>
-            <p className="text-sm text-muted-foreground">{ROLE_LABEL[member.role]}</p>
+            <p className="text-sm text-muted-foreground">{ROLE_LABEL[role ?? member.role]}</p>
             <ThemeSwitch className="mt-4" />
-            {member.role === 'admin' ? (
+            <ViewAsSwitch className="mt-4" />
+            {isAdmin ? (
               <Link
                 to="/manage"
                 onClick={() => setOpen(false)}

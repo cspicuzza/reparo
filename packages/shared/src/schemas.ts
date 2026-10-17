@@ -740,3 +740,13 @@ export const estimateUpdateSchema = z
   .extend({ id: idSchema, status: z.enum(['requested', 'received', 'declined']).optional() });
 export type EstimateUpdate = z.infer<typeof estimateUpdateSchema>;
 export type EstimateFormInput = z.input<typeof estimateFormSchema>;
+
+// --- previewing another role (OD-133, Q194) ---------------------------------------------------
+
+/**
+ * The header an admin's browser sends while previewing the app as another role. The API only
+ * ever lowers access with it, and only for a member who really is an admin.
+ */
+export const VIEW_AS_HEADER = 'x-reparo-view-as';
+export const viewAsSchema = z.enum(['editor', 'viewer']);
+export type ViewAs = z.infer<typeof viewAsSchema>;

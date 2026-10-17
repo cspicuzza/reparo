@@ -1,3 +1,4 @@
+import { VIEW_AS_HEADER } from '@reparo/shared';
 import {
   createDb,
   eq,
@@ -127,6 +128,7 @@ describe('@reparo/api', () => {
       expect((await body(res)).result?.data).toEqual({
         ok: true,
         member: { email: 'chris@example.com', displayName: 'chris', role: 'admin' },
+        realRole: 'admin',
       });
       const [row] = await tx.select().from(members).where(eq(members.email, 'chris@example.com'));
       expect(row?.supabaseUserId).toBe(SUB.chris);
@@ -185,9 +187,11 @@ describe('@reparo/api', () => {
     path: string,
     input?: unknown,
     method: 'GET' | 'POST' = 'GET',
+    viewAs?: string,
   ): Promise<Rpc> {
     const token = await sign({ sub: SUB[who], email: EMAIL[who] });
     const headers = new Headers({ authorization: `Bearer ${token}` });
+    if (viewAs !== undefined) headers.set(VIEW_AS_HEADER, viewAs);
     let url = `http://localhost${TRPC_ENDPOINT}/${path}`;
     let body: string | undefined;
     if (method === 'GET') {
@@ -1801,6 +1805,45 @@ describe('@reparo/api', () => {
       expect((await jobRow()).vendor?.name).toBe('Acme Roofing');
       // The $400 permit is gone too and nothing is left to pay, so this job commits nothing.
       expect((await summary()).committedCents).toBe(before - 40000);
+    }));
+
+  it('previewing a role only ever lowers access, and only for an admin (OD-133, Q194)', () =>
+    withSeeded(async (_tx, h) => {
+      type Ping = { member: { role: string }; realRole: string };
+      const as = (who: Who, viewAs: string | undefined, path: string, input?: unknown) =>
+        rpc(h, who, path, input, input === undefined ? 'GET' : 'POST', viewAs);
+
+      // The admin as a viewer: reads work, writes are refused, and ping still knows the truth.
+      const ping = (await as('chris', 'viewer', 'health.ping')).data as Ping;
+      expect(ping).toMatchObject({ member: { role: 'viewer' }, realRole: 'admin' });
+      expect((await as('chris', 'viewer', 'rooms.list')).status).toBe(200);
+      expect((await as('chris', 'viewer', 'rooms.create', { name: 'Preview room' })).status).toBe(
+        403,
+      );
+
+      // As an editor: editor writes work, admin-only ones are refused.
+      expect((await as('chris', 'editor', 'rooms.create', { name: 'Preview room' })).status).toBe(
+        200,
+      );
+      expect((await as('chris', 'editor', 'phases.create', { name: 'Preview phase' })).status).toBe(
+        403,
+      );
+
+      // Without the header, or with anything else in it, the admin is the admin again.
+      expect((await as('chris', undefined, 'phases.create', { name: 'Phase A' })).status).toBe(200);
+      expect((await as('chris', 'admin', 'phases.create', { name: 'Phase B' })).status).toBe(200);
+      expect((await as('chris', 'nonsense', 'phases.create', { name: 'Phase C' })).status).toBe(
+        200,
+      );
+
+      // A non-admin gains nothing and loses nothing: an editor asking to be a viewer stays an
+      // editor, and a viewer can't use it to climb.
+      expect((await as('editor', 'viewer', 'rooms.create', { name: 'Editor room' })).status).toBe(
+        200,
+      );
+      const viewerPing = (await as('viewer', 'editor', 'health.ping')).data as Ping;
+      expect(viewerPing).toMatchObject({ member: { role: 'viewer' }, realRole: 'viewer' });
+      expect((await as('viewer', 'editor', 'rooms.create', { name: 'Nope' })).status).toBe(403);
     }));
 
   it('a form mistake reads as words, not JSON (OD-125, Q164)', () =>
