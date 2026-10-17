@@ -46,13 +46,17 @@ export function prefetchJob(jobId: string): void {
   );
   void ensure(queryClient.ensureQueryData(t.costLines.list.queryOptions({ jobId })));
   void ensure(
-    queryClient
-      .ensureQueryData(t.payments.list.queryOptions({ jobId }))
-      .then((list) =>
-        queryClient.ensureQueryData(
-          t.files.listMany.queryOptions({ ownerType: 'payment', ownerIds: list.map((p) => p.id) }),
-        ),
-      ),
+    queryClient.ensureQueryData(t.payments.list.queryOptions({ jobId })).then((list) =>
+      // No payments, no receipts to ask for, as the other lists here (OD-155).
+      list.length > 0
+        ? queryClient.ensureQueryData(
+            t.files.listMany.queryOptions({
+              ownerType: 'payment',
+              ownerIds: list.map((p) => p.id),
+            }),
+          )
+        : undefined,
+    ),
   );
   void ensure(queryClient.ensureQueryData(t.shoppingLines.list.queryOptions({ jobId })));
   void ensure(

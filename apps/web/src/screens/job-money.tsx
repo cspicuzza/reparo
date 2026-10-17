@@ -411,12 +411,14 @@ function Payments({
   const update = useMutation(trpc.payments.update.mutationOptions());
   const remove = useMutation(trpc.payments.remove.mutationOptions({ onSuccess: invalidate }));
   const editingPayment = payments.find((p) => p.id === editing);
-  const receipts = useQuery(
-    trpc.files.listMany.queryOptions({
+  const receipts = useQuery({
+    ...trpc.files.listMany.queryOptions({
       ownerType: 'payment',
       ownerIds: payments.map((p) => p.id),
     }),
-  );
+    // No payments, no receipts to ask for (OD-155), as the other file lists do.
+    enabled: payments.length > 0,
+  });
   const receiptsOf = (paymentId: string) =>
     (receipts.data ?? []).filter((f) => f.ownerId === paymentId);
 
