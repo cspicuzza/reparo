@@ -130,7 +130,7 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
   return (
     <section
       aria-label="The job at a glance"
-      className="grid gap-x-8 gap-y-5 rounded-xl border border-border bg-card p-5 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-6"
+      className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 rounded-xl border border-border bg-card p-5 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-6"
     >
       <div>
         <p className="text-sm text-muted-foreground">Status</p>
@@ -175,7 +175,7 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
             <Link
               to="/vendors"
               search={{ vendor: v.id }}
-              className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+              className="inline-flex min-h-11 min-w-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
             >
               {v.name}
             </Link>

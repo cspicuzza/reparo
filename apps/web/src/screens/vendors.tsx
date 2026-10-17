@@ -136,7 +136,7 @@ export function Vendors() {
       {vendors.data && vendors.data.length > 0 ? (
         // A card per vendor, like a stack of business cards (OD-140): who they are, what they
         // do, how to reach them and how many jobs they have.
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {vendors.data.map((v) => (
             <li key={v.id} className="rounded-xl border border-border bg-card p-4">
               <VendorRow

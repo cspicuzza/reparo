@@ -84,7 +84,7 @@ export function RoomPictures({
         onChanged={refreshCovers}
         badge={(f) =>
           f.isCover ? (
-            <span className="rounded-lg bg-card px-2 py-0.5 text-sm font-semibold text-foreground shadow-sm">
+            <span className="rounded-lg bg-card px-2 py-0.5 text-sm font-semibold text-foreground shadow-knob">
               Cover
             </span>
           ) : null

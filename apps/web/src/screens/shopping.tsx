@@ -12,6 +12,7 @@ import { PlanGrid } from '@/components/plan-grid';
 import { Reveal } from '@/components/reveal';
 import { BoughtTape } from '@/components/bought-tape';
 import { Button } from '@/components/ui/button';
+import { SegmentedSwitch } from '@/components/segmented-switch';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useMe } from '@/lib/me';
 import { money } from '@/lib/money';
@@ -367,32 +368,13 @@ function GroupSwitch({ value, onChange }: { value: Grouping; onChange: (g: Group
       <span aria-hidden className="text-sm font-semibold">
         Group
       </span>
-      <div className="relative flex max-w-xs min-w-0 flex-1 rounded-lg border border-input bg-inset p-0.5 sm:w-72 sm:flex-none">
-        <span
-          aria-hidden
-          className="absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/2)] rounded-md bg-card shadow-sm transition-transform duration-200 ease-out"
-          style={{ transform: `translateX(${value === 'store' ? 100 : 0}%)` }}
-        />
-        {options.map(([v, text]) => (
-          <label
-            key={v}
-            className={cn(
-              'relative z-10 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-2 text-base transition-colors duration-150 hover:text-foreground has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
-              value === v ? 'font-semibold text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            <input
-              type="radio"
-              name="shopping-group"
-              value={v}
-              checked={value === v}
-              onChange={() => onChange(v)}
-              className="sr-only"
-            />
-            {text}
-          </label>
-        ))}
-      </div>
+      <SegmentedSwitch
+        name="shopping-group"
+        value={value}
+        options={options.map(([v, text]) => ({ value: v, label: text }))}
+        onChange={onChange}
+        className="max-w-xs min-w-0 flex-1 sm:w-72 sm:flex-none"
+      />
     </fieldset>
   );
 }
@@ -729,7 +711,7 @@ function Filters({
     <div className="contents">
       {/* Pinned under the top of the screen while the list scrolls (OD-137). Full-bleed, so
           rows don't show at its sides. */}
-      <div className="sticky top-0 z-30 -mx-4 flex items-center gap-2 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:gap-3 sm:px-6">
+      <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center gap-2 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:gap-3 sm:px-6">
         <SearchBox
           value={search.q ?? ''}
           onChange={(q) => setFilter('q', q)}

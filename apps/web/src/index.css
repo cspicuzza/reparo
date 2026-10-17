@@ -135,6 +135,12 @@
 }
 
 @theme inline {
+  /* Shadows only on things that float, from the `float-shadow` token, so they stay visible in
+     dark mode (OD-142; Tailwind's own are a fixed 10% black). Inline, so `.ink` gets its own.
+     */
+  --shadow-float: 0 6px 24px var(--float-shadow);
+  --shadow-knob: 0 1px 2px var(--float-shadow);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -269,13 +275,29 @@
 }
 
 /* Reduced motion keeps short opacity fades and drops movement, scale and blur (Workflow polish,
-   Q6; web.md → Motion): a fade still shows that something changed without moving anything. */
+   Q6; web.md → Motion): a fade still shows that something changed without moving anything.
+   Keyframe animations keep their fade too (OD-142; they used to be cut entirely): menus fade in
+   (tw-animate-css's fade-in only touches opacity), the Saved check fades instead of growing,
+   and the logo's stitch, which moves, is dropped. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation: none !important;
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
     transition-property: opacity !important;
     transition-duration: 150ms !important;
+  }
+  .animate-saved-in {
+    animation-name: fade-only !important;
+  }
+  .animate-mend {
+    animation: none !important;
+  }
+}
+
+@keyframes fade-only {
+  from {
+    opacity: 0;
   }
 }

@@ -152,7 +152,7 @@ export function Rooms() {
       {rooms.data && rooms.data.length > 0 && !arranging ? (
         // The house as a set of plans (OD-140): each room's cover or its outline drawn to its
         // proportions, its size, what's left to buy for it, and how its jobs are going.
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rooms.data.map((room) => {
             const { dims, sqft } = describeRoom(room);
             const size = dims ? (sqft != null ? `${dims}, ${sqft} sq ft` : dims) : 'Not measured';

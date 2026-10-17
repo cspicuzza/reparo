@@ -20,6 +20,7 @@ import { ShoppingStatusBadge } from '@/components/money';
 import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { SegmentedSwitch } from '@/components/segmented-switch';
 import { LoadError } from '@/components/load-error';
 import { centsToInput, lineAmountText, money, SHOPPING_STATUS_LABEL } from '@/lib/money';
 import { problemWith } from '@/lib/problem';
@@ -487,7 +488,6 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
     },
   });
   const shown = change.isPending && change.variables ? change.variables : line.status;
-  const index = SHOPPING_STATUSES.indexOf(shown);
   const id = `line-${line.id}-status`;
   const what = `Purchase status of ${line.name}`;
 
@@ -501,52 +501,37 @@ function PurchaseStatus({ line }: { line: ShoppingLine }) {
         </span>
         <SaveStatus mutation={change} what={what} />
       </div>
-      <div className="relative mt-1.5 flex rounded-lg border border-input bg-inset p-0.5">
-        <span
-          aria-hidden
-          // Purchased is green and Returned red, here only; list chips stay neutral (OD-132,
-          // Q192–Q193).
-          className={cn(
-            'absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md shadow-sm transition-[transform,background-color] duration-200 ease-out',
-            shown === 'purchased'
-              ? 'bg-status-done-tint'
-              : shown === 'returned'
-                ? 'bg-destructive-tint'
-                : 'bg-card',
-          )}
-          style={{ transform: `translateX(${index * 100}%)` }}
-        />
-        {SHOPPING_STATUSES.map((st) => {
-          const off = st === 'returned' && line.status === 'to_buy';
-          return (
-            <label
-              key={st}
-              className={cn(
-                'relative z-10 flex min-h-11 flex-1 items-center justify-center rounded-md px-2 text-base transition-colors duration-150 has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
-                shown !== st
-                  ? 'text-muted-foreground'
-                  : st === 'purchased'
-                    ? 'font-semibold text-status-done'
-                    : st === 'returned'
-                      ? 'font-semibold text-destructive'
-                      : 'font-semibold text-foreground',
-                off ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-foreground',
-              )}
-            >
-              <input
-                type="radio"
-                name={id}
-                value={st}
-                checked={shown === st}
-                disabled={off || change.isPending}
-                onChange={() => change.mutate(st)}
-                className="sr-only"
-              />
-              {SHOPPING_STATUS_LABEL[st]}
-            </label>
-          );
-        })}
-      </div>
+      <SegmentedSwitch
+        name={id}
+        value={shown}
+        options={SHOPPING_STATUSES.map((st) => ({
+          value: st,
+          label: SHOPPING_STATUS_LABEL[st],
+          // Returned can only follow Purchased (it says why below).
+          disabled: st === 'returned' && line.status === 'to_buy',
+        }))}
+        disabled={change.isPending}
+        onChange={(st) => change.mutate(st)}
+        // Purchased is green and Returned red, here only; list chips stay neutral (OD-132,
+        // Q192–Q193).
+        knobClassName={
+          shown === 'purchased'
+            ? 'bg-status-done-tint'
+            : shown === 'returned'
+              ? 'bg-destructive-tint'
+              : undefined
+        }
+        positionClassName={(st, picked) =>
+          !picked
+            ? 'text-muted-foreground'
+            : st === 'purchased'
+              ? 'font-semibold text-status-done'
+              : st === 'returned'
+                ? 'font-semibold text-destructive'
+                : 'font-semibold text-foreground'
+        }
+        className="mt-1.5"
+      />
       {change.status === 'error' ? (
         <SaveProblem
           mutation={change}

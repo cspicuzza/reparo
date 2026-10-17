@@ -63,7 +63,7 @@ export function PictureViewer({
     <Dialog.Root open={open} onOpenChange={(o) => (o ? null : onIndexChange(null))}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-scrim transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
-        <Dialog.Popup className="fixed inset-0 z-50 flex flex-col bg-popover text-base text-popover-foreground shadow-lg outline-none transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 sm:inset-6 sm:rounded-xl sm:border sm:border-border">
+        <Dialog.Popup className="fixed inset-0 z-50 flex flex-col bg-popover text-base text-popover-foreground shadow-float outline-none transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 sm:inset-6 sm:rounded-xl sm:border sm:border-border">
           {picture && index !== null ? (
             <ViewerBody
               key={picture.id}
@@ -116,6 +116,8 @@ function ViewerBody({
     }),
   );
   const swipeFrom = useRef<number | null>(null);
+  // Fingers on the picture: a swipe is one finger; two are a pinch, which zooms (OD-142).
+  const fingers = useRef(0);
 
   return (
     <>
@@ -135,16 +137,27 @@ function ViewerBody({
       </div>
 
       <div
-        className="relative flex min-h-0 flex-1 touch-pan-y items-center justify-center bg-inset p-2"
+        // Pinch to zoom stays on (OD-142): a drawing or rendering has to be readable on a phone.
+        className="relative flex min-h-0 flex-1 touch-pan-y touch-pinch-zoom items-center justify-center bg-inset p-2"
         onPointerDown={(e) => {
-          if (e.pointerType !== 'mouse') swipeFrom.current = e.clientX;
+          if (e.pointerType === 'mouse') return;
+          fingers.current += 1;
+          swipeFrom.current = fingers.current === 1 ? e.clientX : null;
         }}
         onPointerUp={(e) => {
+          if (e.pointerType === 'mouse') return;
+          fingers.current = Math.max(0, fingers.current - 1);
           const from = swipeFrom.current;
           swipeFrom.current = null;
-          if (from === null || !canMove) return;
+          // Not while zoomed in: then a drag looks around the picture.
+          const zoomed = (window.visualViewport?.scale ?? 1) > 1.01;
+          if (from === null || !canMove || zoomed) return;
           const dx = e.clientX - from;
           if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+        }}
+        onPointerCancel={() => {
+          fingers.current = 0;
+          swipeFrom.current = null;
         }}
       >
         {!picture.isPicture ? (
@@ -189,6 +202,22 @@ function ViewerBody({
         ) : null}
         <p className="text-sm text-muted-foreground">
           {picture.originalName}, {formatSize(picture.sizeBytes)}
+          {picture.isPicture && picture.url ? (
+            <>
+              {'. '}
+              {/* The full picture on its own, to zoom with the browser (OD-142). */}
+              <a
+                href={picture.url}
+                target="_blank"
+                rel="noreferrer"
+                className="relative inline-flex items-center gap-1 text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
+              >
+                Open full size
+                <ExternalLink aria-hidden className="size-3.5" />
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            </>
+          ) : null}
         </p>
         {details?.(picture)}
         {canEdit ? (

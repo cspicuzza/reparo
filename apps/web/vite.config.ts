@@ -13,6 +13,18 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  build: {
+    // React and React DOM in their own chunk (OD-142): they change far less often than the app,
+    // so browsers keep them cached across releases, and the app's first chunk stays small.
+    // https://rolldown.rs/reference/OutputOptions.codeSplitting (rolldown 1.2, Vite 8.3)
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/ }],
+        },
+      },
+    },
+  },
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },

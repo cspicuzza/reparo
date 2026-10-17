@@ -36,7 +36,7 @@ export function WhatsThis({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={6} collisionPadding={16} className="z-50">
-          <Popover.Popup className="w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-[0_6px_24px_var(--float-shadow)] outline-none transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0">
+          <Popover.Popup className="w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover p-4 text-popover-foreground shadow-float outline-none transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0">
             <Popover.Title className="font-semibold">{title}</Popover.Title>
             <Popover.Description render={<div />} className="mt-1 text-sm text-muted-foreground">
               {children}

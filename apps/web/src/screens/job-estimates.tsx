@@ -148,7 +148,7 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
       </EditPanel>
 
       {list.length > 0 ? (
-        <ul className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((e) => (
             <EstimateCard
               key={e.id}

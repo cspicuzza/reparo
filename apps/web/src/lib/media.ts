@@ -1,10 +1,11 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Below Tailwind's `sm` (640px): the phone layout of lists such as Shopping's rows, for the few
- * things CSS can't switch on its own (what's in Tab order, what starts folded; OD-137).
+ * Below Tailwind's `sm` (40rem): the phone layout of lists such as Shopping's rows, for the few
+ * things CSS can't switch on its own (what's in Tab order, what starts folded; OD-137). In rem,
+ * like Tailwind's breakpoints, so a larger browser text size moves both together (OD-142).
  */
-const PHONE = '(max-width: 639.98px)';
+const PHONE = '(width < 40rem)';
 
 function subscribe(onChange: () => void) {
   const list = window.matchMedia(PHONE);

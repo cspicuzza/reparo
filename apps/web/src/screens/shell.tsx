@@ -121,6 +121,13 @@ export function Shell() {
 
   return (
     <div className="min-h-dvh">
+      {/* The first thing a keyboard reaches: straight past the bars to the page (OD-142). */}
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-lg bg-primary px-4 py-3 text-primary-foreground focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to the page
+      </a>
       <PreviewBar />
       <OfflineBar />
       <header className="border-b border-border bg-bar">
@@ -205,7 +212,12 @@ export function Shell() {
         </div>
       </header>
 
-      <main ref={mainRef} className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:px-6 md:pb-16">
+      <main
+        ref={mainRef}
+        id="main"
+        tabIndex={-1}
+        className="mx-auto max-w-6xl px-4 pt-8 pb-28 outline-none sm:px-6 md:pb-16"
+      >
         <Outlet />
       </main>
 
@@ -215,7 +227,7 @@ export function Shell() {
       >
         <ul className="flex">
           {BOTTOM_BAR.map(({ name, to, icon: Icon }) => (
-            <li key={name} className="flex-1">
+            <li key={name} className="min-w-0 flex-1">
               <Link
                 to={to}
                 activeOptions={{ exact: to === '/' }}
@@ -230,7 +242,7 @@ export function Shell() {
               </Link>
             </li>
           ))}
-          <li className="flex-1">
+          <li className="min-w-0 flex-1">
             <MenuPanel member={me.data?.member} onSignOut={onSignOut} />
           </li>
         </ul>
@@ -240,7 +252,7 @@ export function Shell() {
 }
 
 const TAB_CLASS =
-  'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-sm text-muted-foreground [&_svg]:size-6';
+  'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-sm break-words text-muted-foreground [&_svg]:size-6';
 const TAB_ACTIVE_CLASS = 'font-semibold text-foreground! shadow-[inset_0_3px_0_var(--tape)]';
 
 /**

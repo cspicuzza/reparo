@@ -128,7 +128,10 @@ function MoneyHeadline({
               {formatMoney(m.spentCents)} spent and {formatMoney(m.committedCents)} planned
               {m.countingPhases.length > 0 ? ` for ${listText(m.countingPhases)}` : ''}, against a{' '}
               {formatMoney(m.poolCents)} budget.{' '}
-              <Link to="/money" className="text-foreground underline underline-offset-4">
+              <Link
+                to="/money"
+                className="relative text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
+              >
                 See where it goes
               </Link>
             </p>

@@ -119,7 +119,7 @@ function HorizontalDimension({ children }: { children: ReactNode }) {
         className={cn(TICK, 'h-px min-w-3 flex-1')}
         style={{ marginBottom: 'var(--dim-mid)' }}
       />
-      <div className="w-24 shrink-0 sm:w-32">{children}</div>
+      <div className="w-24 max-w-[30vw] shrink-0 sm:w-32 sm:max-w-none">{children}</div>
       <span
         aria-hidden="true"
         className={cn(TICK, 'h-px min-w-3 flex-1')}
@@ -140,7 +140,7 @@ function VerticalDimension({ children }: { children: ReactNode }) {
     <div className="flex h-full flex-col items-center gap-2">
       <span aria-hidden="true" className={cn(TICK, 'h-px w-3.5')} />
       <span aria-hidden="true" className={cn(TICK, 'min-h-3 w-px flex-1')} />
-      <div className="w-24 shrink-0 sm:w-32">{children}</div>
+      <div className="w-24 max-w-[30vw] shrink-0 sm:w-32 sm:max-w-none">{children}</div>
       <span aria-hidden="true" className={cn(TICK, 'min-h-3 w-px flex-1')} />
       <span aria-hidden="true" className={cn(TICK, 'h-px w-3.5')} />
     </div>

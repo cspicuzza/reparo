@@ -66,7 +66,7 @@ function ToastList() {
         key={toast.id}
         toast={toast}
         // The other theme, so a message stands clear of the page (OD-126, Q175–Q176).
-        className="ink rounded-xl border border-border bg-popover text-popover-foreground shadow-lg transition-opacity duration-150 data-ending-style:opacity-0 data-limited:hidden data-starting-style:opacity-0"
+        className="ink rounded-xl border border-border bg-popover text-popover-foreground shadow-float transition-opacity duration-150 data-ending-style:opacity-0 data-limited:hidden data-starting-style:opacity-0"
       >
         <Toast.Content className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
           <div className="min-w-0 flex-1 py-1.5">

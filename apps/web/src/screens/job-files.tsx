@@ -67,7 +67,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
             </div>
           }
           badge={(f) => (
-            <span className="rounded-lg bg-card px-2 py-0.5 text-sm font-semibold text-foreground shadow-sm">
+            <span className="rounded-lg bg-card px-2 py-0.5 text-sm font-semibold text-foreground shadow-knob">
               {f.kind === 'mockup' ? 'Mockup' : 'Spec drawing'}
             </span>
           )}

@@ -70,7 +70,7 @@ export function StatusSelect({
 }) {
   const { icon: Icon, bg, fg } = STATUS[value];
   return (
-    <span className="relative inline-flex items-center">
+    <span className="relative inline-flex max-w-full items-center">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
@@ -80,7 +80,7 @@ export function StatusSelect({
         value={value}
         onChange={(e) => onChange(e.target.value as WorkStatusInput)}
         className={cn(
-          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
+          'min-h-11 max-w-full min-w-0 appearance-none truncate rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
           bg,
           fg,
         )}
@@ -137,7 +137,7 @@ export function PhaseStatusSelect({
 }) {
   const { icon: Icon, bg, fg } = STATUS[PHASE[value]];
   return (
-    <span className="relative inline-flex items-center">
+    <span className="relative inline-flex max-w-full items-center">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
@@ -147,7 +147,7 @@ export function PhaseStatusSelect({
         value={value}
         onChange={(e) => onChange(e.target.value as PhaseStatusInput)}
         className={cn(
-          'min-h-11 appearance-none rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
+          'min-h-11 max-w-full min-w-0 appearance-none truncate rounded-lg border border-input pr-10 pl-10 text-base font-semibold transition-colors duration-150',
           bg,
           fg,
         )}

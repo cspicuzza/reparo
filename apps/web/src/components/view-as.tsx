@@ -1,6 +1,8 @@
 import { Menu as MenuPrimitive } from '@base-ui/react/menu';
 import type { ViewAs } from '@reparo/shared';
 import { useQueryClient } from '@tanstack/react-query';
+import { SegmentedSwitch } from '@/components/segmented-switch';
+import { knobStyle, SWITCH_KNOB, SWITCH_POSITION, SWITCH_TRACK } from '@/lib/switch';
 import { Button } from '@/components/ui/button';
 import { useMe } from '@/lib/me';
 import { saveViewAs } from '@/lib/view-as';
@@ -30,15 +32,10 @@ function useSwitchRole() {
   };
 }
 
-const TRACK = 'relative mt-1.5 flex rounded-lg border border-input bg-inset p-0.5';
-const KNOB =
-  'absolute inset-y-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md bg-card shadow-sm transition-transform duration-200 ease-out';
-const POSITION =
-  'relative z-10 flex min-h-11 flex-1 cursor-pointer items-center justify-center rounded-md px-2 text-base transition-colors duration-150';
-
+/** The menu's version is built from the menu's own radio items, so it borrows the switch's look. */
 function Knob({ choice }: { choice: Choice }) {
   const index = CHOICES.findIndex((c) => c.value === choice);
-  return <span aria-hidden className={KNOB} style={{ transform: `translateX(${index * 100}%)` }} />;
+  return <span aria-hidden className={SWITCH_KNOB} style={knobStyle(index, CHOICES.length)} />;
 }
 
 /** In the account menu on a laptop, built from the menu's own radio items (arrow keys work). */
@@ -55,7 +52,7 @@ export function ViewAsMenu() {
         value={choice}
         onValueChange={(v: Choice) => switchRole(v)}
         aria-label="View as"
-        className={TRACK}
+        className={cn(SWITCH_TRACK, 'mt-1.5')}
       >
         <Knob choice={choice} />
         {CHOICES.map((c) => (
@@ -64,8 +61,8 @@ export function ViewAsMenu() {
             value={c.value}
             closeOnClick={false}
             className={cn(
-              POSITION,
-              'outline-none data-highlighted:outline-2 data-highlighted:outline-ring data-highlighted:outline-solid',
+              SWITCH_POSITION,
+              'cursor-pointer outline-none data-highlighted:outline-2 data-highlighted:outline-ring data-highlighted:outline-solid',
               choice === c.value ? 'font-semibold text-foreground' : 'text-muted-foreground',
             )}
           >
@@ -86,29 +83,13 @@ export function ViewAsSwitch({ className }: { className?: string }) {
   return (
     <fieldset className={className}>
       <legend className="text-base">View as</legend>
-      <div className={TRACK}>
-        <Knob choice={choice} />
-        {CHOICES.map((c) => (
-          <label
-            key={c.value}
-            className={cn(
-              POSITION,
-              'has-focus-visible:outline-2 has-focus-visible:outline-ring has-focus-visible:outline-solid',
-              choice === c.value ? 'font-semibold text-foreground' : 'text-muted-foreground',
-            )}
-          >
-            <input
-              type="radio"
-              name="view-as"
-              value={c.value}
-              checked={choice === c.value}
-              onChange={() => switchRole(c.value)}
-              className="sr-only"
-            />
-            {c.label}
-          </label>
-        ))}
-      </div>
+      <SegmentedSwitch
+        name="view-as"
+        value={choice}
+        options={CHOICES}
+        onChange={switchRole}
+        className="mt-1.5"
+      />
     </fieldset>
   );
 }

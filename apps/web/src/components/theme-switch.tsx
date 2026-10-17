@@ -24,7 +24,7 @@ function Track({ index, children }: { index: number; children: ReactNode }) {
     <div className="relative inline-flex shrink-0 rounded-full border border-input bg-inset p-0.5">
       <span
         aria-hidden
-        className="absolute top-0.5 left-0.5 size-11 rounded-full bg-foreground shadow-sm transition-transform duration-200 ease-out"
+        className="absolute top-0.5 left-0.5 size-11 rounded-full bg-foreground shadow-knob transition-transform duration-200 ease-out"
         style={{ transform: `translateX(${index * 100}%)` }}
       />
       {children}
