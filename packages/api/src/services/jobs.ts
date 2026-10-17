@@ -89,30 +89,18 @@ async function loadJobs(db: Db, filter: JobList & { id?: string }) {
     .orderBy(asc(phases.sortOrder), asc(phases.name), asc(jobs.sortOrder), asc(jobs.createdAt));
   if (rows.length === 0) return [];
 
-  const covered = await db
-    .select({ jobRoom: jobRooms, room: { id: rooms.id, name: rooms.name } })
-    .from(jobRooms)
-    .innerJoin(rooms, eq(rooms.id, jobRooms.roomId))
-    .where(
-      and(
-        liveJobRoom(),
-        isNull(rooms.deletedAt),
-        inArray(
-          jobRooms.jobId,
-          rows.map((r) => r.job.id),
-        ),
-      ),
-    )
-    .orderBy(asc(rooms.sortOrder), asc(rooms.name));
-
-  const money = await jobMoneyTotals(
-    db,
-    rows.map((r) => r.job.id),
-  );
-  const quotes = await estimateCounts(
-    db,
-    rows.map((r) => r.job.id),
-  );
+  // The rest only needs the job ids, so it runs at the same time (OD-153).
+  const ids = rows.map((r) => r.job.id);
+  const [covered, money, quotes] = await Promise.all([
+    db
+      .select({ jobRoom: jobRooms, room: { id: rooms.id, name: rooms.name } })
+      .from(jobRooms)
+      .innerJoin(rooms, eq(rooms.id, jobRooms.roomId))
+      .where(and(liveJobRoom(), isNull(rooms.deletedAt), inArray(jobRooms.jobId, ids)))
+      .orderBy(asc(rooms.sortOrder), asc(rooms.name)),
+    jobMoneyTotals(db, ids),
+    estimateCounts(db, ids),
+  ]);
 
   return rows.map(({ job, vendor, phase }) => {
     const totals = money.get(job.id) ?? { costCents: 0, paidCents: 0 };
@@ -161,9 +149,11 @@ async function liveRoomIds(db: Db, jobId: string) {
 }
 
 export async function createJob(db: Db, { roomIds, ...input }: JobCreate) {
-  await getPhase(db, input.phaseId);
-  if (input.vendorId !== null) await getVendor(db, input.vendorId);
-  for (const roomId of roomIds) await getRoom(db, roomId);
+  await Promise.all([
+    getPhase(db, input.phaseId),
+    input.vendorId === null ? null : getVendor(db, input.vendorId),
+    ...roomIds.map((roomId) => getRoom(db, roomId)),
+  ]);
   if (roomIds.length > 0 && input.status !== 'unstarted') {
     throw badRequest("A job that covers rooms takes its status from them; set each room's status");
   }
@@ -229,8 +219,7 @@ async function getJobRoom(db: Db, id: string) {
 
 /** Cover one more room. A room that was removed from the job can be added back. */
 export async function addJobRoom(db: Db, input: JobRoomCreate) {
-  const job = await getJob(db, input.jobId);
-  const room = await getRoom(db, input.roomId);
+  const [job, room] = await Promise.all([getJob(db, input.jobId), getRoom(db, input.roomId)]);
   try {
     await db.insert(jobRooms).values(input);
   } catch (e) {

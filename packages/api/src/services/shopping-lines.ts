@@ -246,10 +246,10 @@ export function lineSectionCents(l: {
  * that have lines, in room order, with Whole house (roomId null) last.
  */
 export async function shoppingTotals(db: Db, filter: ShoppingLineList = {}) {
-  const lines = await listShoppingLines(db, filter);
-  const roomOrder = await db
-    .select({ id: rooms.id, sortOrder: rooms.sortOrder, name: rooms.name })
-    .from(rooms);
+  const [lines, roomOrder] = await Promise.all([
+    listShoppingLines(db, filter),
+    db.select({ id: rooms.id, sortOrder: rooms.sortOrder, name: rooms.name }).from(rooms),
+  ]);
   const rank = new Map(
     roomOrder
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))

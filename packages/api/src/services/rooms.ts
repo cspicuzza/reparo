@@ -82,8 +82,7 @@ export async function roomProgress(db: Db, roomId: string): Promise<RoomProgress
 
 /** Every room with its progress, for the Rooms list. */
 export async function listRoomsWithProgress(db: Db) {
-  const all = await listRooms(db);
-  const progress = await roomsProgress(db);
+  const [all, progress] = await Promise.all([listRooms(db), roomsProgress(db)]);
   return all.map((r) => {
     const p = progress.get(r.id);
     return { ...r, progress: { done: p?.done ?? 0, total: p?.total ?? 0 } };

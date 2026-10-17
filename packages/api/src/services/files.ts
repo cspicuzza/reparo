@@ -502,8 +502,10 @@ export async function finishThumb(
   { id, thumbPath, tinyPath }: FileThumb,
 ) {
   const f = await getLive(db, id);
-  const thumb = await checkedThumb(storage, f.ownerType, f.ownerId, thumbPath);
-  const tiny = await checkedThumb(storage, f.ownerType, f.ownerId, tinyPath, TINY_RE);
+  const [thumb, tiny] = await Promise.all([
+    checkedThumb(storage, f.ownerType, f.ownerId, thumbPath),
+    checkedThumb(storage, f.ownerType, f.ownerId, tinyPath, TINY_RE),
+  ]);
   if (!thumb && !tiny) throw badRequest('The thumbnail didn’t arrive. Try again.');
   const [row] = await db
     .update(files)

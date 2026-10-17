@@ -16,8 +16,7 @@ export type PhaseProgress = {
  * the phases service because jobs already depends on it.
  */
 export async function listPhasesWithProgress(db: Db) {
-  const phases = await listPhases(db);
-  const jobs = await listJobs(db);
+  const [phases, jobs] = await Promise.all([listPhases(db), listJobs(db)]);
   return phases.map((phase) => {
     const counted = jobs.filter((j) => j.phaseId === phase.id && j.progress.status !== 'cancelled');
     const progress: PhaseProgress = {

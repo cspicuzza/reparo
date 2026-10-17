@@ -19,11 +19,14 @@ export type NeedsYou = {
 };
 
 export async function homeSummary(db: Db) {
-  const allJobs = await listJobs(db);
-  const allPhases = await listPhasesWithProgress(db);
-  const allRooms = await listRooms(db);
-  const progress = await roomsProgress(db);
-  const money = await getMoneySummary(db);
+  // Independent reads, so they run at the same time (OD-153).
+  const [allJobs, allPhases, allRooms, progress, money] = await Promise.all([
+    listJobs(db),
+    listPhasesWithProgress(db),
+    listRooms(db),
+    roomsProgress(db),
+    getMoneySummary(db),
+  ]);
 
   // A job covering rooms waits per room; a job with no rooms (a fee) waits as a whole.
   const needsYou = allJobs.flatMap<NeedsYou>((job) =>

@@ -20,12 +20,14 @@ async function budgetRow(db: Db) {
 
 /** The pool as it stands: starting balance, adjustments in date order, and the total. */
 export async function getBudget(db: Db) {
-  const row = await budgetRow(db);
-  const adjustments = await db
-    .select()
-    .from(budgetAdjustments)
-    .where(liveAdj())
-    .orderBy(asc(budgetAdjustments.on), asc(budgetAdjustments.createdAt));
+  const [row, adjustments] = await Promise.all([
+    budgetRow(db),
+    db
+      .select()
+      .from(budgetAdjustments)
+      .where(liveAdj())
+      .orderBy(asc(budgetAdjustments.on), asc(budgetAdjustments.createdAt)),
+  ]);
   const adjustmentsCents = sumCents(adjustments.map((a) => a.amountCents));
   return {
     startingCents: row.startingCents,

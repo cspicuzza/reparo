@@ -39,22 +39,24 @@ export async function jobMoneyTotals(
     costWhere.push(inArray(costLines.jobId, jobIds));
     payWhere.push(inArray(payments.jobId, jobIds));
   }
-  const costs = await db
-    .select({
-      jobId: costLines.jobId,
-      total: sql<number>`sum(${costLines.amountCents})`.mapWith(Number),
-    })
-    .from(costLines)
-    .where(and(...costWhere))
-    .groupBy(costLines.jobId);
-  const paid = await db
-    .select({
-      jobId: payments.jobId,
-      total: sql<number>`sum(${payments.amountCents})`.mapWith(Number),
-    })
-    .from(payments)
-    .where(and(...payWhere))
-    .groupBy(payments.jobId);
+  const [costs, paid] = await Promise.all([
+    db
+      .select({
+        jobId: costLines.jobId,
+        total: sql<number>`sum(${costLines.amountCents})`.mapWith(Number),
+      })
+      .from(costLines)
+      .where(and(...costWhere))
+      .groupBy(costLines.jobId),
+    db
+      .select({
+        jobId: payments.jobId,
+        total: sql<number>`sum(${payments.amountCents})`.mapWith(Number),
+      })
+      .from(payments)
+      .where(and(...payWhere))
+      .groupBy(payments.jobId),
+  ]);
   const out = new Map<string, { costCents: number; paidCents: number }>();
   for (const c of costs) out.set(c.jobId, { costCents: c.total, paidCents: 0 });
   for (const p of paid) {
@@ -81,14 +83,20 @@ export function listCostLines(db: Db, jobId: string) {
  * instead of its own Edit and Remove.
  */
 export async function listCostLinesForJob(db: Db, jobId: string) {
-  const lines = await listCostLines(db, jobId);
-  const quotes = await db
-    .select({ lineId: estimates.costLineId, id: estimates.id, vendorName: vendors.name })
-    .from(estimates)
-    .innerJoin(vendors, eq(vendors.id, estimates.vendorId))
-    .where(
-      and(eq(estimates.jobId, jobId), eq(estimates.status, 'chosen'), isNull(estimates.deletedAt)),
-    );
+  const [lines, quotes] = await Promise.all([
+    listCostLines(db, jobId),
+    db
+      .select({ lineId: estimates.costLineId, id: estimates.id, vendorName: vendors.name })
+      .from(estimates)
+      .innerJoin(vendors, eq(vendors.id, estimates.vendorId))
+      .where(
+        and(
+          eq(estimates.jobId, jobId),
+          eq(estimates.status, 'chosen'),
+          isNull(estimates.deletedAt),
+        ),
+      ),
+  ]);
   const byLine = new Map(quotes.map((q) => [q.lineId, { id: q.id, vendorName: q.vendorName }]));
   return lines.map((l) => ({ ...l, fromEstimate: byLine.get(l.id) ?? null }));
 }
