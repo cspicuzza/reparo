@@ -17,11 +17,17 @@ import { groupByPhase, phaseProgressText, progressText, type Job } from '@/lib/w
 import { JobEditor } from './job-editor';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { labelClass } from '@/components/form';
+import { TEXT_LINK } from '@/lib/utils';
 
 /**
  * Every job, phase by phase (M2, OD-46). Replaces the Items page: a job is a named task in a
  * phase, with an optional vendor and the rooms it covers. "Add a job" lives here.
  */
+/** "12 jobs, 3 done" for the page's heading line (OD-145). */
+const jobsText = (count: number, done: number) =>
+  `${count} ${count === 1 ? 'job' : 'jobs'}, ${done === 0 ? 'none done yet' : `${done} done`}`;
+
 export function Jobs() {
   const trpc = useTRPC();
   const navigate = useNavigate();
@@ -37,11 +43,16 @@ export function Jobs() {
   const onePhase = search.phase ? phases.data?.find((p) => p.id === search.phase) : undefined;
   const groups = all && onePhase ? all.filter((g) => g.phase.id === onePhase.id) : all;
 
+  const doneCount = (jobs.data ?? []).filter((j) => j.progress.status === 'completed').length;
+
   return (
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Jobs"
-        description={<>The work, phase by phase.</>}
+        // What's there, not what the page is (OD-145).
+        description={
+          jobs.data && jobs.data.length > 0 ? jobsText(jobs.data.length, doneCount) : undefined
+        }
         action={
           // Vendors sits beside Add a job, not wrapped under the description (OD-129, Q184).
           <div className="flex flex-wrap gap-2">
@@ -75,7 +86,7 @@ export function Jobs() {
       {onePhase ? (
         <p className="-mt-4 text-muted-foreground">
           Showing {onePhase.name}&apos;s jobs.{' '}
-          <Link to="/jobs" className="text-foreground underline underline-offset-4">
+          <Link to="/jobs" className={TEXT_LINK}>
             Show every phase
           </Link>
         </p>
@@ -164,12 +175,12 @@ function JobRow({ job }: { job: Job }) {
       className="flex min-h-16 items-center gap-4 px-4 py-3 hover:bg-accent sm:px-5"
     >
       <span className="min-w-0 flex-1">
-        <span className="block text-xl font-semibold break-words">{job.name}</span>
+        <span className="block text-lg font-semibold break-words">{job.name}</span>
         <span className="block text-sm text-muted-foreground">
           {job.vendor ? job.vendor.name : 'No vendor yet'}
         </span>
         {job.estimates.total > 0 && !job.estimates.chosen ? (
-          <span className="block text-sm font-semibold">
+          <span className={labelClass}>
             {job.estimates.total === 1 ? '1 estimate' : `${job.estimates.total} estimates`}, none
             chosen
           </span>
@@ -214,7 +225,12 @@ function JobRow({ job }: { job: Job }) {
           ) : null}
         </span>
       </span>
-      <ChevronRight aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+      <ChevronRight
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={1.5}
+        className="size-5 shrink-0 text-muted-foreground"
+      />
     </Link>
   );
 }

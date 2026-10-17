@@ -5,7 +5,7 @@
 
 /*
  * Reparo design tokens: "Plaster and tape" (OD-32; decisions in Linear → Design system).
- * This file is the as-built source of truth for colour, type, radius and spacing values.
+ * This file is the as-built source of truth for color, type, radius and spacing values.
  *
  * shadcn's variable names (background, primary, …) are mapped to ours. shadcn's `accent` is a
  * hover background, never the tape yellow; tape has its own tokens. Light or dark is chosen
@@ -120,7 +120,7 @@
   --tape-edge: #8a867d;
   /* Dark: a lighter fill so a full tape doesn't read as empty (OD-109, Q117). Checked
      2026-10-17: 3.96:1 on the track, 4.69:1 on the page. Committed's stripes are this fill on
-     the page colour. */
+     the page color. */
   --tape-fill: #8a857c;
   --tape-committed-gap: #1c1b19;
   --tape-track: #2b2925; /* dark: ticks 5.9:1, the yellow mark 8.7:1 on it */
@@ -135,7 +135,7 @@
 }
 
 /* The page's ring, computed on the root only, so an .ink chip (which redefines --ring for what's
-   inside it) still draws its own outline, which sits on the page, in the page's colour (OD-145:
+   inside it) still draws its own outline, which sits on the page, in the page's color (OD-145:
    it was 1.75:1 there). */
 :root {
   --ring-page: var(--ring);
@@ -151,6 +151,8 @@
      */
   --shadow-float: 0 6px 24px var(--float-shadow);
   --shadow-knob: 0 1px 2px var(--float-shadow);
+  /* The phone's bottom bar: the float shadow, cast upward (OD-145). */
+  --shadow-float-up: 0 -6px 18px var(--float-shadow);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -248,8 +250,9 @@
   }
 
   /* A page's heading takes focus after navigating, so screen readers announce the page
-     (OD-111, Q123). It isn't a control, so it shows no focus ring. */
-  h1[tabindex='-1']:focus {
+     (OD-111, Q123), and a list's heading after its row goes (OD-145). It isn't a control, so
+     it shows no focus ring. */
+  :is(h1, h2, h3)[tabindex='-1']:focus {
     outline: none;
   }
 
@@ -259,6 +262,11 @@
     font-stretch: 74%;
     font-weight: 640;
     letter-spacing: -0.01em;
+  }
+
+  /* An empty date field's "mm/dd/yyyy" in grey, like a placeholder (OD-145). */
+  input[type='date'][data-empty]:not(:focus)::-webkit-datetime-edit {
+    color: var(--muted-foreground);
   }
 
   :focus-visible {

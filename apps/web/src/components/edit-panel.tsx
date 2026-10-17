@@ -85,12 +85,12 @@ export function EditPanel({
               ref={close}
               className={buttonVariants({ variant: 'ghost', className: '-mr-2' })}
             >
-              <X aria-hidden className="size-5" />
+              <X aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-5" />
               Close
             </Dialog.Close>
           </div>
           {/* The body is the darker page tone so the light fields stand out against it; the
-              header keeps the panel colour (OD-100, Q88). */}
+              header keeps the panel color (OD-100, Q88). */}
           <div className="@container min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background px-4 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-6">
             {asking ? (
               <DiscardQuestion

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { FileSection } from '@/components/file-section';
-import { Select } from '@/components/form';
+import { Select, labelClass } from '@/components/form';
 import { Panel } from '@/components/panel';
 import { useTRPC } from '@/lib/trpc';
 import type { FileView } from '@/lib/upload';
@@ -52,7 +52,7 @@ export function JobFiles({ jobId, canEdit }: { jobId: string; canEdit: boolean }
           ]}
           beforeUpload={
             <div className="sm:max-w-xs">
-              <label htmlFor={kindId} className="block text-sm font-semibold">
+              <label htmlFor={kindId} className={labelClass}>
                 The new drawings are
               </label>
               <Select

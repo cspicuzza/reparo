@@ -115,7 +115,7 @@ export function FileUpload({
           variant={variant}
           onClick={() => input.current?.click()}
         >
-          <Upload aria-hidden className="size-4" />
+          <Upload aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
           {label}
         </Button>
         {note && !compact ? <p className="text-sm text-muted-foreground">{note}</p> : null}
@@ -144,7 +144,7 @@ export function FileUpload({
                       document.getElementById(`${inputId}-button`)?.focus();
                     }}
                   >
-                    <X aria-hidden className="size-4" />
+                    <X aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
                     Dismiss
                     <span className="sr-only"> the message about {u.name}</span>
                   </Button>

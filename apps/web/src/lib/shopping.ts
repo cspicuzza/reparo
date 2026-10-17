@@ -21,6 +21,8 @@ export type ShoppingSearch = {
   group?: 'store';
   /** Only things still to buy with no price yet (OD-143). */
   unpriced?: true;
+  /** The item whose panel is open, so a link can open it (OD-145). Not a filter. */
+  line?: string;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -47,14 +49,16 @@ export function parseShoppingSearch(raw: Record<string, unknown>): ShoppingSearc
   if (raw['unpriced'] === true || raw['unpriced'] === 1 || raw['unpriced'] === '1') {
     out.unpriced = true;
   }
+  const line = id(raw['line']);
+  if (line) out.line = line;
   return out;
 }
 
-/** The filters in use: everything in the search but the search text and the grouping. */
+/** The filters in use: everything in the search but the search text, grouping and open item. */
 export function activeFilters(s: ShoppingSearch) {
   return (Object.keys(s) as (keyof ShoppingSearch)[]).filter(
-    (k): k is Exclude<keyof ShoppingSearch, 'q' | 'group'> =>
-      k !== 'q' && k !== 'group' && s[k] !== undefined,
+    (k): k is Exclude<keyof ShoppingSearch, 'q' | 'group' | 'line'> =>
+      k !== 'q' && k !== 'group' && k !== 'line' && s[k] !== undefined,
   );
 }
 
@@ -128,7 +132,7 @@ export function lineDetails(line: {
 }): string {
   return [
     line.quantity > 1 ? `${line.quantity} of them` : null,
-    line.phase.status === 'planned' ? `${line.phase.name} (planned)` : null,
+    line.phase.status === 'planned' ? `${line.phase.name} (not started)` : null,
   ]
     .filter((d): d is string => d !== null)
     .join(', ');

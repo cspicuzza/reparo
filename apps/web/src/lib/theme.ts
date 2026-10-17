@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
  * Light, dark, or whatever the device uses (Workflow polish, OD-83, Q57–Q60). The choice is
  * remembered in this browser only (Q59). `index.html` applies it before the app loads, so the
  * page never flashes the wrong theme; this module keeps it applied afterwards. The page's
- * colours hang off `data-theme` on <html> (index.css).
+ * colors hang off `data-theme` on <html> (index.css).
  */
 
 export type ThemeChoice = 'device' | 'light' | 'dark';
@@ -39,7 +39,7 @@ export function resolveTheme(choice: ThemeChoice, deviceIsDark: boolean): 'light
 }
 
 /**
- * Put the theme on the page. Every colour transition would otherwise fire at once and smear,
+ * Put the theme on the page. Every color transition would otherwise fire at once and smear,
  * so transitions are off for that one frame (OD-81, the better-ui recipe: add an override,
  * force a style flush, remove it after the next paint).
  */

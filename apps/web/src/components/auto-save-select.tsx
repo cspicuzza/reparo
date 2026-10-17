@@ -1,13 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
-import { SelectChevron, inputClass } from '@/components/form';
-import { NOT_A_LOGIN } from '@/lib/fields';
+import { Select, labelClass } from '@/components/form';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
-import { cn } from '@/lib/utils';
 
 /**
  * A dropdown that saves the moment something is picked, with Saving / Saved / Couldn't save
- * on its label line (OD-84) (web.md → Saving; OD-82, Q53). While it saves it shows the new choice; if the save
- * fails it goes back to what the server holds and offers Try again.
+ * on its label line (OD-84; web.md → Saving; OD-82, Q53). While it saves it shows the new
+ * choice; if the save fails it goes back to what the server holds and offers Try again.
  */
 export function AutoSaveSelect({
   id,
@@ -37,30 +35,26 @@ export function AutoSaveSelect({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <label htmlFor={id} className="block text-sm font-semibold">
+        <label htmlFor={id} className={labelClass}>
           {label}
         </label>
         <SaveStatus mutation={save} what={what} />
       </div>
-      <div className="relative mt-1.5">
-        <select
-          {...NOT_A_LOGIN}
-          id={id}
-          value={shown}
-          aria-describedby={failed ? `${id}-save-error` : hint ? `${id}-hint` : undefined}
-          onChange={(e) => {
-            if (e.target.value !== value) save.mutate(e.target.value);
-          }}
-          className={cn(inputClass, 'appearance-none pr-10')}
-        >
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <SelectChevron />
-      </div>
+      <Select
+        className="mt-1.5"
+        id={id}
+        value={shown}
+        aria-describedby={failed ? `${id}-save-error` : hint ? `${id}-hint` : undefined}
+        onChange={(e) => {
+          if (e.target.value !== value) save.mutate(e.target.value);
+        }}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
       {failed ? (
         <SaveProblem id={`${id}-save-error`} mutation={save} onRetry={retry} />
       ) : hint ? (

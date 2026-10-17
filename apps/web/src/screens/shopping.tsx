@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { ListFilter, Plus, Search, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Select, inputClass } from '@/components/form';
+import { Select, inputClass, labelClass } from '@/components/form';
 import { EditPanel } from '@/components/edit-panel';
 import { PageHeader } from '@/components/page-header';
 import { Panel } from '@/components/panel';
@@ -27,7 +27,7 @@ import {
 } from '@/lib/shopping';
 import { useIsPhone } from '@/lib/media';
 import { useTRPC } from '@/lib/trpc';
-import { cn } from '@/lib/utils';
+import { cn, TEXT_LINK } from '@/lib/utils';
 import { NOT_A_LOGIN } from '@/lib/fields';
 import type { FileView } from '@/lib/upload';
 import { useRefreshShopping } from '@/lib/refresh';
@@ -97,7 +97,19 @@ export function Shopping() {
   }, []);
   // Every line's pictures and receipts in one request (M4, OD-59), shared by the room groups.
   const files = useLineFiles(lines.data);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // The open item lives in the address (`?line=`), so a link can open it (OD-145).
+  const openId = search.line ?? null;
+  const setOpenId = (lineId: string | null) =>
+    void navigate({
+      to: '/shopping',
+      search: (prev: ShoppingSearch) => {
+        const next = { ...prev };
+        if (lineId) next.line = lineId;
+        else delete next.line;
+        return next;
+      },
+      replace: lineId === null,
+    });
   useReturnFocus(openId);
   const openLine = lines.data?.find((l) => l.id === openId);
   const invalidate = useRefreshShopping();
@@ -367,20 +379,25 @@ function GroupSwitch({
   value,
   onChange,
   className,
+  stacked = false,
 }: {
   name: string;
   value: Grouping;
   onChange: (g: Grouping) => void;
   className?: string;
+  /** Its label above it, like the filters beside it in the Filter panel (OD-145). */
+  stacked?: boolean;
 }) {
   const options = [
     ['room', 'By room'],
     ['store', 'By store'],
   ] as const;
   return (
-    <fieldset className={cn('flex items-center gap-3', className)}>
+    <fieldset
+      className={cn(stacked ? 'flex flex-col gap-1.5' : 'flex items-center gap-3', className)}
+    >
       <legend className="sr-only">Group the list</legend>
-      <span aria-hidden className="text-sm font-semibold">
+      <span aria-hidden className={labelClass}>
         Group
       </span>
       <SegmentedSwitch
@@ -388,7 +405,7 @@ function GroupSwitch({
         value={value}
         options={options.map(([v, text]) => ({ value: v, label: text }))}
         onChange={onChange}
-        className="max-w-xs min-w-0 flex-1 sm:w-72 sm:flex-none"
+        className={stacked ? 'w-full' : 'max-w-xs min-w-0 flex-1 sm:w-72 sm:flex-none'}
       />
     </fieldset>
   );
@@ -559,7 +576,7 @@ function ShoppingSection({
                     <span className="min-w-0 break-words">{g.name}</span>
                     <span className="flex items-center gap-3 text-sm font-normal text-muted-foreground tabular-nums [font-stretch:normal]">
                       {groupText(section.status, g.count, g.totalCents, money, g.unpriced)}
-                      <span aria-hidden className="text-foreground underline underline-offset-4">
+                      <span aria-hidden className={TEXT_LINK}>
                         {groupShown ? 'Hide' : 'Show'}
                       </span>
                     </span>
@@ -595,7 +612,7 @@ function withoutStore(search: ShoppingSearch): ShoppingSearch {
 const FILTER_LABEL = { room: 'Room', category: 'Category', store: 'Store', phase: 'Phase' };
 
 /** The filters that show as chips; search has its own box and grouping its own switch. */
-type FilterKey = Exclude<keyof ShoppingSearch, 'q' | 'group'>;
+type FilterKey = Exclude<keyof ShoppingSearch, 'q' | 'group' | 'line'>;
 
 type StoreGroup = Section['stores'][number];
 
@@ -736,10 +753,11 @@ function Filters({
           rows don't show at its sides. */}
       <div className="sticky top-0 z-30 -mx-4 flex flex-col gap-2 border-b border-border bg-background px-4 py-2 sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* At 320px the search takes the whole row, Filter and Select under it (OD-145). */}
           <SearchBox
             value={search.q ?? ''}
             onChange={(q) => setFilter('q', q)}
-            className="min-w-0 flex-1"
+            className="min-w-0 flex-1 basis-full min-[22.5rem]:basis-0"
           />
           <Button
             type="button"
@@ -747,7 +765,8 @@ function Filters({
             aria-expanded={open}
             aria-controls={panelId}
             onClick={() => setOpen((v) => !v)}
-            className="px-3 sm:px-4"
+            // Open reads as pressed in, like a menu's trigger (OD-145).
+            className="px-3 aria-expanded:bg-accent sm:px-4"
           >
             <ListFilter aria-hidden absoluteStrokeWidth strokeWidth={2} />
             {panelCount > 0 ? `Filter (${panelCount})` : 'Filter'}
@@ -780,7 +799,7 @@ function Filters({
                 className={cn(ON_CHIP, 'gap-1.5')}
               >
                 {label}
-                <X aria-hidden className="size-4" />
+                <X aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
                 <span className="sr-only">, remove this filter</span>
               </button>
             );
@@ -817,6 +836,7 @@ function Filters({
               value={search.group ?? 'room'}
               onChange={onGroup}
               className="sm:hidden"
+              stacked
             />
             <FilterSelect
               id="filter-room"
@@ -952,7 +972,7 @@ function FilterSelect({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-semibold">
+      <label htmlFor={id} className={labelClass}>
         {label}
       </label>
       <Select id={id} className="mt-1.5" value={value} onChange={(e) => onChange(e.target.value)}>

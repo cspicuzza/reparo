@@ -25,7 +25,7 @@ import {
   phaseProgressText,
   type Phase,
 } from '@/lib/work';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { undoAction, useToasts } from '@/lib/toasts';
 import { money, plannedPhaseText } from '@/lib/money';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,7 @@ import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { MoveButtons } from '@/components/move-buttons';
 import { useRefreshPhases } from '@/lib/refresh';
+import { PlanGrid } from '@/components/plan-grid';
 
 /** Phases of the renovation (ADR-009). A list for now; the phase dashboard is M4. */
 export function Phases() {
@@ -51,7 +52,12 @@ export function Phases() {
   const { isAdmin } = useMe();
   const phases = useQuery(trpc.phases.list.queryOptions());
   const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  // The open phase lives in the address (`?phase=`), so a link can open it (OD-145).
+  const search = useSearch({ from: '/_app/phases/' });
+  const navigate = useNavigate({ from: '/phases/' });
+  const editingId = search.phase ?? null;
+  const setEditingId = (phaseId: string | null) =>
+    void navigate({ search: phaseId ? { phase: phaseId } : {}, replace: phaseId === null });
   useReturnFocus(adding ? 'add-phase' : editingId ? `phase-${editingId}` : null);
   const invalidate = useRefreshPhases();
   const create = useMutation(
@@ -75,8 +81,9 @@ export function Phases() {
             The renovation in stages. Work and money belong to a phase.{' '}
             <WhatsThis title="Phases" label="What's a phase?">
               A stretch of the work done together, like Phase 1 for demo and floors. Every job and
-              everything on the shopping list is in one. A planned phase doesn&apos;t count toward
-              the budget until it starts; then what it still needs counts as Planned.
+              everything on the shopping list is in one. A phase that hasn&apos;t started
+              doesn&apos;t count toward the budget until it does; then what it still needs counts as
+              Planned.
             </WhatsThis>
           </>
         }
@@ -84,12 +91,7 @@ export function Phases() {
           isAdmin ? (
             <div className="flex flex-wrap gap-2">
               {phases.data && phases.data.length > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-pressed={arranging}
-                  onClick={() => setArranging((v) => !v)}
-                >
+                <Button type="button" variant="outline" onClick={() => setArranging((v) => !v)}>
                   {arranging ? 'Done' : 'Change order'}
                 </Button>
               ) : null}
@@ -139,9 +141,21 @@ export function Phases() {
       {phases.isPending ? <ListPlaceholder label="Loading phases" rows={3} /> : null}
       {phases.error ? <LoadError what="the phases" error={phases.error} retry={[phases]} /> : null}
       {phases.data && phases.data.length === 0 ? (
-        <p className="text-muted-foreground">
-          No phases yet.{isAdmin ? ' Add the first one above.' : ''}
-        </p>
+        // The empty plan, like Rooms (OD-145).
+        <PlanGrid className="h-56 flex-col gap-3 rounded-xl text-base">
+          <span>No phases yet.</span>
+          {isAdmin ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAdding(true)}
+              data-return-focus="add-phase"
+            >
+              <Plus aria-hidden absoluteStrokeWidth strokeWidth={2} />
+              Add the first phase
+            </Button>
+          ) : null}
+        </PlanGrid>
       ) : null}
       {phases.data && phases.data.length > 0 ? (
         <PanelList>
@@ -161,6 +175,9 @@ export function Phases() {
                   disabled={move.isPending}
                   onMove={(by) => move.mutateAsync({ id: phase.id, by }).catch(() => undefined)}
                 />
+                {move.error && move.variables?.id === phase.id ? (
+                  <FormError className="w-full">{move.error.message}</FormError>
+                ) : null}
               </li>
             ) : (
               // The id is where Money's By phase links land (OD-121, Q152).
@@ -191,6 +208,7 @@ export function Phases() {
                     >
                       <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                       Edit
+                      <span className="sr-only"> {phase.name}</span>
                     </Button>
                   ) : null}
                 </div>
@@ -234,7 +252,6 @@ export function Phases() {
           )}
         </PanelList>
       ) : null}
-      {move.error ? <FormError>{move.error.message}</FormError> : null}
     </section>
   );
 }
@@ -371,7 +388,12 @@ function OpenJobsWarning({ phase }: { phase: Phase }) {
   if (!open) return null;
   return (
     <p className="flex items-start gap-2 text-sm">
-      <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <TriangleAlert
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={2}
+        className="mt-0.5 size-4 shrink-0"
+      />
       <span>Marked complete, but {open}.</span>
     </p>
   );
@@ -424,7 +446,7 @@ function PhaseJobs({ phase }: { phase: Phase }) {
   const jobs = useQuery(trpc.jobs.list.queryOptions({ phaseId: phase.id }));
   return (
     <section aria-labelledby={`phase-${phase.id}-jobs`} className="flex flex-col gap-2">
-      <h3 id={`phase-${phase.id}-jobs`} className="text-base font-semibold">
+      <h3 id={`phase-${phase.id}-jobs`} className="text-lg">
         Its jobs
       </h3>
       {jobs.isPending ? <ListPlaceholder label="Loading its jobs" rows={2} /> : null}

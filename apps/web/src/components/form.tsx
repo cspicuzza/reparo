@@ -18,6 +18,9 @@ import { cn } from '@/lib/utils';
 export const inputClass =
   'block min-h-11 w-full rounded-lg border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground aria-invalid:border-2 aria-invalid:border-foreground';
 
+/** A field's label: small and bold, above the field (Design system). */
+export const labelClass = 'block text-sm font-semibold';
+
 type FieldProps = {
   label: string;
   hint?: string;
@@ -33,7 +36,7 @@ export function Field({ label, hint, error, children, htmlFor }: FieldProps) {
   const control = Children.only(children);
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-sm font-semibold">
+      <label htmlFor={htmlFor} className={labelClass}>
         {label}
       </label>
       <div className="mt-1.5">
@@ -78,7 +81,12 @@ export function FormError({
         className,
       )}
     >
-      <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+      <CircleAlert
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={2}
+        className="mt-0.5 size-4 shrink-0"
+      />
       <span className="min-w-0">{children}</span>
     </p>
   );
@@ -139,6 +147,8 @@ export function SelectChevron({ className }: { className?: string }) {
   return (
     <ChevronDown
       aria-hidden
+      absoluteStrokeWidth
+      strokeWidth={2}
       className={cn(
         'pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-muted-foreground',
         className,

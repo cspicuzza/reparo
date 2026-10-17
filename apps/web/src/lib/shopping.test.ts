@@ -83,7 +83,7 @@ describe('lineDetails (OD-78)', () => {
     expect(lineDetails({ quantity: 2, phase })).toBe('2 of them');
     expect(lineDetails({ quantity: 1, phase })).toBe('');
     expect(lineDetails({ quantity: 1, phase: { name: 'Phase 2', status: 'planned' } })).toBe(
-      'Phase 2 (planned)',
+      'Phase 2 (not started)',
     );
   });
 });

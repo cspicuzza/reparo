@@ -80,10 +80,20 @@ export function FileGrid({
                   {chip ? <span className="absolute top-2 left-2">{chip}</span> : null}
                   {f.url ? (
                     <>
-                      <FileText aria-hidden className="size-8 text-muted-foreground" />
+                      <FileText
+                        aria-hidden
+                        absoluteStrokeWidth
+                        strokeWidth={1.5}
+                        className="size-8 text-muted-foreground"
+                      />
                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-4 group-hover:underline">
                         Open PDF
-                        <ExternalLink aria-hidden className="size-4 shrink-0" />
+                        <ExternalLink
+                          aria-hidden
+                          absoluteStrokeWidth
+                          strokeWidth={1.5}
+                          className="size-4 shrink-0"
+                        />
                         <span className="sr-only"> (opens in a new tab)</span>
                       </span>
                     </>
@@ -131,7 +141,7 @@ function Caption({ file }: { file: FileView }) {
 function Missing() {
   return (
     <span className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-sm text-muted-foreground">
-      <ImageOff aria-hidden className="size-6" />
+      <ImageOff aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-6" />
       Missing from storage
     </span>
   );

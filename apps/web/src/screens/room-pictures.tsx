@@ -3,16 +3,16 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import { FileSection } from '@/components/file-section';
 import { FileUpload } from '@/components/file-upload';
-import { FormError, Select } from '@/components/form';
+import { FormError, Select, labelClass } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { trpcClient, useTRPC } from '@/lib/trpc';
 import { problemWith } from '@/lib/problem';
 import { AutoSaveField } from '@/components/auto-save-field';
-import { SaveProblem, SaveStatus } from '@/components/save-state';
 import type { FileView } from '@/lib/upload';
 import { GridPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { useRefreshFiles } from '@/lib/refresh';
+import { AutoSaveSelect } from '@/components/auto-save-select';
 
 type RoomJob = { id: string; name: string };
 
@@ -131,7 +131,7 @@ export function RoomPictures({
         beforeUpload={
           jobs.length > 0 ? (
             <div className="sm:max-w-sm">
-              <label htmlFor={jobPickId} className="block text-sm font-semibold">
+              <label htmlFor={jobPickId} className={labelClass}>
                 Which job do the new photos show?
               </label>
               <Select
@@ -172,7 +172,6 @@ function ProgressDetails({
   const refreshFiles = useRefreshFiles();
   const saveFile = (input: { takenOn?: string; jobId?: string | null }) =>
     trpcClient.files.update.mutate({ id: file.id, ...input }).then(refreshFiles);
-  const job = useMutation({ mutationFn: (jobId: string) => saveFile({ jobId: jobId || null }) });
   if (!canEdit) {
     return (
       <p>
@@ -181,7 +180,6 @@ function ProgressDetails({
       </p>
     );
   }
-  const shownJob = (job.isPending ? job.variables : undefined) ?? file.jobId ?? '';
   return (
     <div className="flex flex-col gap-4">
       <div className="w-48">
@@ -195,29 +193,17 @@ function ProgressDetails({
           onSave={(v) => saveFile({ takenOn: v })}
         />
       </div>
-      <div>
-        <div className="flex items-baseline justify-between gap-3">
-          <label htmlFor={`job-${file.id}`} className="block text-sm font-semibold">
-            Shows the job
-          </label>
-          <SaveStatus mutation={job} what="Job the photo shows" />
-        </div>
-        <Select
-          id={`job-${file.id}`}
-          className="mt-1.5"
-          value={shownJob}
-          disabled={job.isPending}
-          onChange={(e) => job.mutate(e.target.value)}
-        >
-          <option value="">No particular job</option>
-          {jobs.map((j) => (
-            <option key={j.id} value={j.id}>
-              {j.name}
-            </option>
-          ))}
-        </Select>
-        <SaveProblem mutation={job} onRetry={() => job.mutate(job.variables ?? shownJob)} />
-      </div>
+      <AutoSaveSelect
+        id={`job-${file.id}`}
+        label="Shows the job"
+        value={file.jobId ?? ''}
+        options={[
+          { value: '', label: 'No particular job' },
+          ...jobs.map((j) => ({ value: j.id, label: j.name })),
+        ]}
+        what="Job the photo shows"
+        onSave={(jobId) => saveFile({ jobId: jobId || null })}
+      />
     </div>
   );
 }
@@ -240,7 +226,7 @@ function FirstPictures({
   return (
     <div className="flex flex-col gap-3">
       <div className="sm:max-w-xs">
-        <label htmlFor={kindId} className="block text-sm font-semibold">
+        <label htmlFor={kindId} className={labelClass}>
           The new pictures are
         </label>
         <Select

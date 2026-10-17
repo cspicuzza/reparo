@@ -33,9 +33,9 @@ export function SegmentedSwitch<T extends string>({
   onChange: (value: T) => void;
   /** Every choice off, e.g. while a pick saves. */
   disabled?: boolean;
-  /** The knob's colours for the picked choice, e.g. green for Purchased. */
+  /** The knob's colors for the picked choice, e.g. green for Purchased. */
   knobClassName?: string | undefined;
-  /** Text colour and weight for each position. Picked positions default to semibold text. */
+  /** Text color and weight for each position. Picked positions default to semibold text. */
   positionClassName?: (option: T, picked: boolean) => string;
   className?: string;
 }) {

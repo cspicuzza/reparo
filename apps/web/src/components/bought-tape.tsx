@@ -9,7 +9,7 @@ const SWATCH =
 /**
  * What's bought against what's left to buy, drawn as the tape measure (OD-107, Q104): the
  * fill is what's been paid (returns count what wasn't refunded), the plaster track the price of
- * what's still to buy (OD-138). The amounts are written beside it, so the colours never carry them alone. Used
+ * what's still to buy (OD-138). The amounts are written beside it, so the colors never carry them alone. Used
  * on Shopping (following its filters) and on a room's page (OD-118, Q143). Nothing to show
  * when there's nothing priced.
  */

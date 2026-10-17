@@ -8,12 +8,12 @@ import { cn } from '@/lib/utils';
  * apps/v4/registry/styles/style-nova.css (the CLI couldn't reach the registry, so this is the
  * resolved file by hand). Changes from Nova, all for the design system's rules:
  * - Every size is at least 44px tall with 16px text (Nova's default is 32px, 14px).
- * - Outline uses the field border (3:1); Nova's uses the divider colour.
+ * - Outline uses the field border (3:1); Nova's uses the divider color.
  * - Destructive is a brick-red outline, per the design; Nova's is a red tint.
  * - Focus uses the app's 2px ring outline (index.css) instead of Nova's 50% ring.
  * - Only the sizes the app can use: default and icon.
  * - buttonVariants() merges its own classes (cn), so a link styled as a button resolves the base
- *   `border-transparent` against a variant's border colour the same way <Button> does.
+ *   `border-transparent` against a variant's border color the same way <Button> does.
  */
 const buttonStyles = cva(
   "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-transparent bg-clip-padding max-w-full text-center text-base font-medium transition-colors select-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive active:not-aria-[haspopup]:translate-y-px [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",

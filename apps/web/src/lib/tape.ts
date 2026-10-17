@@ -78,8 +78,8 @@ export function budgetSegments(
 }
 
 /**
- * Committed money's stripes, on the tape and its legend: the fill colour striped with a gap
- * colour, so it reads apart from spent by pattern as well as tone (OD-109, Q116).
+ * Committed money's stripes, on the tape and its legend: the fill color striped with a gap
+ * color, so it reads apart from spent by pattern as well as tone (OD-109, Q116).
  */
 export const COMMITTED_STRIPES: CSSProperties = {
   backgroundImage:

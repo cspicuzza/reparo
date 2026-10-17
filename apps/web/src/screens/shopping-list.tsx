@@ -216,6 +216,12 @@ function ShoppingRow({
                 onError={() => setBrokenThumb(thumbSrc)}
                 className="size-12 shrink-0 rounded-lg border border-border bg-inset object-cover"
               />
+            ) : pictureColumn || thumbSrc ? (
+              // A plain tile, so names line up down the list, as on a laptop (OD-145).
+              <span
+                aria-hidden
+                className="size-12 shrink-0 rounded-lg border border-border bg-inset"
+              />
             ) : null
           }
           onOpen={onOpen}
@@ -444,7 +450,12 @@ function LineFacts({
       className="relative inline-flex items-center gap-1 text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
     >
       {byStore ? 'Product page' : line.store || 'Product page'}
-      <ExternalLink aria-hidden className="size-3.5 shrink-0" />
+      <ExternalLink
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={1.5}
+        className="size-3.5 shrink-0"
+      />
       <span className="sr-only"> for {line.name} (opens in a new tab)</span>
     </a>
   ) : line.store && !byStore ? (

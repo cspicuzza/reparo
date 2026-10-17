@@ -28,6 +28,8 @@ import { LoadError } from '@/components/load-error';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { BoughtTape } from '@/components/bought-tape';
 import { useRefreshRooms } from '@/lib/refresh';
+import { Panel } from '@/components/panel';
+import { PageHeader } from '@/components/page-header';
 
 export function RoomDetail() {
   const { roomId } = useParams({ from: '/_app/rooms/$roomId' });
@@ -94,30 +96,31 @@ export function RoomDetail() {
         to="/rooms"
         className="-ml-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-muted-foreground hover:text-foreground"
       >
-        <ChevronLeft aria-hidden className="size-5" />
+        <ChevronLeft aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-5" />
         All rooms
       </Link>
 
       <RoomCover roomId={r.id} roomName={r.name} />
 
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <PageTitle parts={[r.name, 'Rooms']} />
-          <h1 className="text-4xl">{r.name}</h1>
-          <p className="mt-2 text-muted-foreground">{roomProgressText(r.progress)}</p>
-        </div>
-        {canEdit ? (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setEditing(true)}
-            data-return-focus="edit-room"
-          >
-            <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
-            Edit room
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        className="mt-6"
+        title={r.name}
+        tabTitle={[r.name, 'Rooms']}
+        description={roomProgressText(r.progress)}
+        action={
+          canEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditing(true)}
+              data-return-focus="edit-room"
+            >
+              <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
+              Edit room
+            </Button>
+          ) : null
+        }
+      />
 
       {/* What's bought for this room against what's left to buy (OD-118, Q143). */}
       <BoughtTape
@@ -126,10 +129,7 @@ export function RoomDetail() {
         className="mt-5"
       />
 
-      <section
-        aria-labelledby="room-jobs"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
+      <Panel aria-labelledby="room-jobs" className="mt-6">
         <h2 id="room-jobs" className="text-2xl">
           Jobs in this room
         </h2>
@@ -140,36 +140,27 @@ export function RoomDetail() {
         <div className="mt-4">
           <RoomWork roomId={r.id} roomName={r.name} />
         </div>
-      </section>
+      </Panel>
 
-      <section
-        aria-labelledby="room-buying"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
+      <Panel aria-labelledby="room-buying" className="mt-6">
         <h2 id="room-buying" className="text-2xl">
           What we&apos;re buying
         </h2>
         <div className="mt-4">
           <RoomShopping roomId={r.id} roomName={r.name} />
         </div>
-      </section>
+      </Panel>
 
-      <section
-        aria-labelledby="room-pictures"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
+      <Panel aria-labelledby="room-pictures" className="mt-6">
         <h2 id="room-pictures" className="text-2xl">
           Pictures
         </h2>
         <div className="mt-4">
           <RoomPictures roomId={r.id} roomName={r.name} canEdit={canEdit} />
         </div>
-      </section>
+      </Panel>
 
-      <section
-        aria-labelledby="room-size"
-        className="mt-6 rounded-xl border border-border bg-card p-5 sm:p-6"
-      >
+      <Panel aria-labelledby="room-size" className="mt-6">
         <h2 id="room-size" className="mb-4 text-2xl">
           Size and notes
         </h2>
@@ -204,7 +195,7 @@ export function RoomDetail() {
             <p className="mt-1 max-w-prose whitespace-pre-wrap">{r.notes}</p>
           </div>
         ) : null}
-      </section>
+      </Panel>
 
       {canEdit ? (
         <div className="mt-12 border-t border-border pt-6">

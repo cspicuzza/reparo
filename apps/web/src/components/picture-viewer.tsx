@@ -132,7 +132,7 @@ function ViewerBody({
           </Dialog.Description>
         </div>
         <Dialog.Close className={buttonVariants({ variant: 'ghost', className: '-mr-2' })}>
-          <X aria-hidden className="size-5" />
+          <X aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-5" />
           Close
         </Dialog.Close>
       </div>
@@ -170,7 +170,7 @@ function ViewerBody({
               className={buttonVariants({ variant: 'outline' })}
             >
               Open the PDF
-              <ExternalLink aria-hidden className="size-4" />
+              <ExternalLink aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
               <span className="sr-only"> (opens in a new tab)</span>
             </a>
           ) : (
@@ -179,7 +179,7 @@ function ViewerBody({
         ) : picture.url ? (
           <img
             src={picture.url}
-            alt={picture.caption || picture.originalName}
+            alt={picture.caption || 'The picture, with no caption yet'}
             className="max-h-full max-w-full rounded-lg object-contain"
             draggable={false}
           />
@@ -192,12 +192,12 @@ function ViewerBody({
         {canMove ? (
           <div className="flex justify-between gap-2">
             <Button type="button" variant="outline" onClick={() => go(-1)}>
-              <ChevronLeft aria-hidden className="size-4" />
+              <ChevronLeft aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
               Previous
             </Button>
             <Button type="button" variant="outline" onClick={() => go(1)}>
               Next
-              <ChevronRight aria-hidden className="size-4" />
+              <ChevronRight aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
             </Button>
           </div>
         ) : null}
@@ -214,7 +214,12 @@ function ViewerBody({
                 className="relative inline-flex items-center gap-1 text-foreground underline underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3"
               >
                 Open full size
-                <ExternalLink aria-hidden className="size-3.5" />
+                <ExternalLink
+                  aria-hidden
+                  absoluteStrokeWidth
+                  strokeWidth={1.5}
+                  className="size-3.5"
+                />
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
             </>
@@ -226,7 +231,7 @@ function ViewerBody({
             id={`caption-${picture.id}`}
             label="Caption"
             initial={picture.caption}
-            what={`Caption of ${picture.caption || picture.originalName}`}
+            what={`Caption of ${picture.caption || (picture.isPicture ? 'this picture' : picture.originalName)}`}
             validate={(v) => problemWith(fileUpdateSchema.shape.caption, v)}
             onSave={(v) => update.mutateAsync({ id: picture.id, caption: v })}
           />
@@ -235,7 +240,8 @@ function ViewerBody({
           <div className="-ml-3 flex flex-wrap items-center gap-1">
             {actions?.(picture)}
             <ConfirmRemove
-              what={picture.caption || picture.originalName}
+              // A file name says little about a picture, so an uncaptioned one is "this picture" (OD-145).
+              what={picture.caption || (picture.isPicture ? 'this picture' : picture.originalName)}
               disabled={remove.isPending}
               onConfirm={() => remove.mutate({ id: picture.id })}
             />

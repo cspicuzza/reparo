@@ -67,14 +67,29 @@ export function AttachedFiles({
                 className="inline-flex min-h-11 min-w-0 items-center gap-2 text-sm underline underline-offset-4"
               >
                 {f.isPicture ? (
-                  <Image aria-hidden className="size-4 shrink-0" />
+                  <Image
+                    aria-hidden
+                    absoluteStrokeWidth
+                    strokeWidth={1.5}
+                    className="size-4 shrink-0"
+                  />
                 ) : (
-                  <FileText aria-hidden className="size-4 shrink-0" />
+                  <FileText
+                    aria-hidden
+                    absoluteStrokeWidth
+                    strokeWidth={1.5}
+                    className="size-4 shrink-0"
+                  />
                 )}
                 <span className="truncate">{f.caption || f.originalName}</span>
                 {f.url ? (
                   <>
-                    <ExternalLink aria-hidden className="size-4 shrink-0" />
+                    <ExternalLink
+                      aria-hidden
+                      absoluteStrokeWidth
+                      strokeWidth={1.5}
+                      className="size-4 shrink-0"
+                    />
                     <span className="sr-only"> (opens in a new tab)</span>
                   </>
                 ) : (

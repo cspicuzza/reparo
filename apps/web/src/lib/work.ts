@@ -20,7 +20,8 @@ export const WORK_STATUS_LABEL: Record<WorkStatusInput, string> = {
 };
 
 export const PHASE_STATUS_LABEL: Record<PhaseStatusInput, string> = {
-  planned: 'Planned',
+  // Not "Planned": that's the money word for what's still to spend (OD-145).
+  planned: 'Not started',
   // "Underway" everywhere; the stored value stays `active` (OD-122, Q157).
   active: 'Underway',
   complete: 'Complete',
@@ -90,4 +91,15 @@ export function groupByPhase<P extends { id: string }, J extends { phaseId: stri
   return phases
     .map((phase) => ({ phase, jobs: jobs.filter((j) => j.phaseId === phase.id) }))
     .filter((g) => g.jobs.length > 0);
+}
+
+/** The Phases page's address: `?phase=<id>` opens that phase's panel (OD-145). */
+export type PhasesSearch = { phase?: string };
+
+const PHASE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Keep `phase` only when it's an id; anything else in the URL is dropped. */
+export function parsePhasesSearch(raw: Record<string, unknown>): PhasesSearch {
+  const phase = raw['phase'];
+  return typeof phase === 'string' && PHASE_ID.test(phase) ? { phase } : {};
 }

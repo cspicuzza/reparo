@@ -61,20 +61,13 @@ export function Rooms() {
       <PageHeader
         title="Rooms"
         description={
-          rooms.data && rooms.data.length > 0
-            ? `${rooms.data.length} in the house`
-            : 'The spaces being worked on.'
+          rooms.data && rooms.data.length > 0 ? `${rooms.data.length} in the house` : undefined
         }
         action={
           canEdit ? (
             <div className="flex flex-wrap gap-2">
               {rooms.data && rooms.data.length > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  aria-pressed={arranging}
-                  onClick={() => setArranging((v) => !v)}
-                >
+                <Button type="button" variant="outline" onClick={() => setArranging((v) => !v)}>
                   {arranging ? 'Done' : 'Change order'}
                 </Button>
               ) : null}
@@ -135,7 +128,7 @@ export function Rooms() {
               key={room.id}
               className="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-5"
             >
-              <span className="min-w-0 text-xl font-semibold break-words">{room.name}</span>
+              <span className="min-w-0 text-lg font-semibold break-words">{room.name}</span>
               <MoveButtons
                 id={room.id}
                 name={room.name}
@@ -144,6 +137,9 @@ export function Rooms() {
                 disabled={move.isPending}
                 onMove={(by) => move.mutateAsync({ id: room.id, by }).catch(() => undefined)}
               />
+              {move.error && move.variables?.id === room.id ? (
+                <FormError className="w-full">{move.error.message}</FormError>
+              ) : null}
             </li>
           ))}
         </PanelList>
@@ -212,7 +208,6 @@ export function Rooms() {
           })}
         </ul>
       ) : null}
-      {move.error ? <FormError>{move.error.message}</FormError> : null}
     </section>
   );
 }

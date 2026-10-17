@@ -1,6 +1,6 @@
 import type { EstimateStatusInput, ShoppingStatusInput } from '@reparo/shared';
 import { Circle, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
-import type { ComponentType } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   ESTIMATE_STATUS_LABEL,
   paymentText,
@@ -10,12 +10,12 @@ import {
 import { cn } from '@/lib/utils';
 
 type Look = {
-  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  icon: LucideIcon;
   bg: string;
   fg: string;
 };
 
-// Idle tints match the row hover colour, so they carry a faint ring of their own text colour
+// Idle tints match the row hover color, so they carry a faint ring of their own text color
 // to stay visible on a hovered row (OD-114, Q150).
 const RING = 'ring-1 ring-inset ring-current/25';
 const IDLE: Look = { icon: Circle, bg: cn('bg-status-idle-tint', RING), fg: 'text-status-idle' };
@@ -35,7 +35,7 @@ const OFF: Look = {
   fg: 'text-status-idle',
 };
 
-/** A chip in the same shape as the work-status chips: icon, words, tint (colour never alone). */
+/** A chip in the same shape as the work-status chips: icon, words, tint (color never alone). */
 function Chip({ look, children }: { look: Look; children: string }) {
   const { icon: Icon, bg, fg } = look;
   return (
@@ -46,7 +46,7 @@ function Chip({ look, children }: { look: Look; children: string }) {
         fg,
       )}
     >
-      <Icon aria-hidden className="size-4 shrink-0" />
+      <Icon aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4 shrink-0" />
       {children}
     </span>
   );

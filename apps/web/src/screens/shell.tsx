@@ -250,7 +250,7 @@ export function Shell() {
 
       <nav
         aria-label="Sections"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_var(--float-shadow)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bar pb-[env(safe-area-inset-bottom)] shadow-float-up md:hidden"
       >
         <ul className="flex">
           {BOTTOM_BAR.map(({ name, to, icon: Icon }) => (
@@ -280,6 +280,10 @@ export function Shell() {
 
 const TAB_CLASS =
   'flex min-h-14 w-full flex-col items-center justify-center gap-0.5 text-sm break-words text-muted-foreground [&_svg]:size-6';
+/** A row in the phone's Menu panel: the sections, then Manage lists and Sign out (OD-145). */
+const MENU_ROW_CLASS =
+  'flex min-h-12 items-center gap-3 rounded-lg px-3 text-lg text-muted-foreground hover:bg-accent hover:text-foreground';
+
 const TAB_ACTIVE_CLASS = 'font-semibold text-foreground! shadow-[inset_0_3px_0_var(--tape)]';
 
 /**
@@ -316,7 +320,7 @@ function MenuPanel({
                 <Link
                   to={to}
                   onClick={() => setOpen(false)}
-                  className="flex min-h-12 items-center gap-3 rounded-lg px-3 text-lg text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-6"
+                  className={cn(MENU_ROW_CLASS, '[&_svg]:size-6')}
                   activeProps={{
                     className: 'font-semibold text-foreground! shadow-[inset_3px_0_0_var(--tape)]',
                     'aria-current': 'page',
@@ -342,30 +346,38 @@ function MenuPanel({
             </div>
             <ThemeSwitch className="mt-4" />
             <ViewAsSwitch className="mt-4" />
-            {isAdmin ? (
-              <Link
-                to="/manage"
-                onClick={() => setOpen(false)}
-                className={buttonVariants({ variant: 'outline', className: 'mt-3 w-full' })}
-                activeProps={{
-                  className: 'font-semibold shadow-[inset_3px_0_0_var(--tape)]',
-                  'aria-current': 'page',
-                }}
-              >
-                Manage lists
-              </Link>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-3 w-full"
-              onClick={() => {
-                setOpen(false);
-                void onSignOut();
-              }}
-            >
-              Sign out
-            </Button>
+            {/* Rows, like the account menu on a laptop and the sections above (OD-145). */}
+            <ul className="-mx-2 mt-3 border-t border-border pt-2">
+              {isAdmin ? (
+                <li>
+                  <Link
+                    to="/manage"
+                    onClick={() => setOpen(false)}
+                    className={MENU_ROW_CLASS}
+                    activeProps={{
+                      className:
+                        'font-semibold text-foreground! shadow-[inset_3px_0_0_var(--tape)]',
+                      'aria-current': 'page',
+                    }}
+                  >
+                    Manage lists
+                  </Link>
+                </li>
+              ) : null}
+              <li>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={cn(MENU_ROW_CLASS, 'w-full justify-start font-normal')}
+                  onClick={() => {
+                    setOpen(false);
+                    void onSignOut();
+                  }}
+                >
+                  Sign out
+                </Button>
+              </li>
+            </ul>
           </div>
         ) : null}
       </SheetContent>

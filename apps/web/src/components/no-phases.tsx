@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { useMe } from '@/lib/me';
+import { TEXT_LINK } from '@/lib/utils';
 
 /**
  * A form that needs a phase, before there is one (OD-145). Only an admin can add phases, so only
@@ -12,7 +13,7 @@ export function NoPhases({ what }: { what: string }) {
       {isAdmin ? (
         <>
           Add a phase first on the{' '}
-          <Link to="/phases" className="underline underline-offset-4">
+          <Link to="/phases" className={TEXT_LINK}>
             Phases page
           </Link>
           . {what}

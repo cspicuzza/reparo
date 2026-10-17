@@ -173,7 +173,7 @@ function JobForm({
       <Field
         label="Spec"
         htmlFor={id('spec')}
-        hint="What's being done, the same in every room unless a room says otherwise: product, colour, finish, size."
+        hint="What's being done, the same in every room unless a room says otherwise: product, color, finish, size."
         error={errors.spec?.message}
       >
         <Textarea id={id('spec')} rows={4} {...register('spec')} />

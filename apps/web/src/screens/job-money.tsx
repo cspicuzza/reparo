@@ -235,11 +235,14 @@ function CostLines({
                   />
                 </span>
               ) : null}
+              {/* Under the row it's about (OD-145). */}
+              {remove.error && remove.variables?.id === l.id ? (
+                <FormError className="col-span-full">{remove.error.message}</FormError>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
-      {remove.error ? <FormError>{remove.error.message}</FormError> : null}
       {canEdit ? (
         <>
           <Button
@@ -459,11 +462,14 @@ function Payments({
                   />
                 </span>
               ) : null}
+              {/* Under the row it's about (OD-145). */}
+              {remove.error && remove.variables?.id === p.id ? (
+                <FormError className="col-span-full">{remove.error.message}</FormError>
+              ) : null}
             </li>
           ))}
         </ul>
       )}
-      {remove.error ? <FormError>{remove.error.message}</FormError> : null}
       {canEdit ? (
         <>
           <Button

@@ -17,6 +17,8 @@ import { useTRPC } from '@/lib/trpc';
 import { phaseProgressText, progressText } from '@/lib/work';
 import { Bar, Loading, PanelShape } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
+import { Panel } from '@/components/panel';
+import { TEXT_LINK } from '@/lib/utils';
 
 type Summary = RouterOutputs['home']['summary'];
 
@@ -112,7 +114,7 @@ function MoneyHeadline({
           </h1>
           <p className="mt-2 text-muted-foreground">
             Once the starting balance is entered, this says what&apos;s left to spend.{' '}
-            <Link to="/money" className="text-foreground underline underline-offset-4">
+            <Link to="/money" className={TEXT_LINK}>
               Go to Money
             </Link>
           </p>
@@ -198,10 +200,7 @@ function NeedsYou({
   // Nothing waiting: the greeting says so in one line instead (Q121).
   if (count === 0) return null;
   return (
-    <section
-      aria-labelledby="needs-you"
-      className="min-w-0 flex-[1_1_20rem] rounded-xl border border-border bg-card p-5 sm:p-6"
-    >
+    <Panel aria-labelledby="needs-you" className="min-w-0 flex-[1_1_20rem]">
       <div className="flex items-center gap-2.5">
         <h2 id="needs-you" className="text-2xl">
           {canEdit ? 'Needs you' : 'Worth knowing'}
@@ -218,7 +217,7 @@ function NeedsYou({
         {overCents > 0 ? (
           <li className="flex items-start gap-3 py-4 last:pb-0">
             <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
-              <CircleAlert aria-hidden className="size-4" />
+              <CircleAlert aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">The plans are over budget</p>
@@ -238,7 +237,7 @@ function NeedsYou({
         {items.map((n) => (
           <li key={n.id} className="flex items-start gap-3 py-4 last:pb-0">
             <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
-              <CircleAlert aria-hidden className="size-4" />
+              <CircleAlert aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{n.jobName}</p>
@@ -268,7 +267,7 @@ function NeedsYou({
         {quotes.map((q) => (
           <li key={q.id} className="flex items-start gap-3 py-4 last:pb-0">
             <span className="mt-0.5 inline-flex shrink-0 rounded-lg bg-tape p-1 text-tape-ink">
-              <CircleAlert aria-hidden className="size-4" />
+              <CircleAlert aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{q.jobName}</p>
@@ -288,7 +287,7 @@ function NeedsYou({
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }
 
@@ -302,7 +301,7 @@ function PhasePanel({ summary }: { summary: Summary }) {
   const { phase, phaseJobs } = summary;
   const glance = phaseGlance(phaseJobs);
   return (
-    <section aria-labelledby="phase" className="rounded-xl border border-border bg-card p-5 sm:p-6">
+    <Panel aria-labelledby="phase">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 id="phase" className="text-2xl">
           {phaseHeading(phase, glance)}
@@ -330,7 +329,7 @@ function PhasePanel({ summary }: { summary: Summary }) {
             <>
               {' '}
               Add them on the{' '}
-              <Link to="/jobs" className="text-foreground underline underline-offset-4">
+              <Link to="/jobs" className={TEXT_LINK}>
                 Jobs page
               </Link>
               .
@@ -357,7 +356,7 @@ function PhasePanel({ summary }: { summary: Summary }) {
           {glance.started > 0 ? <MovingJobs jobs={glance.moving} /> : null}
         </>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -436,7 +435,7 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
           {canEdit ? (
             <>
               {' '}
-              <Link to="/rooms" className="text-foreground underline underline-offset-4">
+              <Link to="/rooms" className={TEXT_LINK}>
                 Add the first one
               </Link>
               .
@@ -465,7 +464,7 @@ function Rooms({ rooms }: { rooms: Summary['rooms'] }) {
                     />
                   ) : null}
                   <div className="flex flex-1 flex-col gap-1 p-3 sm:p-4">
-                    <h3 className="text-xl font-semibold break-words">{r.name}</h3>
+                    <h3 className="text-xl break-words">{r.name}</h3>
                     {r.awaitingReview ? (
                       <span>
                         <StatusBadge status="awaiting_review" />

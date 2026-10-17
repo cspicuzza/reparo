@@ -1,6 +1,6 @@
 import { jobUpdateSchema } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AutoSaveField } from '@/components/auto-save-field';
 import { AutoSaveSelect } from '@/components/auto-save-select';
 import { PanelNameField } from '@/components/panel-name-field';
@@ -16,6 +16,7 @@ import { trpcClient, useTRPC } from '@/lib/trpc';
 import { vendorOptions } from '@/lib/vendors';
 import { PHASE_STATUS_LABEL, type Job } from '@/lib/work';
 import { useRefreshJobs } from '@/lib/refresh';
+import { labelClass } from '@/components/form';
 
 type JobPatch = Omit<Parameters<typeof trpcClient.jobs.update.mutate>[0], 'id'>;
 
@@ -97,7 +98,7 @@ export function JobPanelBody({ job }: { job: Job }) {
 
       <div>
         <div className="flex items-baseline justify-between gap-3">
-          <label htmlFor={id('vendor')} className="block text-sm font-semibold">
+          <label htmlFor={id('vendor')} className={labelClass}>
             Vendor
           </label>
           <SaveStatus mutation={vendor} what={`Vendor for ${job.name}`} />
@@ -125,7 +126,7 @@ export function JobPanelBody({ job }: { job: Job }) {
       <AutoSaveField
         id={id('spec')}
         label="Spec"
-        hint="What's being done, the same in every room unless a room says otherwise: product, colour, finish, size."
+        hint="What's being done, the same in every room unless a room says otherwise: product, color, finish, size."
         multiline
         rows={4}
         initial={job.spec}
@@ -158,6 +159,25 @@ type Change = { add: string[]; remove: { roomId: string; jobRoomId: string }[] }
 function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string }[] }) {
   const refresh = useRefreshJobs();
   const [asking, setAsking] = useState<Change['remove'] | null>(null);
+  // Like ConfirmRemove (OD-145): asking moves focus to Yes, and either answer puts it back on
+  // what asked (the unticked box, or None). It asks from a checkbox, so it can't be the button.
+  const askedFrom = useRef<HTMLElement | null>(null);
+  const yes = useRef<HTMLButtonElement>(null);
+  const ask = (from: HTMLElement, remove: Change['remove']) => {
+    askedFrom.current = from;
+    setAsking(remove);
+  };
+  const list = useRef<HTMLUListElement>(null);
+  const answered = (took: boolean) => {
+    setAsking(null);
+    // None goes once every room is off, so then focus goes to the first room's box.
+    const from = askedFrom.current;
+    if (took && from?.dataset.none !== undefined) list.current?.querySelector('input')?.focus();
+    else from?.focus();
+  };
+  useEffect(() => {
+    if (asking) yes.current?.focus();
+  }, [asking]);
   const change = useMutation({
     mutationFn: async ({ add, remove }: Change) => {
       for (const roomId of add) await trpcClient.jobRooms.create.mutate({ jobId: job.id, roomId });
@@ -215,8 +235,9 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
             <Button
               type="button"
               variant="outline"
+              data-none
               disabled={change.isPending || onJob.size === 0}
-              onClick={() => setAsking(off([...onJob.keys()]))}
+              onClick={(e) => ask(e.currentTarget, off([...onJob.keys()]))}
             >
               None
             </Button>
@@ -229,32 +250,35 @@ function JobRooms({ job, rooms }: { job: Job; rooms: { id: string; name: string 
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button
+                  ref={yes}
                   type="button"
                   variant="destructive"
                   onClick={() => {
                     change.mutate({ add: [], remove: asking });
-                    setAsking(null);
+                    answered(true);
                   }}
                 >
                   Yes, take {asking.length === 1 ? 'it' : 'them'} off
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setAsking(null)}>
+                <Button type="button" variant="ghost" onClick={() => answered(false)}>
                   Keep
                 </Button>
               </div>
             </div>
           ) : null}
-          <ul className="mt-3 grid">
+          <ul ref={list} className="mt-3 grid">
             {rooms.map((r) => (
               <li key={r.id}>
                 <label className="flex min-h-11 items-center gap-3 text-base">
                   <input
                     type="checkbox"
                     checked={picked.has(r.id)}
-                    disabled={change.isPending}
+                    // Not disabled while saving, so focus can stay on the box (OD-145).
+                    aria-disabled={change.isPending || undefined}
                     onChange={(e) => {
+                      if (change.isPending) return;
                       if (e.target.checked) change.mutate({ add: [r.id], remove: [] });
-                      else setAsking(off([r.id]));
+                      else ask(e.currentTarget, off([r.id]));
                     }}
                     className="size-5 accent-primary"
                   />

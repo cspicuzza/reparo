@@ -34,8 +34,8 @@ function Track({ index, children }: { index: number; children: ReactNode }) {
 
 const POSITION =
   'relative z-10 grid size-11 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors duration-150 hover:text-foreground [&_svg]:size-5';
-// The knob is the text colour and the picked icon the page's, so the choice reads plainly in
-// light and dark alike; a card-coloured knob all but vanished in dark (OD-125, Q165).
+// The knob is the text color and the picked icon the page's, so the choice reads plainly in
+// light and dark alike; a card-colored knob all but vanished in dark (OD-125, Q165).
 const PICKED = 'text-background hover:text-background';
 
 function Label({ choice }: { choice: ThemeChoice }) {

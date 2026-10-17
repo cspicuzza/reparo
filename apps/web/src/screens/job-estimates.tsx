@@ -294,7 +294,7 @@ function EstimateCard({
       }
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="min-w-0 text-xl font-semibold break-words">{e.vendor.name}</h3>
+        <h3 className="min-w-0 text-xl break-words">{e.vendor.name}</h3>
         <EstimateStatusBadge status={e.status} />
       </div>
       <div>

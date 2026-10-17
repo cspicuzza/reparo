@@ -114,7 +114,7 @@ function BackToJobs() {
       to="/jobs"
       className="-ml-1 inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-muted-foreground hover:text-foreground"
     >
-      <ChevronLeft aria-hidden className="size-5" />
+      <ChevronLeft aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-5" />
       All jobs
     </Link>
   );
@@ -128,9 +128,9 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
   const { costCents, paidCents, owedCents } = job.money;
   const v = job.vendor;
   return (
-    <section
+    <Panel
       aria-label="The job at a glance"
-      className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 rounded-xl border border-border bg-card p-5 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)] md:p-6"
+      className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-5 md:grid-cols-[auto_minmax(0,1fr)_minmax(0,1fr)]"
     >
       <div>
         <p className="text-sm text-muted-foreground">Status</p>
@@ -186,14 +186,14 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
             <div className="mt-2 flex flex-wrap gap-2">
               {v.phone ? (
                 <a href={telHref(v.phone)} className={buttonVariants({ variant: 'outline' })}>
-                  <Phone aria-hidden className="size-4" />
+                  <Phone aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
                   Call
                   <span className="sr-only"> {v.name}</span>
                 </a>
               ) : null}
               {v.email ? (
                 <a href={`mailto:${v.email}`} className={buttonVariants({ variant: 'outline' })}>
-                  <Mail aria-hidden className="size-4" />
+                  <Mail aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
                   Email
                   <span className="sr-only"> {v.name}</span>
                 </a>
@@ -204,7 +204,7 @@ function JobSummary({ job, canEdit }: { job: Job; canEdit: boolean }) {
           <p className="text-muted-foreground">No vendor yet</p>
         )}
       </div>
-    </section>
+    </Panel>
   );
 }
 
@@ -308,7 +308,7 @@ function JobBody({
                         <Link
                           to="/rooms/$roomId"
                           params={{ roomId: r.room.id }}
-                          className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+                          className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
                         >
                           {r.room.name}
                         </Link>
@@ -401,7 +401,7 @@ function JobBody({
         {job.spec ? <p className="mt-3 max-w-prose whitespace-pre-wrap">{job.spec}</p> : null}
         {job.notes ? (
           <>
-            <h3 className="mt-5 text-base font-semibold">Notes</h3>
+            <h3 className="mt-5 text-lg">Notes</h3>
             <p className="mt-1 max-w-prose text-muted-foreground whitespace-pre-wrap">
               {job.notes}
             </p>

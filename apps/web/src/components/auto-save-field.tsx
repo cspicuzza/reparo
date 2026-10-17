@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { use, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { FormError, inputClass } from '@/components/form';
+import { FormError, inputClass, labelClass } from '@/components/form';
 import { NOT_A_LOGIN } from '@/lib/fields';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
 import { PanelDirtyContext } from '@/lib/panel-dirty';
@@ -153,6 +153,8 @@ export function AutoSaveField({
   ) : (
     <input
       type={type}
+      // An empty date reads as a hint, not a value (OD-145; index.css).
+      data-empty={type === 'date' && value === '' ? '' : undefined}
       autoComplete="off"
       inputMode={inputMode}
       list={list}
@@ -177,7 +179,7 @@ export function AutoSaveField({
         </label>
       ) : (
         <div className="flex items-baseline justify-between gap-3">
-          <label htmlFor={id} className={cn('block text-sm font-semibold', labelClassName)}>
+          <label htmlFor={id} className={cn(labelClass, labelClassName)}>
             {label}
           </label>
           {status}

@@ -3,7 +3,7 @@ import { MENDED_EVENT } from '@/lib/mended';
 
 /**
  * Reparo's mark: a dashed arc (a stitch, or a tape measure's edge) ending in a tape-yellow dot.
- * The arc takes the text colour; the dot's outline keeps it visible on light surfaces.
+ * The arc takes the text color; the dot's outline keeps it visible on light surfaces.
  * With `mends`, the arc stitches closed once whenever a status is saved as Completed.
  */
 export function LogoMark({ size = 28, mends = false }: { size?: number; mends?: boolean }) {

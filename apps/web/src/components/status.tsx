@@ -5,20 +5,17 @@ import {
   type WorkStatusInput,
 } from '@reparo/shared';
 import { Circle, CircleAlert, CircleCheck, CircleSlash, Contrast } from 'lucide-react';
-import type { ComponentType } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import { PHASE_STATUS_LABEL, WORK_STATUS_LABEL } from '@/lib/work';
 import { SelectChevron } from '@/components/form';
 import { cn } from '@/lib/utils';
 
 /**
  * Job status styles (Linear → Design system → Job status styles): an icon, the word and a tint,
- * so colour never carries the meaning alone. Awaiting review is the tape yellow — the "someone
+ * so color never carries the meaning alone. Awaiting review is the tape yellow — the "someone
  * needs to look" state. Cancelled is muted, never struck through, so it stays readable.
  */
-const STATUS: Record<
-  WorkStatusInput,
-  { icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>; bg: string; fg: string }
-> = {
+const STATUS: Record<WorkStatusInput, { icon: LucideIcon; bg: string; fg: string }> = {
   unstarted: { icon: Circle, bg: 'bg-status-idle-tint', fg: 'text-status-idle' },
   in_progress: { icon: Contrast, bg: 'bg-status-progress-tint', fg: 'text-status-progress' },
   awaiting_review: { icon: CircleAlert, bg: 'bg-tape', fg: 'text-tape-ink' },
@@ -27,8 +24,8 @@ const STATUS: Record<
 };
 
 /**
- * The idle tint matches the row hover colour, so idle chips carry a faint ring of their own
- * text colour to stay visible on a hovered row (OD-114, Q150).
+ * The idle tint matches the row hover color, so idle chips carry a faint ring of their own
+ * text color to stay visible on a hovered row (OD-114, Q150).
  */
 const idleRing = (s: WorkStatusInput) =>
   s === 'unstarted' || s === 'cancelled' ? 'ring-1 ring-inset ring-current/25' : undefined;
@@ -45,7 +42,7 @@ export function StatusBadge({ status }: { status: WorkStatusInput }) {
         idleRing(status),
       )}
     >
-      <Icon aria-hidden className="size-4 shrink-0" />
+      <Icon aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4 shrink-0" />
       {WORK_STATUS_LABEL[status]}
     </span>
   );
@@ -74,7 +71,12 @@ export function StatusSelect({
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Icon aria-hidden className={cn('pointer-events-none absolute left-3 size-5', fg)} />
+      <Icon
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={2}
+        className={cn('pointer-events-none absolute left-3 size-5', fg)}
+      />
       <select
         id={id}
         value={value}
@@ -114,7 +116,7 @@ export function PhaseStatusBadge({ status }: { status: PhaseStatusInput }) {
         idleRing(PHASE[status]),
       )}
     >
-      <Icon aria-hidden className="size-4 shrink-0" />
+      <Icon aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4 shrink-0" />
       {PHASE_STATUS_LABEL[status]}
     </span>
   );
@@ -141,7 +143,12 @@ export function PhaseStatusSelect({
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <Icon aria-hidden className={cn('pointer-events-none absolute left-3 size-5', fg)} />
+      <Icon
+        aria-hidden
+        absoluteStrokeWidth
+        strokeWidth={2}
+        className={cn('pointer-events-none absolute left-3 size-5', fg)}
+      />
       <select
         id={id}
         value={value}

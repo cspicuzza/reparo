@@ -14,6 +14,7 @@ import { SaveState } from '@/components/save-state';
 import { ListPlaceholder } from '@/components/placeholder';
 import { LoadError } from '@/components/load-error';
 import { useRefreshJobs } from '@/lib/refresh';
+import { TEXT_LINK } from '@/lib/utils';
 
 /**
  * The jobs covering one room. Here you change only this room's status, spec and notes; the
@@ -37,7 +38,7 @@ export function RoomWork({ roomId, roomName }: { roomId: string; roomName: strin
           <>
             {' '}
             Add one on the{' '}
-            <Link to="/jobs" className="text-foreground underline underline-offset-4">
+            <Link to="/jobs" className={TEXT_LINK}>
               Jobs page
             </Link>{' '}
             and tick {roomName}.
@@ -104,7 +105,7 @@ function JobRow({
           <Link
             to="/jobs/$jobId"
             params={{ jobId: j.job.id }}
-            className="inline-flex min-h-11 items-center text-xl font-semibold underline-offset-4 hover:underline"
+            className="inline-flex min-h-11 items-center text-lg font-semibold underline-offset-4 hover:underline"
           >
             {j.job.name}
           </Link>
@@ -175,6 +176,7 @@ function JobRow({
               >
                 <Pencil aria-hidden absoluteStrokeWidth strokeWidth={2} />
                 Edit spec &amp; notes
+                <span className="sr-only"> for {j.job.name}</span>
               </Button>
             </div>
           ) : null}

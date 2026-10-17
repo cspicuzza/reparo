@@ -79,7 +79,11 @@ export function Vendors() {
     <section className="flex flex-col gap-8">
       <PageHeader
         title="Vendors"
-        description="The people you hire."
+        description={
+          vendors.data && vendors.data.length > 0
+            ? `${vendors.data.length} ${vendors.data.length === 1 ? 'vendor' : 'vendors'}`
+            : undefined
+        }
         action={
           canEdit ? (
             <Button type="button" onClick={() => setAdding(true)} data-return-focus="add-vendor">
@@ -172,7 +176,7 @@ export function Vendors() {
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
               >
                 <span className="min-w-0">
-                  <span className="block text-xl font-semibold">{v.name}</span>
+                  <span className="block text-lg font-semibold break-words">{v.name}</span>
                   <span className="block text-sm text-muted-foreground">
                     {[v.trade, jobCountText(v.jobCount)].filter(Boolean).join('. ')}
                   </span>
@@ -226,7 +230,7 @@ function VendorRow({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {/* A name at the body width, like a job's or a shopping line's (OD-136). */}
-          <h2 className="text-lg font-semibold break-words [font-stretch:normal]">{vendor.name}</h2>
+          <h2 className="text-lg break-words [font-stretch:normal]">{vendor.name}</h2>
           {vendor.trade ? <p className="text-sm">{vendor.trade}</p> : null}
           <p className="text-sm text-muted-foreground">{jobCountText(vendor.jobCount)}</p>
         </div>
@@ -250,7 +254,7 @@ function VendorRow({
               href={telHref(vendor.phone)}
               className="inline-flex min-h-11 items-center gap-1.5 text-sm tabular-nums underline underline-offset-4"
             >
-              <Phone aria-hidden className="size-4" />
+              <Phone aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
               {vendor.phone}
               <span className="sr-only">, call {vendor.name}</span>
             </a>
@@ -260,7 +264,7 @@ function VendorRow({
               href={`mailto:${vendor.email}`}
               className="inline-flex min-h-11 min-w-0 items-center gap-1.5 text-sm underline underline-offset-4"
             >
-              <Mail aria-hidden className="size-4 shrink-0" />
+              <Mail aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4 shrink-0" />
               <span className="truncate">{vendor.email}</span>
               <span className="sr-only">, email {vendor.name}</span>
             </a>
@@ -371,21 +375,21 @@ function VendorBody({
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Say what they do (OD-145); the number and address are in the fields below. */}
       {vendor.phone || vendor.email ? (
         <div className="flex flex-wrap gap-2">
           {vendor.phone ? (
             <a href={telHref(vendor.phone)} className={buttonVariants({ variant: 'outline' })}>
-              <Phone aria-hidden className="size-4" />
-              {vendor.phone}
+              <Phone aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
+              Call
+              <span className="sr-only"> {vendor.name}</span>
             </a>
           ) : null}
           {vendor.email ? (
-            <a
-              href={`mailto:${vendor.email}`}
-              className={buttonVariants({ variant: 'outline', className: 'max-w-full break-all' })}
-            >
-              <Mail aria-hidden className="size-4 shrink-0" />
-              {vendor.email}
+            <a href={`mailto:${vendor.email}`} className={buttonVariants({ variant: 'outline' })}>
+              <Mail aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4 shrink-0" />
+              Email
+              <span className="sr-only"> {vendor.name}</span>
             </a>
           ) : null}
         </div>
@@ -445,7 +449,7 @@ function VendorWork({ vendor }: { vendor: Vendor }) {
   const headingId = `vendor-${vendor.id}-jobs`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h3 id={headingId} className="text-xl">
+      <h3 id={headingId} className="text-lg">
         Jobs
       </h3>
       {work.isPending ? <LinesPlaceholder label="Loading jobs" /> : null}
@@ -477,7 +481,7 @@ function VendorWork({ vendor }: { vendor: Vendor }) {
       ) : null}
       {work.data && work.data.openEstimates.length > 0 ? (
         <>
-          <h4 className="mt-3 text-base font-semibold">Open estimates</h4>
+          <h3 className="mt-3 text-lg">Open estimates</h3>
           <ul className="divide-y divide-border border-y border-border">
             {work.data.openEstimates.map((e) => (
               <li

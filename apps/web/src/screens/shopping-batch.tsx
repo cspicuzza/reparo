@@ -1,7 +1,7 @@
 import { sumCents } from '@reparo/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FormError, Select } from '@/components/form';
 import { Button } from '@/components/ui/button';
 import { listText, money } from '@/lib/money';
@@ -47,6 +47,13 @@ export function BatchBar({
   const categories = useQuery(trpc.categories.list.queryOptions());
   const jobs = useQuery(trpc.jobs.list.queryOptions());
   const [confirming, setConfirming] = useState(false);
+  // Like ConfirmRemove (OD-145): asking moves focus to Yes, Keep puts it back on Remove. The
+  // question gets its own row here, since the bar's actions are two to a row on a phone.
+  const removeButton = useRef<HTMLButtonElement>(null);
+  const yes = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirming) yes.current?.focus();
+  }, [confirming]);
 
   const lines = [...selected.values()];
   const hidden = lines.filter((l) => !shownIds.has(l.id)).length;
@@ -226,6 +233,7 @@ export function BatchBar({
               }
             />
             <Button
+              ref={removeButton}
               type="button"
               variant="destructive"
               disabled={busy}
@@ -247,6 +255,7 @@ export function BatchBar({
               {lines.length <= 3 ? ` (${listText(lines.map((l) => l.name))})` : ''}?
             </span>
             <Button
+              ref={yes}
               type="button"
               variant="destructive"
               disabled={remove.isPending}
@@ -254,7 +263,14 @@ export function BatchBar({
             >
               Yes, remove
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setConfirming(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setConfirming(false);
+                removeButton.current?.focus();
+              }}
+            >
               Keep
             </Button>
           </div>

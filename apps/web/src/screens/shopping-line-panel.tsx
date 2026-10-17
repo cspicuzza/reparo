@@ -15,7 +15,7 @@ import { EditPanel } from '@/components/edit-panel';
 import { PanelGroup } from '@/components/panel-group';
 import { PanelNameField } from '@/components/panel-name-field';
 import { FileSection } from '@/components/file-section';
-import { DollarBox, FormError, Input } from '@/components/form';
+import { DollarBox, FormError, Input, labelClass } from '@/components/form';
 import { ShoppingStatusBadge } from '@/components/money';
 import { FormPlaceholder } from '@/components/placeholder';
 import { SaveProblem, SaveStatus } from '@/components/save-state';
@@ -141,7 +141,7 @@ function LineSummary({ line, files }: { line: ShoppingLine; files: FileView[] })
           className={buttonVariants({ variant: 'outline', className: 'self-start' })}
         >
           Open product page
-          <ExternalLink aria-hidden className="size-4" />
+          <ExternalLink aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
           <span className="sr-only"> (opens in a new tab)</span>
         </a>
       ) : null}
@@ -479,7 +479,7 @@ function EditBody({
 
       {line.status !== 'to_buy' ? (
         <section aria-labelledby={`receipts-${line.id}`}>
-          <h3 id={`receipts-${line.id}`} className="text-base font-semibold">
+          <h3 id={`receipts-${line.id}`} className="text-lg">
             Receipts
           </h3>
           <div className="mt-1">
@@ -625,7 +625,7 @@ function ProductLink({ href, text }: { href: string; text: string }) {
       className="mt-1.5 inline-flex min-h-11 items-center gap-1.5 text-sm underline underline-offset-4"
     >
       {text}
-      <ExternalLink aria-hidden className="size-4 shrink-0" />
+      <ExternalLink aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4 shrink-0" />
       <span className="sr-only"> (opens in a new tab)</span>
     </a>
   );
@@ -640,7 +640,10 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
     ['Category', line.category.name],
     ['Store', line.store || 'Not set'],
     ['How many', String(line.quantity)],
-    ['Phase', line.phase.status === 'planned' ? `${line.phase.name} (planned)` : line.phase.name],
+    [
+      'Phase',
+      line.phase.status === 'planned' ? `${line.phase.name} (not started)` : line.phase.name,
+    ],
     ['For a job', line.job?.name ?? 'No job'],
     ['Model number', line.modelNumber || 'Not set'],
   ];
@@ -673,14 +676,14 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
           className={buttonVariants({ variant: 'outline', className: 'self-start' })}
         >
           Open product page
-          <ExternalLink aria-hidden className="size-4" />
+          <ExternalLink aria-hidden absoluteStrokeWidth strokeWidth={1.5} className="size-4" />
           <span className="sr-only"> (opens in a new tab)</span>
         </a>
       ) : null}
 
       {line.notes ? (
         <section aria-labelledby={`notes-${line.id}`}>
-          <h3 id={`notes-${line.id}`} className="text-base font-semibold">
+          <h3 id={`notes-${line.id}`} className="text-lg">
             Notes
           </h3>
           <p className="mt-1 max-w-prose whitespace-pre-wrap">{line.notes}</p>
@@ -688,7 +691,7 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
       ) : null}
 
       <section aria-labelledby={`details-${line.id}`}>
-        <h3 id={`details-${line.id}`} className="text-base font-semibold">
+        <h3 id={`details-${line.id}`} className="text-lg">
           Details
         </h3>
         <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
@@ -703,7 +706,7 @@ function ReadBody({ line, files }: { line: ShoppingLine; files: FileView[] }) {
 
       {receipts.length > 0 ? (
         <section aria-labelledby={`receipts-${line.id}`}>
-          <h3 id={`receipts-${line.id}`} className="text-base font-semibold">
+          <h3 id={`receipts-${line.id}`} className="text-lg">
             Receipts
           </h3>
           <div className="mt-1">
@@ -736,14 +739,14 @@ function RenameStore({ store, onDone }: { store: string; onDone: () => void }) {
   );
   return (
     <form
-      className="mt-3 grid gap-3 rounded-xl border border-border bg-background p-3"
+      className="mt-3 grid gap-3 border-t border-border pt-3"
       onSubmit={(e) => {
         e.preventDefault();
         rename.mutate({ from: store, to });
       }}
     >
       <div>
-        <label htmlFor="rename-store" className="block text-sm font-semibold">
+        <label htmlFor="rename-store" className={labelClass}>
           New name for {store}, on everything on the list
         </label>
         <Input

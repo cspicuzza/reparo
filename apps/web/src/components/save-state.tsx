@@ -43,7 +43,7 @@ export function SaveStatus({
       ) : null}
       {status === 'error' ? (
         <span className="inline-flex items-center gap-1 font-semibold text-destructive">
-          <CircleAlert aria-hidden className="size-4" />
+          <CircleAlert aria-hidden absoluteStrokeWidth strokeWidth={2} className="size-4" />
           Couldn&apos;t save<span className="sr-only"> {what}</span>
         </span>
       ) : null}

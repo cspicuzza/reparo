@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { ConfirmRemove } from '@/components/confirm-remove';
 import { useReturnFocus } from '@/lib/editor-focus';
 import { useToasts } from '@/lib/toasts';
-import { FormError, Input, Select } from '@/components/form';
+import { FormError, Input, Select, labelClass } from '@/components/form';
 import { LoadError } from '@/components/load-error';
 import { Panel } from '@/components/panel';
 import { LinesPlaceholder } from '@/components/placeholder';
@@ -32,7 +32,7 @@ export function CategoriesAdmin() {
 
   return (
     <Panel aria-labelledby="categories">
-      <h2 id="categories" tabIndex={-1} className="text-2xl outline-none">
+      <h2 id="categories" tabIndex={-1} className="text-2xl">
         Categories
       </h2>
       <p className="mt-1 text-muted-foreground">
@@ -71,7 +71,7 @@ export function CategoriesAdmin() {
         }}
       >
         <div className="min-w-0 flex-1 sm:max-w-sm">
-          <label htmlFor="new-category" className="block text-sm font-semibold">
+          <label htmlFor="new-category" className={labelClass}>
             New category
           </label>
           <Input
@@ -160,7 +160,7 @@ function CategoryRow({
         }}
       >
         <div className="min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
-          <label htmlFor={`rename-${category.id}`} className="block text-sm font-semibold">
+          <label htmlFor={`rename-${category.id}`} className={labelClass}>
             New name for {category.name}
           </label>
           <Input
@@ -189,7 +189,7 @@ function CategoryRow({
       <div className="flex flex-wrap items-end gap-3" onKeyDown={onEscape}>
         {/* On a phone the field has its own line (Q162). */}
         <div className="min-w-0 basis-full sm:max-w-sm sm:flex-1 sm:basis-auto">
-          <label htmlFor={`merge-${category.id}`} className="block text-sm font-semibold">
+          <label htmlFor={`merge-${category.id}`} className={labelClass}>
             Merge {category.name} into
           </label>
           <Select
@@ -234,7 +234,9 @@ function CategoryRow({
         <span className="block font-semibold">{category.name}</span>
         <span className="block text-sm text-muted-foreground">{lines}</span>
       </span>
-      <span className="-mr-3 flex gap-1">
+      {/* On a phone the actions take their own line, their words lined up with the name
+          above; on a laptop they sit at the right of the row (OD-145). */}
+      <span className="-ml-3 flex basis-full gap-1 sm:-mr-3 sm:ml-0 sm:basis-auto">
         <Button
           type="button"
           variant="ghost"
