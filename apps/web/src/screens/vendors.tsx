@@ -22,6 +22,7 @@ import { PageHeader } from '@/components/page-header';
 import { PanelList } from '@/components/panel';
 import { PlanGrid } from '@/components/plan-grid';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { groupBy } from '@/lib/group';
 import { useMe } from '@/lib/me';
 import { problemWith } from '@/lib/problem';
 import { undoAction, useToasts } from '@/lib/toasts';
@@ -58,6 +59,7 @@ export function Vendors() {
     }),
     enabled: (vendors.data?.length ?? 0) > 0,
   });
+  const docsOf = groupBy(docs.data ?? [], (f) => f.ownerId);
   const [adding, setAdding] = useState(false);
   useReturnFocus(adding ? 'add-vendor' : null);
   // The open vendor lives in the address, so it can be linked to (OD-112, Q127).
@@ -144,7 +146,7 @@ export function Vendors() {
             <li key={v.id} className="rounded-xl border border-border bg-card p-4">
               <VendorRow
                 vendor={v}
-                documents={docs.data?.filter((f) => f.ownerId === v.id) ?? []}
+                documents={docsOf.get(v.id) ?? []}
                 docsSource={docs}
                 open={search.vendor === v.id}
                 onOpen={() => void navigate({ search: { vendor: v.id } })}

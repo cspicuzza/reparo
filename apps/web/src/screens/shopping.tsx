@@ -14,6 +14,7 @@ import { BoughtTape } from '@/components/bought-tape';
 import { Button } from '@/components/ui/button';
 import { SegmentedSwitch } from '@/components/segmented-switch';
 import { useReturnFocus } from '@/lib/editor-focus';
+import { groupBy } from '@/lib/group';
 import { useMe } from '@/lib/me';
 import { money } from '@/lib/money';
 import {
@@ -22,8 +23,8 @@ import {
   shoppingFilter,
   storeKey,
   summaryText,
-  type ShoppingLine,
   withoutStore,
+  type ShoppingLine,
   type ShoppingSearch,
 } from '@/lib/shopping';
 import { useIsPhone } from '@/lib/media';
@@ -488,6 +489,9 @@ function ShoppingSection({
   const phone = useIsPhone();
   const foldable = section.status !== 'to_buy';
   const [open, setOpen] = useState(!foldable);
+  // Each group looks its lines up instead of filtering the whole list (OD-157).
+  const linesByStore = groupBy(lines, storeKey);
+  const linesByRoom = groupBy(lines, (l) => l.room?.id ?? null);
   const groups =
     group === 'store'
       ? section.stores.map((st) => ({
@@ -496,7 +500,7 @@ function ShoppingSection({
           count: st.count,
           totalCents: st.totalCents,
           unpriced: st.unpriced,
-          lines: lines.filter((l) => storeKey(l) === st.key),
+          lines: linesByStore.get(st.key) ?? [],
         }))
       : section.rooms.map((r) => ({
           key: r.roomId ?? 'house',
@@ -504,7 +508,7 @@ function ShoppingSection({
           count: r.count,
           totalCents: r.totalCents,
           unpriced: r.unpriced,
-          lines: lines.filter((l) => (l.room?.id ?? null) === r.roomId),
+          lines: linesByRoom.get(r.roomId) ?? [],
         }));
   const [shown, setShown] = useGroupsShown(`${section.status}:${group}`);
   const byDefault = !phone || startOpen || groups.length === 1;

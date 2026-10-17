@@ -9,6 +9,7 @@ import { Field, FormError, MoneyInput } from '@/components/form';
 import { UnsavedGuard } from '@/components/unsaved-guard';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstField, useReturnFocus } from '@/lib/editor-focus';
+import { groupBy, NONE } from '@/lib/group';
 import { useIsPhone } from '@/lib/media';
 import { centsToInput, lineAmountText, lineHasAmount, money } from '@/lib/money';
 import { lineDetails, lineWhere, type ShoppingLine } from '@/lib/shopping';
@@ -55,6 +56,7 @@ export function ShoppingRows({
     files.filter((f) => f.kind === 'product_image' && f.url).map((f) => f.ownerId),
   );
   const withPictures = lines.some((l) => pictured.has(l.id));
+  const filesOf = groupBy(files, (f) => f.ownerId);
   return (
     <ul
       className={cn(
@@ -86,7 +88,7 @@ export function ShoppingRows({
           <ShoppingRow
             line={l}
             canEdit={canEdit}
-            files={files.filter((f) => f.ownerId === l.id)}
+            files={filesOf.get(l.id) ?? NONE}
             pictureColumn={withPictures}
             onOpen={() => onOpen(l)}
             selection={selection}
@@ -122,7 +124,7 @@ function ShoppingRow({
 }: {
   line: ShoppingLine;
   canEdit: boolean;
-  files: FileView[];
+  files: readonly FileView[];
   byStore: boolean;
   /** The list has a picture column on a laptop, so this row fills its cell even without one. */
   pictureColumn: boolean;

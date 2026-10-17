@@ -26,6 +26,7 @@ import { PaymentBadge, ShoppingStatusBadge } from '@/components/money';
 import { Panel } from '@/components/panel';
 import { TapeStrip } from '@/components/tape';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { groupBy } from '@/lib/group';
 import { centsToInput, lineAmountText, money, moneyStep } from '@/lib/money';
 import { useTRPC } from '@/lib/trpc';
 import type { Job } from '@/lib/work';
@@ -419,8 +420,8 @@ function Payments({
     // No payments, no receipts to ask for (OD-155), as the other file lists do.
     enabled: payments.length > 0,
   });
-  const receiptsOf = (paymentId: string) =>
-    (receipts.data ?? []).filter((f) => f.ownerId === paymentId);
+  const receiptsByPayment = groupBy(receipts.data ?? [], (f) => f.ownerId);
+  const receiptsOf = (paymentId: string) => receiptsByPayment.get(paymentId) ?? [];
 
   return (
     <div>
