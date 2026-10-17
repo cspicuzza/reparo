@@ -1,10 +1,12 @@
 // `pnpm db:import-estimates` — turn the imported vendor prices into chosen estimates (OD-62,
 // Q29). Reads import/spreadsheet-lines.csv. Dry run by default: it runs inside a transaction,
 // prints what it made and the money before and after (which should match), and rolls back.
-// `--write` keeps it.
+// `--write` keeps it. Every run first says which database and storage it uses and stops if
+// they're different stacks; writing to a hosted project needs `--target=<project ref>` (OD-164).
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createDb, Rollback } from '@reparo/db';
+import { checkTarget, cliArgs } from '@reparo/db/cli';
 import { formatMoney } from '@reparo/shared';
 import { csvRecords } from '../import/csv';
 import { adoptImportedQuotes } from '../import/quotes';
@@ -14,9 +16,11 @@ import { getMoneySummary } from '../services/money';
 const root = (p: string) => fileURLToPath(new URL(`../../../../${p}`, import.meta.url));
 const envFile = root('.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
-const url = process.env['DATABASE_URL'];
-if (!url) throw new Error('DATABASE_URL is not set; see .env.example');
-const write = process.argv.slice(2).includes('--write');
+const { values } = cliArgs({
+  options: { write: { type: 'boolean' }, target: { type: 'string' } },
+});
+const write = values.write ?? false;
+const { databaseUrl: url } = checkTarget(process.env, { target: values.target, confirm: write });
 const file = root('import/spreadsheet-lines.csv');
 if (!existsSync(file)) throw new Error(`No lines file at ${file}`);
 

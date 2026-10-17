@@ -1,10 +1,13 @@
 // `pnpm db:import-images` — attach the spreadsheet's product images to the shopping lines the
 // import made (OD-61). Reads import/spreadsheet-images.csv, import/spreadsheet-lines.csv and
 // the pictures in import/images/ (all gitignored). Dry run by default: it says what it would
-// attach and what it can't match, and uploads nothing. `--write` uploads them.
+// attach and what it can't match, and uploads nothing. `--write` uploads them. Every run first
+// says which database and storage it uses and stops if they're different stacks; writing to a
+// hosted project needs `--target=<project ref>` (OD-164).
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createDb } from '@reparo/db';
+import { checkTarget, cliArgs } from '@reparo/db/cli';
 import { FILE_MAX_BYTES, FILE_MIME_TYPES, serverEnv } from '@reparo/shared';
 import { FILES_BUCKET } from '../handler';
 import { createSupabaseStorage, StorageError } from '../storage/storage';
@@ -15,10 +18,11 @@ import { ImportProblem, validateLines } from '../import/run';
 const root = (p: string) => fileURLToPath(new URL(`../../../../${p}`, import.meta.url));
 const envFile = root('.env');
 if (existsSync(envFile)) process.loadEnvFile(envFile);
-const url = process.env['DATABASE_URL'];
-if (!url) throw new Error('DATABASE_URL is not set; see .env.example');
-
-const write = process.argv.slice(2).includes('--write');
+const { values } = cliArgs({
+  options: { write: { type: 'boolean' }, target: { type: 'string' } },
+});
+const write = values.write ?? false;
+const { databaseUrl: url } = checkTarget(process.env, { target: values.target, confirm: write });
 const listFile = root('import/spreadsheet-images.csv');
 const linesFile = root('import/spreadsheet-lines.csv');
 const imageDir = root('import/images');
