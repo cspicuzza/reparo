@@ -34,7 +34,8 @@ export const supabase = { auth };
 export async function signInWithGoogle(): Promise<void> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/` },
+    // Back to the sign-in page, which goes on to Home once signed in, or says why not (OD-169).
+    options: { redirectTo: `${window.location.origin}/sign-in` },
   });
   if (error) throw error;
 }

@@ -1,22 +1,34 @@
 import { useState } from 'react';
+import { getRouteApi } from '@tanstack/react-router';
 import { FormError } from '@/components/form';
 import { LogoMark } from '@/components/logo';
 import { PageTitle } from '@/components/page-title';
 import { Button } from '@/components/ui/button';
+import { SIGN_IN_START_PROBLEM, signInProblem } from '@/lib/sign-in-problem';
 import { signInWithGoogle } from '@/lib/supabase';
 
+const route = getRouteApi('/sign-in');
+
 export function SignIn() {
-  const [error, setError] = useState<string | null>(null);
+  const search = route.useSearch();
+  const { signInError } = route.useRouteContext();
+  const [startFailed, setStartFailed] = useState(false);
+  // Why the last try came back here, if it did (OD-169): the address first, else what auth-js saw.
+  const cameBack = signInProblem({
+    error: search.error ?? signInError.error,
+    code: search.error_code ?? signInError.code,
+  });
 
   async function onClick() {
-    setError(null);
+    setStartFailed(false);
     try {
       await signInWithGoogle();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Sign-in failed');
+    } catch {
+      setStartFailed(true);
     }
   }
 
+  const problem = startFailed ? SIGN_IN_START_PROBLEM : cameBack;
   return (
     <main className="mx-auto flex min-h-dvh max-w-xl flex-col justify-center px-6 py-16">
       <PageTitle parts={['Sign in']} />
@@ -32,9 +44,7 @@ export function SignIn() {
         Continue with Google
       </Button>
       <p className="mt-4 text-sm text-muted-foreground">Household members only.</p>
-      {error ? (
-        <FormError className="mt-6">Sign-in didn&apos;t start: {error}. Try again.</FormError>
-      ) : null}
+      {problem ? <FormError className="mt-6">{problem}</FormError> : null}
     </main>
   );
 }

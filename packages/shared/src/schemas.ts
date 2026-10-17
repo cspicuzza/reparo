@@ -789,3 +789,17 @@ export const tokenClaimsSchema = z.object({
   }),
 });
 export type TokenClaims = z.infer<typeof tokenClaimsSchema>;
+
+// --- signing in (OD-169) ------------------------------------------------------------------------
+
+/**
+ * What Supabase Auth puts on the address when Google sign-in fails: `error` and, for most
+ * failures, `error_code` (https://github.com/supabase/auth/blob/master/internal/api/external.go).
+ * Junk or overlong values are dropped, not shown (https://zod.dev/api, `.catch`). The server's
+ * own English (`error_description`) is never read.
+ */
+export const signInSearchSchema = z.object({
+  error: z.string().max(200).optional().catch(undefined),
+  error_code: z.string().max(100).optional().catch(undefined),
+});
+export type SignInSearch = z.infer<typeof signInSearchSchema>;
