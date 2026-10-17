@@ -9,6 +9,7 @@ import {
   pgTable,
   text,
   uuid,
+  uniqueIndex,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { id, softDelete, timestamps } from './columns';
@@ -55,7 +56,10 @@ export const files = pgTable(
     id: id(),
     kind: fileKind('kind').notNull(),
     bucket: text('bucket').notNull(),
-    /** Object path inside the bucket. Unique per bucket. */
+    /**
+     * Object path inside the bucket. Unique per bucket, removed files included (OD-163): a
+     * removed file's object stays in storage, so its path is never recorded again.
+     */
     path: text('path').notNull(),
     /**
      * Pictures: a small JPEG made in the browser at upload (640px on the longest side), shown
@@ -93,7 +97,9 @@ export const files = pgTable(
   },
   (t) => [
     index('files_owner_idx').on(t.ownerType, t.ownerId),
-    index('files_bucket_path_idx').on(t.bucket, t.path),
+    // Full, not partial (db.md's soft-delete rule): removed files keep their stored object, so
+    // their paths stay taken; it also serves finishUpload's lookup, which counts them (OD-163).
+    uniqueIndex('files_bucket_path_uidx').on(t.bucket, t.path),
     index('files_job_idx').on(t.jobId),
     // Compared as text: on a fresh database every migration runs in one transaction, and
     // Postgres refuses enum literals added by ALTER TYPE earlier in that transaction (55P04).

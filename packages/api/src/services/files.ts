@@ -36,7 +36,7 @@ import {
   type RoomCover,
 } from '@reparo/shared';
 import type { Storage } from '../storage/storage';
-import { badRequest, conflict, notFound } from './errors';
+import { badRequest, conflict, isUniqueViolation, notFound } from './errors';
 
 // Files (M4, OD-55; Linear *Data model* doc → M4 → Files). The bytes never pass through the
 // API: the browser asks for an upload link (`startUpload`), PUTs the file straight to storage
@@ -243,6 +243,7 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
     ? await checkedThumb(storage, input.ownerType, input.ownerId, input.tinyPath, TINY_RE)
     : null;
 
+  // The lookup above catches a repeat; the unique index catches two at once (OD-163).
   const [row] = await db
     .insert(files)
     .values({
@@ -261,7 +262,13 @@ export async function finishUpload(db: Db, storage: Storage, memberId: string, i
       jobId: progress ? input.jobId : null,
       uploadedBy: memberId,
     })
-    .returning();
+    .returning()
+    .catch((e: unknown) => {
+      if (isUniqueViolation(e, 'files_bucket_path_uidx')) {
+        throw conflict('That file is already saved');
+      }
+      throw e;
+    });
   if (!row) throw new Error('insert returned no row');
   const [view] = await withUrls(storage, [{ file: row, jobName: null }], null);
   if (!view) throw new Error('no view for the new file');

@@ -608,6 +608,33 @@ describe('@reparo/db', () => {
       expect(after?.coverFileId).toBeNull();
     }));
 
+  it('a file path is unique per bucket, removed files included (OD-163)', () =>
+    withRollback(db, async (tx) => {
+      const [m] = await tx
+        .insert(members)
+        .values({ email: 'paths@example.com', displayName: 'p' })
+        .returning();
+      if (!m) throw new Error('insert failed');
+      const file = {
+        kind: 'paperwork' as const,
+        bucket: 'files',
+        path: 'job/same.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 10,
+        originalName: 'same.pdf',
+        ownerType: 'job' as const,
+        ownerId: m.id,
+        uploadedBy: m.id,
+      };
+      const [first] = await tx.insert(files).values(file).returning();
+      if (!first) throw new Error('insert failed');
+      await expectDbErrorIn(tx, /files_bucket_path_uidx/, (sp) => sp.insert(files).values(file));
+      await tx.update(files).set({ deletedAt: new Date() }).where(eq(files.id, first.id));
+      await expectDbErrorIn(tx, /files_bucket_path_uidx/, (sp) => sp.insert(files).values(file));
+      // The same path in another bucket is a different object.
+      await tx.insert(files).values({ ...file, bucket: 'other' });
+    }));
+
   it('files take the M4 owners and the paperwork kind', () =>
     withRollback(db, async (tx) => {
       const [m] = await tx
