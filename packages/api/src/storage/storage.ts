@@ -78,9 +78,46 @@ export function createSupabaseStorage(cfg: SupabaseStorageConfig): Storage {
   }
 
   /**
+   * An existing bucket must be what we'd have created: private, with our size limit and file
+   * types. Anything else is refused, naming each difference, rather than used as is or quietly
+   * changed (OD-166). Null means "no limit" (storage-js 2.117.3 JSDoc), so it counts as a
+   * difference. Fields per the Storage server's bucket schema and GET /bucket/{id} route
+   * (https://github.com/supabase/storage/blob/master/src/http/routes/bucket/getBucket.ts).
+   */
+  async function checkExistingBucket(): Promise<void> {
+    const found = await json<Record<string, unknown>>(
+      await call('GET', `/bucket/${encodeURIComponent(cfg.bucket)}`),
+      'bucket check',
+    );
+    const problems: string[] = [];
+    if (found['public'] !== false) problems.push('it is public');
+    if (found['file_size_limit'] !== cfg.fileSizeLimit) {
+      problems.push(
+        `its size limit is ${String(found['file_size_limit'])}, not ${cfg.fileSizeLimit}`,
+      );
+    }
+    const types = found['allowed_mime_types'];
+    const sameTypes =
+      Array.isArray(types) &&
+      new Set(types).size === types.length &&
+      types.length === cfg.allowedMimeTypes.length &&
+      cfg.allowedMimeTypes.every((t) => types.includes(t));
+    if (!sameTypes) {
+      problems.push(
+        `its file types are ${Array.isArray(types) ? types.join(', ') : String(types)}, not ${cfg.allowedMimeTypes.join(', ')}`,
+      );
+    }
+    if (problems.length > 0) {
+      throw new StorageError(
+        `Storage bucket "${cfg.bucket}" isn't set up the way Reparo needs: ${problems.join('; ')}. Fix it in the Supabase dashboard.`,
+      );
+    }
+  }
+
+  /**
    * The private bucket, created on first use if it isn't there. Doing it here rather than in
    * supabase/config.toml covers local and hosted alike; the CLI docs don't say when config
-   * buckets are applied. A 409 means it already exists.
+   * buckets are applied. A 409 means it already exists, and then its settings are checked.
    */
   function ensureBucket(): Promise<void> {
     bucketReady ??= (async () => {
@@ -94,7 +131,10 @@ export function createSupabaseStorage(cfg: SupabaseStorageConfig): Storage {
       if (res.ok) return;
       const text = await res.text().catch(() => '');
       // Storage answers an existing bucket with 409, or 400 carrying a 409 statusCode.
-      if (res.status === 409 || /already exists|"statusCode":"409"/i.test(text)) return;
+      if (res.status === 409 || /already exists|"statusCode":"409"/i.test(text)) {
+        await checkExistingBucket();
+        return;
+      }
       throw new StorageError(`Storage bucket setup failed (${res.status}): ${text}`, res.status);
     })().catch((e: unknown) => {
       bucketReady = null; // try again on the next request

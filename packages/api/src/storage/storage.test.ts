@@ -69,15 +69,67 @@ describe('Supabase storage', () => {
     );
   });
 
-  it('treats an existing bucket as ready', async () => {
-    const { fetchFn } = recorder([
-      () => json({ statusCode: '409', error: 'Duplicate', message: 'already exists' }, 400),
+  const exists = () =>
+    json({ statusCode: '409', error: 'Duplicate', message: 'already exists' }, 400);
+  const bucket = (over: Record<string, unknown> = {}) =>
+    json({
+      id: 'files',
+      name: 'files',
+      public: false,
+      file_size_limit: 52428800,
+      allowed_mime_types: ['application/pdf', 'image/jpeg'],
+      ...over,
+    });
+
+  it('treats an existing bucket as ready once its settings match', async () => {
+    const { calls, fetchFn } = recorder([
+      exists,
+      () => bucket(),
       () => json({ size: 12, content_type: 'image/jpeg' }),
     ]);
     expect(await make(fetchFn).stat('room/a/b.jpg')).toEqual({
       sizeBytes: 12,
       mimeType: 'image/jpeg',
     });
+    expect(calls[1]).toMatchObject({
+      method: 'GET',
+      url: 'http://127.0.0.1:54321/storage/v1/bucket/files',
+    });
+  });
+
+  it('accepts the same file types in another order', async () => {
+    const { fetchFn } = recorder([
+      exists,
+      () => bucket({ allowed_mime_types: ['image/jpeg', 'application/pdf'] }),
+      () => json({ size: 1, content_type: 'application/pdf' }),
+    ]);
+    await expect(make(fetchFn).stat('x')).resolves.toBeTruthy();
+  });
+
+  it.each([
+    [{ public: true }, /it is public/],
+    [{ file_size_limit: 1024 }, /size limit is 1024, not 52428800/],
+    [{ file_size_limit: null }, /size limit is null/],
+    [{ allowed_mime_types: ['application/pdf'] }, /file types are application\/pdf, not/],
+    [{ allowed_mime_types: null }, /file types are null/],
+  ])('refuses an existing bucket set up differently (%j)', async (over, message) => {
+    const { calls, fetchFn } = recorder([exists, () => bucket(over)]);
+    await expect(make(fetchFn).stat('x')).rejects.toThrow(message);
+    expect(calls).toHaveLength(2); // no update is sent
+  });
+
+  it('retries the bucket check after it fails', async () => {
+    const { calls, fetchFn } = recorder([
+      exists,
+      () => new Response('down', { status: 503 }),
+      exists,
+      () => bucket(),
+      () => json({ size: 1, content_type: 'application/pdf' }),
+    ]);
+    const s = make(fetchFn);
+    await expect(s.stat('x')).rejects.toThrow(/bucket check failed \(503\)/);
+    await s.stat('x');
+    expect(calls).toHaveLength(5);
   });
 
   it('retries bucket setup after a failure', async () => {
