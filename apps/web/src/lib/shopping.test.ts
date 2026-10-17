@@ -65,6 +65,7 @@ describe('shopping words (OD-75)', () => {
     expect(groupText('to_buy', 1, 0, money, 1)).toBe('1 to buy, no prices yet');
     expect(groupText('purchased', 2, 4500, money)).toBe('2 bought, $45.00 paid');
     expect(groupText('returned', 1, 5000, money)).toBe('1 returned, $50.00 not refunded');
+    expect(groupText('returned', 1, 0, money)).toBe('1 returned, all refunded');
   });
   it('opens the page with what is left to buy', () => {
     expect(summaryText(0, 0, money)).toBe('Nothing left to buy.');

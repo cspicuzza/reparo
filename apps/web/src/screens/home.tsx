@@ -38,7 +38,8 @@ export function Home() {
       <PageTitle parts={['Home']} />
       {summary.isPending ? (
         <>
-          <h1 className="text-3xl">{hello}</h1>
+          {/* Not a heading while loading: focus waits for the page's real h1 (OD-145). */}
+          <p className="text-muted-foreground">{hello}</p>
           <Loading label="Loading the house">
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-3">
@@ -307,7 +308,11 @@ function PhasePanel({ summary }: { summary: Summary }) {
         </h2>
         <div className="flex flex-wrap gap-x-4">
           {phaseJobs.length > 0 ? (
-            <Link to="/jobs" className={buttonVariants({ variant: 'link', className: 'px-0' })}>
+            <Link
+              to="/jobs"
+              search={phase ? { phase: phase.id } : {}}
+              className={buttonVariants({ variant: 'link', className: 'px-0' })}
+            >
               See all {phaseJobs.length} {phaseJobs.length === 1 ? 'job' : 'jobs'}
             </Link>
           ) : null}

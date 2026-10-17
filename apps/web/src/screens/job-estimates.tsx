@@ -67,7 +67,8 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
 
   const list = estimates.data ?? [];
   const editingEstimate = list.find((e) => e.id === editing);
-  const empty = list.length === 0 && !estimates.isPending && !estimates.error;
+  // Loading looks like the one-line empty header, so the panel doesn't jump (OD-145).
+  const empty = list.length === 0 && !estimates.error;
   const quotesOf = (id: string): FileView[] => (quotes.data ?? []).filter((f) => f.ownerId === id);
 
   return (
@@ -85,16 +86,27 @@ export function JobEstimates({ job, canEdit }: { job: Job; canEdit: boolean }) {
             <h2 id="job-estimates" className="text-2xl">
               Estimates
             </h2>
-            <span className="text-muted-foreground">{canEdit ? 'Not added yet' : 'None yet'}</span>
+            {estimates.isPending ? (
+              <span className="text-muted-foreground" role="status">
+                Loading…
+              </span>
+            ) : (
+              <span className="text-muted-foreground">
+                {canEdit ? 'Not added yet' : 'None yet'}
+              </span>
+            )}
           </>
         ) : (
           <div>
             <h2 id="job-estimates" className="text-2xl">
               Estimates
             </h2>
-            <p className="mt-1 max-w-prose text-muted-foreground">
-              Choosing one makes it the job&apos;s price and vendor.
-            </p>
+            {/* Only for those who can choose (OD-145). */}
+            {canEdit ? (
+              <p className="mt-1 max-w-prose text-muted-foreground">
+                Choosing one makes it the job&apos;s price and vendor.
+              </p>
+            ) : null}
           </div>
         )}
         {canEdit ? (

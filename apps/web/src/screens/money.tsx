@@ -617,8 +617,22 @@ function ByPhase({ s }: { s: Summary }) {
                       </span>
                     ) : null}
                   </th>
-                  <td className="py-3 pl-3 text-right">{money(p.spentCents)}</td>
-                  <td className="py-3 pl-3 text-right">{money(p.toComeCents)}</td>
+                  {/* Amounts line up with the 44px name link, not the top of the cell. */}
+                  <td className="py-3 pl-3 text-right">
+                    <span className="inline-flex min-h-11 items-center">{money(p.spentCents)}</span>
+                  </td>
+                  <td className="py-3 pl-3 text-right">
+                    {p.counting ? (
+                      <span className="inline-flex min-h-11 items-center">
+                        {money(p.toComeCents)}
+                      </span>
+                    ) : (
+                      // Not started, so not in the total; what it would need is said beside it.
+                      <span className="inline-flex min-h-11 items-center text-muted-foreground">
+                        Not counted
+                      </span>
+                    )}
+                  </td>
                 </tr>
               );
             })}
@@ -628,12 +642,10 @@ function ByPhase({ s }: { s: Summary }) {
               <th scope="row" className="py-3 pr-3 text-left font-semibold">
                 Total
               </th>
-              <td className="py-3 pl-3 text-right font-semibold">
-                {money(s.byPhase.reduce((n, p) => n + p.spentCents, 0))}
-              </td>
-              <td className="py-3 pl-3 text-right font-semibold">
-                {money(s.byPhase.reduce((n, p) => n + p.toComeCents, 0))}
-              </td>
+              {/* The totals are the API's, the same as the headline: a phase that hasn't
+                  started isn't counted, so it isn't added in here either (OD-145). */}
+              <td className="py-3 pl-3 text-right font-semibold">{money(s.spentCents)}</td>
+              <td className="py-3 pl-3 text-right font-semibold">{money(s.committedCents)}</td>
             </tr>
           </tfoot>
         </table>

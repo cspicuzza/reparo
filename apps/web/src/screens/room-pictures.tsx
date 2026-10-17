@@ -89,8 +89,11 @@ export function RoomPictures({
             </span>
           ) : null
         }
-        actions={(f) =>
-          f.isCover ? (
+        // The cover's buttons and their error both sit in the picture viewer, where they were
+        // pressed (OD-145).
+        actions={(f) => (
+          <>
+            f.isCover ? (
             <Button
               type="button"
               variant="ghost"
@@ -99,7 +102,7 @@ export function RoomPictures({
             >
               Stop using as the cover
             </Button>
-          ) : (
+            ) : (
             <Button
               type="button"
               variant="outline"
@@ -109,10 +112,13 @@ export function RoomPictures({
             >
               Make this the cover
             </Button>
-          )
-        }
+            )
+            {setCover.error && setCover.variables?.fileId !== undefined ? (
+              <FormError className="w-full">{setCover.error.message}</FormError>
+            ) : null}
+          </>
+        )}
       />
-      {setCover.error ? <FormError>{setCover.error.message}</FormError> : null}
 
       <FileSection
         id="inspiration"

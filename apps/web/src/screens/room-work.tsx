@@ -144,7 +144,7 @@ function JobRow({
         <div className="mt-2 grid gap-1 sm:grid-cols-[1fr_auto] sm:gap-6">
           <div className="min-w-0">
             {/* A room's own spec is flagged by the "Different here" badge above. */}
-            {j.specSource === 'job' ? (
+            {j.specSource === 'job' && j.resolvedSpec ? (
               <p className="text-sm text-muted-foreground">{SPEC_SOURCE_LABEL.job}</p>
             ) : null}
             {j.resolvedSpec ? (

@@ -134,6 +134,17 @@
   --destructive-tint: #3b2521; /* dark: destructive text 5.58:1 on it */
 }
 
+/* The page's ring, computed on the root only, so an .ink chip (which redefines --ring for what's
+   inside it) still draws its own outline, which sits on the page, in the page's colour (OD-145:
+   it was 1.75:1 there). */
+:root {
+  --ring-page: var(--ring);
+}
+
+.ink:focus-visible {
+  outline-color: var(--ring-page);
+}
+
 @theme inline {
   /* Shadows only on things that float, from the `float-shadow` token, so they stay visible in
      dark mode (OD-142; Tailwind's own are a fixed 10% black). Inline, so `.ink` gets its own.

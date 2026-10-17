@@ -182,17 +182,21 @@ export function Rooms() {
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <h2 className="text-xl break-words">{room.name}</h2>
                     <span className="text-sm text-muted-foreground tabular-nums">{size}</span>
-                    <span className="text-sm tabular-nums">
-                      {buying
-                        ? groupText(
-                            'to_buy',
-                            buying.count,
-                            buying.totalCents,
-                            money,
-                            buying.unpriced,
-                          )
-                        : 'Nothing left to buy'}
-                    </span>
+                    {/* Said only once the totals are in: never "nothing" while loading, and
+                        nothing at all if they couldn't load (OD-145). */}
+                    {shopping.data ? (
+                      <span className="text-sm tabular-nums">
+                        {buying
+                          ? groupText(
+                              'to_buy',
+                              buying.count,
+                              buying.totalCents,
+                              money,
+                              buying.unpriced,
+                            )
+                          : 'Nothing left to buy'}
+                      </span>
+                    ) : null}
                     {room.progress.total > 0 ? (
                       <TapeStrip
                         mode="progress"

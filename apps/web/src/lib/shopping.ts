@@ -95,6 +95,8 @@ export function groupText(
     return unpriced > 0 ? `${priced}, ${unpriced} with no price` : priced;
   }
   if (status === 'purchased') return `${count} bought, ${money(cents)} paid`;
+  // Nothing left out of pocket reads as that, not as "$0.00 not refunded" (OD-145).
+  if (cents === 0) return `${count} returned, all refunded`;
   return `${count} returned, ${money(cents)} not refunded`;
 }
 

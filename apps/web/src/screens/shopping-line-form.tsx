@@ -7,7 +7,7 @@ import {
   type ShoppingLineCreateInput,
 } from '@reparo/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { Field, FormError, Input, MoneyInput, Select, Textarea } from '@/components/form';
 import { Reveal } from '@/components/reveal';
@@ -134,7 +134,7 @@ function LineFields({
   onSubmit: (values: ShoppingLineCreate) => Promise<void>;
   onCancel: () => void;
 }) {
-  const { register, handleSubmit, control, formState } = useForm<
+  const { register, handleSubmit, control, formState, getValues, setValue } = useForm<
     ShoppingLineCreateInput,
     unknown,
     ShoppingLineCreate
@@ -144,6 +144,14 @@ function LineFields({
   // A line's job must be in its phase, so only that phase's jobs are offered.
   const phaseId = useWatch({ control, name: 'phaseId' });
   const phaseJobs = jobs.filter((j) => j.phaseId === phaseId);
+  // Moving to another phase lets go of a job left behind, as the panel does (OD-145), so the
+  // form never sends a job from the wrong phase.
+  useEffect(() => {
+    const jobId = getValues('jobId');
+    if (jobId && !jobs.some((j) => j.id === jobId && j.phaseId === phaseId)) {
+      setValue('jobId', null);
+    }
+  }, [phaseId, jobs, getValues, setValue]);
 
   const formRef = useFocusFirstField<HTMLFormElement>();
   // The details people rarely set start folded (OD-80), unless the line already uses them or
