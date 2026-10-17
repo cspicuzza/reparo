@@ -2239,8 +2239,6 @@ describe('@reparo/api', () => {
 
   // --- Workflow polish (OD-68, OD-69) -----------------------------------------------------------
 
-  // --- Workflow polish (OD-68, OD-69) -----------------------------------------------------------
-
   it('shopping totals: per status and per room, Whole house last, following the filters', () =>
     withSeeded(async (_tx, h) => {
       const { phase1, cat } = await moneyFixtures(h);
